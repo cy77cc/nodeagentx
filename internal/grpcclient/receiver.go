@@ -21,13 +21,17 @@ type CancelHandler func(ctx context.Context, job *pb.CancelJob) error
 // ConfigUpdateHandler handles ConfigUpdate platform messages.
 type ConfigUpdateHandler func(ctx context.Context, update *pb.ConfigUpdate) error
 
+// HealthCheckHandler handles HealthCheckRequest platform messages.
+type HealthCheckHandler func(ctx context.Context, req *pb.HealthCheckRequest) error
+
 // Receiver dispatches incoming PlatformMessages to registered handlers.
 type Receiver struct {
 	logger   zerolog.Logger
 	onCmd    CommandHandler
 	onScript ScriptHandler
 	onCancel CancelHandler
-	onConfig ConfigUpdateHandler
+	onConfig      ConfigUpdateHandler
+	onHealthCheck HealthCheckHandler
 }
 
 // NewReceiver creates a Receiver with the given logger.
@@ -46,6 +50,9 @@ func (r *Receiver) SetCancelHandler(h CancelHandler) { r.onCancel = h }
 
 // SetConfigUpdateHandler registers the handler for ConfigUpdate messages.
 func (r *Receiver) SetConfigUpdateHandler(h ConfigUpdateHandler) { r.onConfig = h }
+
+// SetHealthCheckHandler registers the handler for HealthCheckRequest messages.
+func (r *Receiver) SetHealthCheckHandler(h HealthCheckHandler) { r.onHealthCheck = h }
 
 // Handle dispatches a PlatformMessage to the appropriate handler.
 func (r *Receiver) Handle(ctx context.Context, msg *pb.PlatformMessage) error {
@@ -81,6 +88,13 @@ func (r *Receiver) Handle(ctx context.Context, msg *pb.PlatformMessage) error {
 			return r.onConfig(ctx, p.ConfigUpdate)
 		}
 		r.logger.Warn().Msg("no config update handler registered")
+
+	case *pb.PlatformMessage_HealthCheck:
+		r.logger.Info().Str("request_id", p.HealthCheck.GetRequestId()).Msg("received HealthCheckRequest")
+		if r.onHealthCheck != nil {
+			return r.onHealthCheck(ctx, p.HealthCheck)
+		}
+		r.logger.Warn().Str("request_id", p.HealthCheck.GetRequestId()).Msg("no health check handler registered")
 
 	case *pb.PlatformMessage_Ack:
 		r.logger.Info().
