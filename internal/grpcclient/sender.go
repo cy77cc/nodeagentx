@@ -137,3 +137,12 @@ func NewAckMessage(refID string, success bool, errMsg string) *pb.AgentMessage {
 func NewConfigUpdateAck(refID string, success bool, errMsg string) *pb.AgentMessage {
 	return NewAckMessage(refID, success, errMsg)
 }
+
+// NewHealthCheckResultMessage wraps a HealthCheckResult into an AgentMessage.
+func NewHealthCheckResultMessage(result *pb.HealthCheckResult) *pb.AgentMessage {
+	return &pb.AgentMessage{
+		Payload: &pb.AgentMessage_HealthCheckResult{
+			HealthCheckResult: result,
+		},
+	}
+}

@@ -171,6 +171,24 @@ func (c *Client) SendExecResult(result *ExecResult) {
 	}
 }
 
+// SendHealthCheckResult sends a health check result to the platform.
+func (c *Client) SendHealthCheckResult(result *pb.HealthCheckResult) {
+	c.mu.Lock()
+	stream := c.stream
+	connected := c.connected
+	c.mu.Unlock()
+
+	if !connected || stream == nil {
+		c.logger.Warn().Str("request_id", result.RequestId).Msg("not connected, dropping health check result")
+		return
+	}
+
+	msg := NewHealthCheckResultMessage(result)
+	if err := stream.Send(msg); err != nil {
+		c.logger.Warn().Err(err).Str("request_id", result.RequestId).Msg("failed to send health check result")
+	}
+}
+
 // IsConnected returns true if the client has an active stream.
 func (c *Client) IsConnected() bool {
 	c.mu.Lock()

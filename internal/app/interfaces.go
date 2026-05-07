@@ -5,6 +5,7 @@ import (
 
 	"github.com/cy77cc/opsagent/internal/collector"
 	"github.com/cy77cc/opsagent/internal/grpcclient"
+	pb "github.com/cy77cc/opsagent/internal/grpcclient/proto"
 	"github.com/cy77cc/opsagent/internal/health"
 	"github.com/cy77cc/opsagent/internal/pluginruntime"
 	"github.com/cy77cc/opsagent/internal/server"
@@ -19,6 +20,7 @@ type GRPCClient interface {
 	SendMetrics(metrics []*collector.Metric)
 	SendExecOutput(taskID, streamName string, data []byte)
 	SendExecResult(result *grpcclient.ExecResult)
+	SendHealthCheckResult(result *pb.HealthCheckResult)
 	IsConnected() bool
 	HealthStatus() health.Status
 	SetOnStateChange(fn func(connected bool))
