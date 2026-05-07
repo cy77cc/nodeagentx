@@ -45,6 +45,7 @@ import (
 	_ "github.com/cy77cc/opsagent/internal/checker/kernel"
 	_ "github.com/cy77cc/opsagent/internal/checker/filesystem"
 	_ "github.com/cy77cc/opsagent/internal/checker/network"
+	_ "github.com/cy77cc/opsagent/internal/checker/service"
 )
 
 // Version information set at build time via ldflags.
