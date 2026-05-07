@@ -44,6 +44,7 @@ import (
 	_ "github.com/cy77cc/opsagent/internal/collector/processors/tagger"
 	_ "github.com/cy77cc/opsagent/internal/checker/kernel"
 	_ "github.com/cy77cc/opsagent/internal/checker/filesystem"
+	_ "github.com/cy77cc/opsagent/internal/checker/network"
 )
 
 // Version information set at build time via ldflags.
