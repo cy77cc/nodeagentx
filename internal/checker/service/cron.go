@@ -36,6 +36,10 @@ func (c *CronCheckChecker) Check(_ context.Context, params json.RawMessage) (*ch
 		return nil, fmt.Errorf("cron_check: user is required")
 	}
 
+	if strings.ContainsAny(p.User, "/\\") || strings.Contains(p.User, "..") {
+		return nil, fmt.Errorf("cron_check: invalid user name")
+	}
+
 	start := time.Now()
 
 	count, err := countCronEntries(p.User)

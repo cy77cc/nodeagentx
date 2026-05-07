@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -73,7 +74,11 @@ func (c *PAMCheckChecker) Check(_ context.Context, params json.RawMessage) (*che
 // pamModuleInFile checks whether the given module string appears in
 // /etc/pam.d/<file>. It skips comments and empty lines.
 func pamModuleInFile(module, file string) (bool, error) {
-	path := fmt.Sprintf("/etc/pam.d/%s", file)
+	cleanFile := filepath.Clean(file)
+	if strings.Contains(cleanFile, "..") || strings.HasPrefix(cleanFile, "/") {
+		return false, fmt.Errorf("pam_check: invalid file name")
+	}
+	path := fmt.Sprintf("/etc/pam.d/%s", cleanFile)
 
 	f, err := os.Open(path)
 	if err != nil {

@@ -26,6 +26,12 @@ func NewExecutor(registry *Registry, logger zerolog.Logger) *Executor {
 func (e *Executor) Execute(ctx context.Context, req *pb.HealthCheckRequest,
 	callback func(*pb.HealthCheckResult)) error {
 
+	if req.TimeoutSeconds > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, time.Duration(req.TimeoutSeconds)*time.Second)
+		defer cancel()
+	}
+
 	results := make([]*CheckResult, 0, len(req.Items))
 	startAll := time.Now()
 

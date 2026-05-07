@@ -26,7 +26,7 @@ type serviceCheckParams struct {
 	ExpectedStatus string `json:"expected_status"`
 }
 
-func (c *ServiceCheckChecker) Check(_ context.Context, params json.RawMessage) (*checker.CheckResult, error) {
+func (c *ServiceCheckChecker) Check(ctx context.Context, params json.RawMessage) (*checker.CheckResult, error) {
 	var p serviceCheckParams
 	if err := json.Unmarshal(params, &p); err != nil {
 		return nil, fmt.Errorf("service_check: invalid params: %w", err)
@@ -42,7 +42,7 @@ func (c *ServiceCheckChecker) Check(_ context.Context, params json.RawMessage) (
 
 	start := time.Now()
 
-	out, err := exec.Command("systemctl", "is-active", p.Name).Output()
+	out, err := exec.CommandContext(ctx, "systemctl", "is-active", p.Name).Output()
 	actual := strings.TrimSpace(string(out))
 
 	if err != nil {
