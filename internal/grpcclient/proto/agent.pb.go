@@ -70,6 +70,116 @@ func (MetricType) EnumDescriptor() ([]byte, []int) {
 	return file_proto_agent_proto_rawDescGZIP(), []int{0}
 }
 
+type CheckSeverity int32
+
+const (
+	CheckSeverity_SEVERITY_INFO     CheckSeverity = 0
+	CheckSeverity_SEVERITY_LOW      CheckSeverity = 1
+	CheckSeverity_SEVERITY_MEDIUM   CheckSeverity = 2
+	CheckSeverity_SEVERITY_HIGH     CheckSeverity = 3
+	CheckSeverity_SEVERITY_CRITICAL CheckSeverity = 4
+)
+
+// Enum value maps for CheckSeverity.
+var (
+	CheckSeverity_name = map[int32]string{
+		0: "SEVERITY_INFO",
+		1: "SEVERITY_LOW",
+		2: "SEVERITY_MEDIUM",
+		3: "SEVERITY_HIGH",
+		4: "SEVERITY_CRITICAL",
+	}
+	CheckSeverity_value = map[string]int32{
+		"SEVERITY_INFO":     0,
+		"SEVERITY_LOW":      1,
+		"SEVERITY_MEDIUM":   2,
+		"SEVERITY_HIGH":     3,
+		"SEVERITY_CRITICAL": 4,
+	}
+)
+
+func (x CheckSeverity) Enum() *CheckSeverity {
+	p := new(CheckSeverity)
+	*p = x
+	return p
+}
+
+func (x CheckSeverity) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (CheckSeverity) Descriptor() protoreflect.EnumDescriptor {
+	return file_proto_agent_proto_enumTypes[1].Descriptor()
+}
+
+func (CheckSeverity) Type() protoreflect.EnumType {
+	return &file_proto_agent_proto_enumTypes[1]
+}
+
+func (x CheckSeverity) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use CheckSeverity.Descriptor instead.
+func (CheckSeverity) EnumDescriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{1}
+}
+
+type CheckStatus int32
+
+const (
+	CheckStatus_STATUS_PASS  CheckStatus = 0
+	CheckStatus_STATUS_FAIL  CheckStatus = 1
+	CheckStatus_STATUS_WARN  CheckStatus = 2
+	CheckStatus_STATUS_ERROR CheckStatus = 3
+	CheckStatus_STATUS_SKIP  CheckStatus = 4
+)
+
+// Enum value maps for CheckStatus.
+var (
+	CheckStatus_name = map[int32]string{
+		0: "STATUS_PASS",
+		1: "STATUS_FAIL",
+		2: "STATUS_WARN",
+		3: "STATUS_ERROR",
+		4: "STATUS_SKIP",
+	}
+	CheckStatus_value = map[string]int32{
+		"STATUS_PASS":  0,
+		"STATUS_FAIL":  1,
+		"STATUS_WARN":  2,
+		"STATUS_ERROR": 3,
+		"STATUS_SKIP":  4,
+	}
+)
+
+func (x CheckStatus) Enum() *CheckStatus {
+	p := new(CheckStatus)
+	*p = x
+	return p
+}
+
+func (x CheckStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (CheckStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_proto_agent_proto_enumTypes[2].Descriptor()
+}
+
+func (CheckStatus) Type() protoreflect.EnumType {
+	return &file_proto_agent_proto_enumTypes[2]
+}
+
+func (x CheckStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use CheckStatus.Descriptor instead.
+func (CheckStatus) EnumDescriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{2}
+}
+
 type AgentMessage struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Payload:
@@ -80,6 +190,7 @@ type AgentMessage struct {
 	//	*AgentMessage_ExecOutput
 	//	*AgentMessage_ExecResult
 	//	*AgentMessage_Ack
+	//	*AgentMessage_HealthCheckResult
 	Payload       isAgentMessage_Payload `protobuf_oneof:"payload"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -176,6 +287,15 @@ func (x *AgentMessage) GetAck() *Ack {
 	return nil
 }
 
+func (x *AgentMessage) GetHealthCheckResult() *HealthCheckResult {
+	if x != nil {
+		if x, ok := x.Payload.(*AgentMessage_HealthCheckResult); ok {
+			return x.HealthCheckResult
+		}
+	}
+	return nil
+}
+
 type isAgentMessage_Payload interface {
 	isAgentMessage_Payload()
 }
@@ -204,6 +324,10 @@ type AgentMessage_Ack struct {
 	Ack *Ack `protobuf:"bytes,6,opt,name=ack,proto3,oneof"`
 }
 
+type AgentMessage_HealthCheckResult struct {
+	HealthCheckResult *HealthCheckResult `protobuf:"bytes,7,opt,name=health_check_result,json=healthCheckResult,proto3,oneof"`
+}
+
 func (*AgentMessage_Registration) isAgentMessage_Payload() {}
 
 func (*AgentMessage_Heartbeat) isAgentMessage_Payload() {}
@@ -216,6 +340,8 @@ func (*AgentMessage_ExecResult) isAgentMessage_Payload() {}
 
 func (*AgentMessage_Ack) isAgentMessage_Payload() {}
 
+func (*AgentMessage_HealthCheckResult) isAgentMessage_Payload() {}
+
 type PlatformMessage struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Payload:
@@ -225,6 +351,7 @@ type PlatformMessage struct {
 	//	*PlatformMessage_CancelJob
 	//	*PlatformMessage_ConfigUpdate
 	//	*PlatformMessage_Ack
+	//	*PlatformMessage_HealthCheck
 	Payload       isPlatformMessage_Payload `protobuf_oneof:"payload"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -312,6 +439,15 @@ func (x *PlatformMessage) GetAck() *Ack {
 	return nil
 }
 
+func (x *PlatformMessage) GetHealthCheck() *HealthCheckRequest {
+	if x != nil {
+		if x, ok := x.Payload.(*PlatformMessage_HealthCheck); ok {
+			return x.HealthCheck
+		}
+	}
+	return nil
+}
+
 type isPlatformMessage_Payload interface {
 	isPlatformMessage_Payload()
 }
@@ -336,6 +472,10 @@ type PlatformMessage_Ack struct {
 	Ack *Ack `protobuf:"bytes,5,opt,name=ack,proto3,oneof"`
 }
 
+type PlatformMessage_HealthCheck struct {
+	HealthCheck *HealthCheckRequest `protobuf:"bytes,6,opt,name=health_check,json=healthCheck,proto3,oneof"`
+}
+
 func (*PlatformMessage_ExecCommand) isPlatformMessage_Payload() {}
 
 func (*PlatformMessage_ExecScript) isPlatformMessage_Payload() {}
@@ -345,6 +485,8 @@ func (*PlatformMessage_CancelJob) isPlatformMessage_Payload() {}
 func (*PlatformMessage_ConfigUpdate) isPlatformMessage_Payload() {}
 
 func (*PlatformMessage_Ack) isPlatformMessage_Payload() {}
+
+func (*PlatformMessage_HealthCheck) isPlatformMessage_Payload() {}
 
 type AgentRegistration struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1492,11 +1634,439 @@ func (x *Ack) GetError() string {
 	return ""
 }
 
+type HealthCheckRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	RequestId      string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	Items          []*CheckItem           `protobuf:"bytes,2,rep,name=items,proto3" json:"items,omitempty"`
+	TimeoutSeconds int32                  `protobuf:"varint,3,opt,name=timeout_seconds,json=timeoutSeconds,proto3" json:"timeout_seconds,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *HealthCheckRequest) Reset() {
+	*x = HealthCheckRequest{}
+	mi := &file_proto_agent_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HealthCheckRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HealthCheckRequest) ProtoMessage() {}
+
+func (x *HealthCheckRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HealthCheckRequest.ProtoReflect.Descriptor instead.
+func (*HealthCheckRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *HealthCheckRequest) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *HealthCheckRequest) GetItems() []*CheckItem {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+func (x *HealthCheckRequest) GetTimeoutSeconds() int32 {
+	if x != nil {
+		return x.TimeoutSeconds
+	}
+	return 0
+}
+
+type CheckItem struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	Category      string                 `protobuf:"bytes,3,opt,name=category,proto3" json:"category,omitempty"`
+	Name          string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Description   string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	Params        []byte                 `protobuf:"bytes,6,opt,name=params,proto3" json:"params,omitempty"`
+	Severity      CheckSeverity          `protobuf:"varint,7,opt,name=severity,proto3,enum=opsagent.CheckSeverity" json:"severity,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CheckItem) Reset() {
+	*x = CheckItem{}
+	mi := &file_proto_agent_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckItem) ProtoMessage() {}
+
+func (x *CheckItem) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckItem.ProtoReflect.Descriptor instead.
+func (*CheckItem) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *CheckItem) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *CheckItem) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *CheckItem) GetCategory() string {
+	if x != nil {
+		return x.Category
+	}
+	return ""
+}
+
+func (x *CheckItem) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CheckItem) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *CheckItem) GetParams() []byte {
+	if x != nil {
+		return x.Params
+	}
+	return nil
+}
+
+func (x *CheckItem) GetSeverity() CheckSeverity {
+	if x != nil {
+		return x.Severity
+	}
+	return CheckSeverity_SEVERITY_INFO
+}
+
+type HealthCheckResult struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	Results       []*CheckResult         `protobuf:"bytes,2,rep,name=results,proto3" json:"results,omitempty"`
+	Summary       *CheckSummary          `protobuf:"bytes,3,opt,name=summary,proto3" json:"summary,omitempty"`
+	Completed     bool                   `protobuf:"varint,4,opt,name=completed,proto3" json:"completed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HealthCheckResult) Reset() {
+	*x = HealthCheckResult{}
+	mi := &file_proto_agent_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HealthCheckResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HealthCheckResult) ProtoMessage() {}
+
+func (x *HealthCheckResult) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HealthCheckResult.ProtoReflect.Descriptor instead.
+func (*HealthCheckResult) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *HealthCheckResult) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *HealthCheckResult) GetResults() []*CheckResult {
+	if x != nil {
+		return x.Results
+	}
+	return nil
+}
+
+func (x *HealthCheckResult) GetSummary() *CheckSummary {
+	if x != nil {
+		return x.Summary
+	}
+	return nil
+}
+
+func (x *HealthCheckResult) GetCompleted() bool {
+	if x != nil {
+		return x.Completed
+	}
+	return false
+}
+
+type CheckResult struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ItemId        string                 `protobuf:"bytes,1,opt,name=item_id,json=itemId,proto3" json:"item_id,omitempty"`
+	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Status        CheckStatus            `protobuf:"varint,4,opt,name=status,proto3,enum=opsagent.CheckStatus" json:"status,omitempty"`
+	ActualValue   string                 `protobuf:"bytes,5,opt,name=actual_value,json=actualValue,proto3" json:"actual_value,omitempty"`
+	ExpectedValue string                 `protobuf:"bytes,6,opt,name=expected_value,json=expectedValue,proto3" json:"expected_value,omitempty"`
+	Message       string                 `protobuf:"bytes,7,opt,name=message,proto3" json:"message,omitempty"`
+	Remediation   string                 `protobuf:"bytes,8,opt,name=remediation,proto3" json:"remediation,omitempty"`
+	Severity      CheckSeverity          `protobuf:"varint,9,opt,name=severity,proto3,enum=opsagent.CheckSeverity" json:"severity,omitempty"`
+	DurationMs    int64                  `protobuf:"varint,10,opt,name=duration_ms,json=durationMs,proto3" json:"duration_ms,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CheckResult) Reset() {
+	*x = CheckResult{}
+	mi := &file_proto_agent_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckResult) ProtoMessage() {}
+
+func (x *CheckResult) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckResult.ProtoReflect.Descriptor instead.
+func (*CheckResult) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *CheckResult) GetItemId() string {
+	if x != nil {
+		return x.ItemId
+	}
+	return ""
+}
+
+func (x *CheckResult) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *CheckResult) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CheckResult) GetStatus() CheckStatus {
+	if x != nil {
+		return x.Status
+	}
+	return CheckStatus_STATUS_PASS
+}
+
+func (x *CheckResult) GetActualValue() string {
+	if x != nil {
+		return x.ActualValue
+	}
+	return ""
+}
+
+func (x *CheckResult) GetExpectedValue() string {
+	if x != nil {
+		return x.ExpectedValue
+	}
+	return ""
+}
+
+func (x *CheckResult) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *CheckResult) GetRemediation() string {
+	if x != nil {
+		return x.Remediation
+	}
+	return ""
+}
+
+func (x *CheckResult) GetSeverity() CheckSeverity {
+	if x != nil {
+		return x.Severity
+	}
+	return CheckSeverity_SEVERITY_INFO
+}
+
+func (x *CheckResult) GetDurationMs() int64 {
+	if x != nil {
+		return x.DurationMs
+	}
+	return 0
+}
+
+type CheckSummary struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Total           int32                  `protobuf:"varint,1,opt,name=total,proto3" json:"total,omitempty"`
+	Pass            int32                  `protobuf:"varint,2,opt,name=pass,proto3" json:"pass,omitempty"`
+	Fail            int32                  `protobuf:"varint,3,opt,name=fail,proto3" json:"fail,omitempty"`
+	Warn            int32                  `protobuf:"varint,4,opt,name=warn,proto3" json:"warn,omitempty"`
+	Error           int32                  `protobuf:"varint,5,opt,name=error,proto3" json:"error,omitempty"`
+	Skip            int32                  `protobuf:"varint,6,opt,name=skip,proto3" json:"skip,omitempty"`
+	TotalDurationMs int64                  `protobuf:"varint,7,opt,name=total_duration_ms,json=totalDurationMs,proto3" json:"total_duration_ms,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *CheckSummary) Reset() {
+	*x = CheckSummary{}
+	mi := &file_proto_agent_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckSummary) ProtoMessage() {}
+
+func (x *CheckSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckSummary.ProtoReflect.Descriptor instead.
+func (*CheckSummary) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *CheckSummary) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *CheckSummary) GetPass() int32 {
+	if x != nil {
+		return x.Pass
+	}
+	return 0
+}
+
+func (x *CheckSummary) GetFail() int32 {
+	if x != nil {
+		return x.Fail
+	}
+	return 0
+}
+
+func (x *CheckSummary) GetWarn() int32 {
+	if x != nil {
+		return x.Warn
+	}
+	return 0
+}
+
+func (x *CheckSummary) GetError() int32 {
+	if x != nil {
+		return x.Error
+	}
+	return 0
+}
+
+func (x *CheckSummary) GetSkip() int32 {
+	if x != nil {
+		return x.Skip
+	}
+	return 0
+}
+
+func (x *CheckSummary) GetTotalDurationMs() int64 {
+	if x != nil {
+		return x.TotalDurationMs
+	}
+	return 0
+}
+
 var File_proto_agent_proto protoreflect.FileDescriptor
 
 const file_proto_agent_proto_rawDesc = "" +
 	"\n" +
-	"\x11proto/agent.proto\x12\bopsagent\"\xd9\x02\n" +
+	"\x11proto/agent.proto\x12\bopsagent\"\xa8\x03\n" +
 	"\fAgentMessage\x12A\n" +
 	"\fregistration\x18\x01 \x01(\v2\x1b.opsagent.AgentRegistrationH\x00R\fregistration\x123\n" +
 	"\theartbeat\x18\x02 \x01(\v2\x13.opsagent.HeartbeatH\x00R\theartbeat\x121\n" +
@@ -1505,8 +2075,9 @@ const file_proto_agent_proto_rawDesc = "" +
 	"execOutput\x127\n" +
 	"\vexec_result\x18\x05 \x01(\v2\x14.opsagent.ExecResultH\x00R\n" +
 	"execResult\x12!\n" +
-	"\x03ack\x18\x06 \x01(\v2\r.opsagent.AckH\x00R\x03ackB\t\n" +
-	"\apayload\"\xaf\x02\n" +
+	"\x03ack\x18\x06 \x01(\v2\r.opsagent.AckH\x00R\x03ack\x12M\n" +
+	"\x13health_check_result\x18\a \x01(\v2\x1b.opsagent.HealthCheckResultH\x00R\x11healthCheckResultB\t\n" +
+	"\apayload\"\xf2\x02\n" +
 	"\x0fPlatformMessage\x12=\n" +
 	"\fexec_command\x18\x01 \x01(\v2\x18.opsagent.ExecuteCommandH\x00R\vexecCommand\x12:\n" +
 	"\vexec_script\x18\x02 \x01(\v2\x17.opsagent.ExecuteScriptH\x00R\n" +
@@ -1514,7 +2085,8 @@ const file_proto_agent_proto_rawDesc = "" +
 	"\n" +
 	"cancel_job\x18\x03 \x01(\v2\x13.opsagent.CancelJobH\x00R\tcancelJob\x12=\n" +
 	"\rconfig_update\x18\x04 \x01(\v2\x16.opsagent.ConfigUpdateH\x00R\fconfigUpdate\x12!\n" +
-	"\x03ack\x18\x05 \x01(\v2\r.opsagent.AckH\x00R\x03ackB\t\n" +
+	"\x03ack\x18\x05 \x01(\v2\r.opsagent.AckH\x00R\x03ack\x12A\n" +
+	"\fhealth_check\x18\x06 \x01(\v2\x1c.opsagent.HealthCheckRequestH\x00R\vhealthCheckB\t\n" +
 	"\apayload\"\x9c\x01\n" +
 	"\x11AgentRegistration\x12\x19\n" +
 	"\bagent_id\x18\x01 \x01(\tR\aagentId\x12\x14\n" +
@@ -1619,12 +2191,64 @@ const file_proto_agent_proto_rawDesc = "" +
 	"\x03Ack\x12\x15\n" +
 	"\x06ref_id\x18\x01 \x01(\tR\x05refId\x12\x18\n" +
 	"\asuccess\x18\x02 \x01(\bR\asuccess\x12\x14\n" +
-	"\x05error\x18\x03 \x01(\tR\x05error*3\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"\x87\x01\n" +
+	"\x12HealthCheckRequest\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12)\n" +
+	"\x05items\x18\x02 \x03(\v2\x13.opsagent.CheckItemR\x05items\x12'\n" +
+	"\x0ftimeout_seconds\x18\x03 \x01(\x05R\x0etimeoutSeconds\"\xce\x01\n" +
+	"\tCheckItem\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04type\x18\x02 \x01(\tR\x04type\x12\x1a\n" +
+	"\bcategory\x18\x03 \x01(\tR\bcategory\x12\x12\n" +
+	"\x04name\x18\x04 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x05 \x01(\tR\vdescription\x12\x16\n" +
+	"\x06params\x18\x06 \x01(\fR\x06params\x123\n" +
+	"\bseverity\x18\a \x01(\x0e2\x17.opsagent.CheckSeverityR\bseverity\"\xb3\x01\n" +
+	"\x11HealthCheckResult\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12/\n" +
+	"\aresults\x18\x02 \x03(\v2\x15.opsagent.CheckResultR\aresults\x120\n" +
+	"\asummary\x18\x03 \x01(\v2\x16.opsagent.CheckSummaryR\asummary\x12\x1c\n" +
+	"\tcompleted\x18\x04 \x01(\bR\tcompleted\"\xd9\x02\n" +
+	"\vCheckResult\x12\x17\n" +
+	"\aitem_id\x18\x01 \x01(\tR\x06itemId\x12\x12\n" +
+	"\x04type\x18\x02 \x01(\tR\x04type\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12-\n" +
+	"\x06status\x18\x04 \x01(\x0e2\x15.opsagent.CheckStatusR\x06status\x12!\n" +
+	"\factual_value\x18\x05 \x01(\tR\vactualValue\x12%\n" +
+	"\x0eexpected_value\x18\x06 \x01(\tR\rexpectedValue\x12\x18\n" +
+	"\amessage\x18\a \x01(\tR\amessage\x12 \n" +
+	"\vremediation\x18\b \x01(\tR\vremediation\x123\n" +
+	"\bseverity\x18\t \x01(\x0e2\x17.opsagent.CheckSeverityR\bseverity\x12\x1f\n" +
+	"\vduration_ms\x18\n" +
+	" \x01(\x03R\n" +
+	"durationMs\"\xb6\x01\n" +
+	"\fCheckSummary\x12\x14\n" +
+	"\x05total\x18\x01 \x01(\x05R\x05total\x12\x12\n" +
+	"\x04pass\x18\x02 \x01(\x05R\x04pass\x12\x12\n" +
+	"\x04fail\x18\x03 \x01(\x05R\x04fail\x12\x12\n" +
+	"\x04warn\x18\x04 \x01(\x05R\x04warn\x12\x14\n" +
+	"\x05error\x18\x05 \x01(\x05R\x05error\x12\x12\n" +
+	"\x04skip\x18\x06 \x01(\x05R\x04skip\x12*\n" +
+	"\x11total_duration_ms\x18\a \x01(\x03R\x0ftotalDurationMs*3\n" +
 	"\n" +
 	"MetricType\x12\t\n" +
 	"\x05GAUGE\x10\x00\x12\v\n" +
 	"\aCOUNTER\x10\x01\x12\r\n" +
-	"\tHISTOGRAM\x10\x022P\n" +
+	"\tHISTOGRAM\x10\x02*s\n" +
+	"\rCheckSeverity\x12\x11\n" +
+	"\rSEVERITY_INFO\x10\x00\x12\x10\n" +
+	"\fSEVERITY_LOW\x10\x01\x12\x13\n" +
+	"\x0fSEVERITY_MEDIUM\x10\x02\x12\x11\n" +
+	"\rSEVERITY_HIGH\x10\x03\x12\x15\n" +
+	"\x11SEVERITY_CRITICAL\x10\x04*c\n" +
+	"\vCheckStatus\x12\x0f\n" +
+	"\vSTATUS_PASS\x10\x00\x12\x0f\n" +
+	"\vSTATUS_FAIL\x10\x01\x12\x0f\n" +
+	"\vSTATUS_WARN\x10\x02\x12\x10\n" +
+	"\fSTATUS_ERROR\x10\x03\x12\x0f\n" +
+	"\vSTATUS_SKIP\x10\x042P\n" +
 	"\fAgentService\x12@\n" +
 	"\aConnect\x12\x16.opsagent.AgentMessage\x1a\x19.opsagent.PlatformMessage(\x010\x01B6Z4github.com/cy77cc/opsagent/internal/grpcclient/protob\x06proto3"
 
@@ -1640,61 +2264,76 @@ func file_proto_agent_proto_rawDescGZIP() []byte {
 	return file_proto_agent_proto_rawDescData
 }
 
-var file_proto_agent_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_proto_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_proto_agent_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_proto_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_proto_agent_proto_goTypes = []any{
-	(MetricType)(0),           // 0: opsagent.MetricType
-	(*AgentMessage)(nil),      // 1: opsagent.AgentMessage
-	(*PlatformMessage)(nil),   // 2: opsagent.PlatformMessage
-	(*AgentRegistration)(nil), // 3: opsagent.AgentRegistration
-	(*AgentInfo)(nil),         // 4: opsagent.AgentInfo
-	(*Heartbeat)(nil),         // 5: opsagent.Heartbeat
-	(*MetricBatch)(nil),       // 6: opsagent.MetricBatch
-	(*Metric)(nil),            // 7: opsagent.Metric
-	(*Field)(nil),             // 8: opsagent.Field
-	(*ExecuteCommand)(nil),    // 9: opsagent.ExecuteCommand
-	(*ExecuteScript)(nil),     // 10: opsagent.ExecuteScript
-	(*SandboxConfig)(nil),     // 11: opsagent.SandboxConfig
-	(*ExecOutput)(nil),        // 12: opsagent.ExecOutput
-	(*ExecResult)(nil),        // 13: opsagent.ExecResult
-	(*ExecStats)(nil),         // 14: opsagent.ExecStats
-	(*CancelJob)(nil),         // 15: opsagent.CancelJob
-	(*ConfigUpdate)(nil),      // 16: opsagent.ConfigUpdate
-	(*Ack)(nil),               // 17: opsagent.Ack
-	nil,                       // 18: opsagent.Metric.TagsEntry
-	nil,                       // 19: opsagent.ExecuteCommand.EnvEntry
-	nil,                       // 20: opsagent.ExecuteScript.EnvEntry
+	(MetricType)(0),            // 0: opsagent.MetricType
+	(CheckSeverity)(0),         // 1: opsagent.CheckSeverity
+	(CheckStatus)(0),           // 2: opsagent.CheckStatus
+	(*AgentMessage)(nil),       // 3: opsagent.AgentMessage
+	(*PlatformMessage)(nil),    // 4: opsagent.PlatformMessage
+	(*AgentRegistration)(nil),  // 5: opsagent.AgentRegistration
+	(*AgentInfo)(nil),          // 6: opsagent.AgentInfo
+	(*Heartbeat)(nil),          // 7: opsagent.Heartbeat
+	(*MetricBatch)(nil),        // 8: opsagent.MetricBatch
+	(*Metric)(nil),             // 9: opsagent.Metric
+	(*Field)(nil),              // 10: opsagent.Field
+	(*ExecuteCommand)(nil),     // 11: opsagent.ExecuteCommand
+	(*ExecuteScript)(nil),      // 12: opsagent.ExecuteScript
+	(*SandboxConfig)(nil),      // 13: opsagent.SandboxConfig
+	(*ExecOutput)(nil),         // 14: opsagent.ExecOutput
+	(*ExecResult)(nil),         // 15: opsagent.ExecResult
+	(*ExecStats)(nil),          // 16: opsagent.ExecStats
+	(*CancelJob)(nil),          // 17: opsagent.CancelJob
+	(*ConfigUpdate)(nil),       // 18: opsagent.ConfigUpdate
+	(*Ack)(nil),                // 19: opsagent.Ack
+	(*HealthCheckRequest)(nil), // 20: opsagent.HealthCheckRequest
+	(*CheckItem)(nil),          // 21: opsagent.CheckItem
+	(*HealthCheckResult)(nil),  // 22: opsagent.HealthCheckResult
+	(*CheckResult)(nil),        // 23: opsagent.CheckResult
+	(*CheckSummary)(nil),       // 24: opsagent.CheckSummary
+	nil,                        // 25: opsagent.Metric.TagsEntry
+	nil,                        // 26: opsagent.ExecuteCommand.EnvEntry
+	nil,                        // 27: opsagent.ExecuteScript.EnvEntry
 }
 var file_proto_agent_proto_depIdxs = []int32{
-	3,  // 0: opsagent.AgentMessage.registration:type_name -> opsagent.AgentRegistration
-	5,  // 1: opsagent.AgentMessage.heartbeat:type_name -> opsagent.Heartbeat
-	6,  // 2: opsagent.AgentMessage.metrics:type_name -> opsagent.MetricBatch
-	12, // 3: opsagent.AgentMessage.exec_output:type_name -> opsagent.ExecOutput
-	13, // 4: opsagent.AgentMessage.exec_result:type_name -> opsagent.ExecResult
-	17, // 5: opsagent.AgentMessage.ack:type_name -> opsagent.Ack
-	9,  // 6: opsagent.PlatformMessage.exec_command:type_name -> opsagent.ExecuteCommand
-	10, // 7: opsagent.PlatformMessage.exec_script:type_name -> opsagent.ExecuteScript
-	15, // 8: opsagent.PlatformMessage.cancel_job:type_name -> opsagent.CancelJob
-	16, // 9: opsagent.PlatformMessage.config_update:type_name -> opsagent.ConfigUpdate
-	17, // 10: opsagent.PlatformMessage.ack:type_name -> opsagent.Ack
-	4,  // 11: opsagent.AgentRegistration.agent_info:type_name -> opsagent.AgentInfo
-	4,  // 12: opsagent.Heartbeat.agent_info:type_name -> opsagent.AgentInfo
-	7,  // 13: opsagent.MetricBatch.metrics:type_name -> opsagent.Metric
-	18, // 14: opsagent.Metric.tags:type_name -> opsagent.Metric.TagsEntry
-	8,  // 15: opsagent.Metric.fields:type_name -> opsagent.Field
-	0,  // 16: opsagent.Metric.type:type_name -> opsagent.MetricType
-	19, // 17: opsagent.ExecuteCommand.env:type_name -> opsagent.ExecuteCommand.EnvEntry
-	11, // 18: opsagent.ExecuteCommand.sandbox:type_name -> opsagent.SandboxConfig
-	20, // 19: opsagent.ExecuteScript.env:type_name -> opsagent.ExecuteScript.EnvEntry
-	11, // 20: opsagent.ExecuteScript.sandbox:type_name -> opsagent.SandboxConfig
-	14, // 21: opsagent.ExecResult.stats:type_name -> opsagent.ExecStats
-	1,  // 22: opsagent.AgentService.Connect:input_type -> opsagent.AgentMessage
-	2,  // 23: opsagent.AgentService.Connect:output_type -> opsagent.PlatformMessage
-	23, // [23:24] is the sub-list for method output_type
-	22, // [22:23] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	5,  // 0: opsagent.AgentMessage.registration:type_name -> opsagent.AgentRegistration
+	7,  // 1: opsagent.AgentMessage.heartbeat:type_name -> opsagent.Heartbeat
+	8,  // 2: opsagent.AgentMessage.metrics:type_name -> opsagent.MetricBatch
+	14, // 3: opsagent.AgentMessage.exec_output:type_name -> opsagent.ExecOutput
+	15, // 4: opsagent.AgentMessage.exec_result:type_name -> opsagent.ExecResult
+	19, // 5: opsagent.AgentMessage.ack:type_name -> opsagent.Ack
+	22, // 6: opsagent.AgentMessage.health_check_result:type_name -> opsagent.HealthCheckResult
+	11, // 7: opsagent.PlatformMessage.exec_command:type_name -> opsagent.ExecuteCommand
+	12, // 8: opsagent.PlatformMessage.exec_script:type_name -> opsagent.ExecuteScript
+	17, // 9: opsagent.PlatformMessage.cancel_job:type_name -> opsagent.CancelJob
+	18, // 10: opsagent.PlatformMessage.config_update:type_name -> opsagent.ConfigUpdate
+	19, // 11: opsagent.PlatformMessage.ack:type_name -> opsagent.Ack
+	20, // 12: opsagent.PlatformMessage.health_check:type_name -> opsagent.HealthCheckRequest
+	6,  // 13: opsagent.AgentRegistration.agent_info:type_name -> opsagent.AgentInfo
+	6,  // 14: opsagent.Heartbeat.agent_info:type_name -> opsagent.AgentInfo
+	9,  // 15: opsagent.MetricBatch.metrics:type_name -> opsagent.Metric
+	25, // 16: opsagent.Metric.tags:type_name -> opsagent.Metric.TagsEntry
+	10, // 17: opsagent.Metric.fields:type_name -> opsagent.Field
+	0,  // 18: opsagent.Metric.type:type_name -> opsagent.MetricType
+	26, // 19: opsagent.ExecuteCommand.env:type_name -> opsagent.ExecuteCommand.EnvEntry
+	13, // 20: opsagent.ExecuteCommand.sandbox:type_name -> opsagent.SandboxConfig
+	27, // 21: opsagent.ExecuteScript.env:type_name -> opsagent.ExecuteScript.EnvEntry
+	13, // 22: opsagent.ExecuteScript.sandbox:type_name -> opsagent.SandboxConfig
+	16, // 23: opsagent.ExecResult.stats:type_name -> opsagent.ExecStats
+	21, // 24: opsagent.HealthCheckRequest.items:type_name -> opsagent.CheckItem
+	1,  // 25: opsagent.CheckItem.severity:type_name -> opsagent.CheckSeverity
+	23, // 26: opsagent.HealthCheckResult.results:type_name -> opsagent.CheckResult
+	24, // 27: opsagent.HealthCheckResult.summary:type_name -> opsagent.CheckSummary
+	2,  // 28: opsagent.CheckResult.status:type_name -> opsagent.CheckStatus
+	1,  // 29: opsagent.CheckResult.severity:type_name -> opsagent.CheckSeverity
+	3,  // 30: opsagent.AgentService.Connect:input_type -> opsagent.AgentMessage
+	4,  // 31: opsagent.AgentService.Connect:output_type -> opsagent.PlatformMessage
+	31, // [31:32] is the sub-list for method output_type
+	30, // [30:31] is the sub-list for method input_type
+	30, // [30:30] is the sub-list for extension type_name
+	30, // [30:30] is the sub-list for extension extendee
+	0,  // [0:30] is the sub-list for field type_name
 }
 
 func init() { file_proto_agent_proto_init() }
@@ -1709,6 +2348,7 @@ func file_proto_agent_proto_init() {
 		(*AgentMessage_ExecOutput)(nil),
 		(*AgentMessage_ExecResult)(nil),
 		(*AgentMessage_Ack)(nil),
+		(*AgentMessage_HealthCheckResult)(nil),
 	}
 	file_proto_agent_proto_msgTypes[1].OneofWrappers = []any{
 		(*PlatformMessage_ExecCommand)(nil),
@@ -1716,6 +2356,7 @@ func file_proto_agent_proto_init() {
 		(*PlatformMessage_CancelJob)(nil),
 		(*PlatformMessage_ConfigUpdate)(nil),
 		(*PlatformMessage_Ack)(nil),
+		(*PlatformMessage_HealthCheck)(nil),
 	}
 	file_proto_agent_proto_msgTypes[7].OneofWrappers = []any{
 		(*Field_DoubleValue)(nil),
@@ -1728,8 +2369,8 @@ func file_proto_agent_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_agent_proto_rawDesc), len(file_proto_agent_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   20,
+			NumEnums:      3,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
