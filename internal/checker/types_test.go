@@ -8,7 +8,6 @@ import (
 
 	pb "github.com/cy77cc/opsagent/internal/grpcclient/proto"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestCheckStatusToProto(t *testing.T) {
@@ -93,10 +92,4 @@ func (m *mockChecker) Type() string     { return "mock" }
 func (m *mockChecker) Category() string { return "test" }
 func (m *mockChecker) Check(_ context.Context, _ json.RawMessage) (*CheckResult, error) {
 	return &CheckResult{Status: StatusPass}, nil
-}
-
-func requireChecker(t *testing.T, c Checker) {
-	t.Helper()
-	require.NotEmpty(t, c.Type())
-	require.NotEmpty(t, c.Category())
 }
