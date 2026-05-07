@@ -14,6 +14,8 @@
 6. [完整平台端示例 (Go)](#6-完整平台端示例-go)
 7. [配置参考](#7-配置参考)
 8. [故障排查](#8-故障排查)
+9. [系统健康检查](#9-系统健康检查)
+10. [健康检查检查器参考](#10-健康检查检查器参考)
 
 ---
 
@@ -42,12 +44,12 @@
 │   │  连接 → 注册 → 心跳 → 收指标 → 发结果          │   │
 │   └───────────────────────┬───────────────────────┘   │
 │                           │                             │
-│   ┌───────────┐  ┌───────┴───────┐  ┌─────────────┐  │
-│   │ Collector  │  │   Sandbox     │  │  Executor   │  │
-│   │ Pipeline   │  │   Executor    │  │  (local)    │  │
-│   │ CPU/Mem/   │  │   nsjail 隔离  │  │  直接执行    │  │
-│   │ Disk/Net   │  │   命令/脚本    │  │             │  │
-│   └───────────┘  └───────────────┘  └─────────────┘  │
+│   ┌───────────┐  ┌───────┴───────┐  ┌─────────────┐  ┌─────────────┐  │
+│   │ Collector  │  │   Sandbox     │  │  Executor   │  │  Checker    │  │
+│   │ Pipeline   │  │   Executor    │  │  (local)    │  │  Registry   │  │
+│   │ CPU/Mem/   │  │   nsjail 隔离  │  │  直接执行    │  │  健康检查    │  │
+│   │ Disk/Net   │  │   命令/脚本    │  │             │  │  20 项检查器 │  │
+│   └───────────┘  └───────────────┘  └─────────────┘  └─────────────┘  │
 └───────────────────────────────────────────────────────┘
 ```
 
@@ -351,6 +353,7 @@ message AgentMessage {
     ExecOutput exec_output = 4;          // 命令执行实时输出
     ExecResult exec_result = 5;          // 命令执行结果
     Ack ack = 6;                         // 确认消息
+    HealthCheckResult health_check_result = 7; // 健康检查结果
   }
 }
 ```
@@ -362,6 +365,7 @@ message AgentMessage {
 | `MetricBatch` | 每个采集周期 | `metrics[]` (name, tags, fields, timestamp_ms, type) |
 | `ExecOutput` | 命令执行过程中实时输出 | `task_id`, `stream` (stdout/stderr), `data` |
 | `ExecResult` | 命令执行完成 | `task_id`, `exit_code`, `duration_ms`, `timed_out`, `stats` |
+| `HealthCheckResult` | 健康检查结果 (流式) | `request_id`, `results[]`, `summary`, `completed` |
 
 ### 3.2 Platform → Agent (PlatformMessage)
 
@@ -375,6 +379,7 @@ message PlatformMessage {
     CancelJob cancel_job = 3;         // 取消任务
     ConfigUpdate config_update = 4;   // 配置更新
     Ack ack = 5;                      // 确认消息
+    HealthCheckRequest health_check = 6; // 健康检查请求
   }
 }
 ```
@@ -385,6 +390,7 @@ message PlatformMessage {
 | `ExecuteScript` | 在 Agent 上执行脚本 | `task_id`, `interpreter`, `script`, `args[]`, `env{}`, `timeout_seconds`, `sandbox` |
 | `CancelJob` | 取消正在执行的任务 | `task_id`, `reason` |
 | `ConfigUpdate` | 推送配置更新 | `config_yaml`, `version` |
+| `HealthCheckRequest` | 触发系统健康检查 | `request_id`, `items[]`, `timeout_seconds` |
 
 ---
 
@@ -531,6 +537,141 @@ Platform                             Agent
     "bytes_written": 1024,
     "bytes_read": 0
   }
+}
+```
+
+### 5.5 系统健康检查
+
+```
+Platform                             Agent
+  │                                     │
+  │──── HealthCheckRequest ───────────>│  // request_id + items[] + timeout
+  │                                     │  // 逐项执行 checker
+  │                                     │
+  │<──── HealthCheckResult (item 1) ──│  // completed=false, 单项结果
+  │<──── HealthCheckResult (item 2) ──│  // completed=false, 单项结果
+  │<──── HealthCheckResult (item 3) ──│  // completed=false, 单项结果
+  │     ...                             │
+  │<──── HealthCheckResult (final) ───│  // completed=true, 全部结果 + summary
+```
+
+**流式行为**:
+- `completed = false`: 中间结果，每个检查项完成后立即发送，`results[]` 包含 1 个元素
+- `completed = true`: 最终结果，`results[]` 包含全部结果，`summary` 包含汇总统计
+- 平台通过 `request_id` 关联请求和响应
+
+**HealthCheckRequest 示例**:
+
+```json
+{
+  "request_id": "hc-20260507-001",
+  "timeout_seconds": 60,
+  "items": [
+    {
+      "id": "check-ip-forward",
+      "type": "network_param_check",
+      "category": "network",
+      "name": "IP Forward",
+      "description": "检查 IP 转发是否关闭",
+      "params": {"key": "net.ipv4.ip_forward", "expected": "0"},
+      "severity": "SEVERITY_HIGH"
+    },
+    {
+      "id": "check-shadow-perm",
+      "type": "file_perm_check",
+      "category": "filesystem",
+      "name": "Shadow File Permission",
+      "description": "检查 /etc/shadow 权限",
+      "params": {"path": "/etc/shadow", "expected_mode": "0640"},
+      "severity": "SEVERITY_CRITICAL"
+    },
+    {
+      "id": "check-sshd",
+      "type": "service_check",
+      "category": "service",
+      "name": "SSH Service",
+      "description": "检查 sshd 是否运行",
+      "params": {"name": "sshd", "expected_status": "active"},
+      "severity": "SEVERITY_HIGH"
+    }
+  ]
+}
+```
+
+**HealthCheckResult 示例** (中间结果, `completed=false`):
+
+```json
+{
+  "request_id": "hc-20260507-001",
+  "results": [
+    {
+      "item_id": "check-ip-forward",
+      "type": "network_param_check",
+      "name": "IP Forward",
+      "status": "STATUS_PASS",
+      "actual_value": "0",
+      "expected_value": "0",
+      "message": "net.ipv4.ip_forward is 0 (expected)",
+      "remediation": "",
+      "severity": "SEVERITY_HIGH",
+      "duration_ms": 2
+    }
+  ],
+  "summary": null,
+  "completed": false
+}
+```
+
+**HealthCheckResult 示例** (最终结果, `completed=true`):
+
+```json
+{
+  "request_id": "hc-20260507-001",
+  "results": [
+    {
+      "item_id": "check-ip-forward",
+      "type": "network_param_check",
+      "name": "IP Forward",
+      "status": "STATUS_PASS",
+      "actual_value": "0",
+      "expected_value": "0",
+      "message": "net.ipv4.ip_forward is 0 (expected)",
+      "severity": "SEVERITY_HIGH",
+      "duration_ms": 2
+    },
+    {
+      "item_id": "check-shadow-perm",
+      "type": "file_perm_check",
+      "name": "Shadow File Permission",
+      "status": "STATUS_FAIL",
+      "actual_value": "0644",
+      "expected_value": "0640",
+      "message": "/etc/shadow mode is 0644, expected 0640",
+      "severity": "SEVERITY_CRITICAL",
+      "duration_ms": 1
+    },
+    {
+      "item_id": "check-sshd",
+      "type": "service_check",
+      "name": "SSH Service",
+      "status": "STATUS_PASS",
+      "actual_value": "active",
+      "expected_value": "active",
+      "message": "sshd is active (expected)",
+      "severity": "SEVERITY_HIGH",
+      "duration_ms": 50
+    }
+  ],
+  "summary": {
+    "total": 3,
+    "pass": 2,
+    "fail": 1,
+    "warn": 0,
+    "error": 0,
+    "skip": 0,
+    "total_duration_ms": 53
+  },
+  "completed": true
 }
 ```
 
@@ -962,3 +1103,579 @@ curl http://127.0.0.1:18080/api/v1/health
 | 超时被杀 | -1 | 执行超时, `timed_out=true` |
 | Policy 拒绝 | N/A | gRPC 返回 error, 不产生 ExecResult |
 | Sandbox 错误 | N/A | cgroup/nsjail 配置问题 |
+
+---
+
+## 9. 系统健康检查
+
+### 9.1 功能概述
+
+系统健康检查允许平台向 Agent 下发一组检查项，Agent 在主机上逐项执行并流式返回结果。平台可以定制检查内核参数、文件权限、网络配置、服务状态、容器运行时等。
+
+**与现有功能的关系**:
+
+| 特性 | `/healthz` 端点 | 系统健康检查 |
+|------|-----------------|-------------|
+| 检查对象 | Agent 自身子系统 (gRPC, 调度器, 插件) | 主机系统配置 |
+| 触发方式 | HTTP GET | gRPC 消息 |
+| 范围 | Agent 健康状态 | OS/内核/网络/服务/容器配置 |
+| 可定制 | 否 | 是 — 平台定义检查项 |
+
+### 9.2 能力发现
+
+Agent 注册时在 `capabilities` 中声明支持的检查器类型:
+
+```json
+{
+  "capabilities": [
+    "health_check",
+    "checker:sysctl_check",
+    "checker:kernel_version_check",
+    "checker:kernel_module_check",
+    "checker:boot_param_check",
+    "checker:file_perm_check",
+    "checker:file_exist_check",
+    "checker:dir_perm_check",
+    "checker:mount_option_check",
+    "checker:port_check",
+    "checker:ssh_config_check",
+    "checker:iptables_check",
+    "checker:network_param_check",
+    "checker:service_check",
+    "checker:user_check",
+    "checker:cron_check",
+    "checker:pam_check",
+    "checker:docker_check",
+    "checker:containerd_check",
+    "checker:cgroup_check",
+    "checker:container_runtime_check"
+  ]
+}
+```
+
+平台应在发送健康检查请求前检查 Agent 的 `capabilities`，确认目标检查器可用。
+
+### 9.3 平台端实现
+
+在已有的 `Connect` 消息循环中增加 `HealthCheckResult` 处理:
+
+```go
+case *pb.AgentMessage_HealthCheckResult:
+    result := p.HealthCheckResult
+    reqID := result.GetRequestId()
+
+    if result.GetCompleted() {
+        // 最终结果: 包含全部结果和汇总
+        log.Printf("[HC-DONE] %s: total=%d pass=%d fail=%d",
+            reqID, result.GetSummary().GetTotal(),
+            result.GetSummary().GetPass(), result.GetSummary().GetFail())
+        // 通知等待的调用方
+        session.healthCh <- result
+    } else {
+        // 中间结果: 单项完成
+        for _, r := range result.GetResults() {
+            log.Printf("[HC-ITEM] %s: %s status=%s msg=%s",
+                reqID, r.GetItemId(), r.GetStatus(), r.GetMessage())
+        }
+    }
+```
+
+### 9.4 下发健康检查请求
+
+```go
+// HealthCheck 向指定 Agent 下发健康检查。
+func (s *AgentServer) HealthCheck(ctx context.Context, agentID string,
+    req *pb.HealthCheckRequest) (*pb.HealthCheckResult, error) {
+
+    s.mu.RLock()
+    session, ok := s.agents[agentID]
+    s.mu.RUnlock()
+
+    if !ok {
+        return nil, fmt.Errorf("agent %s not connected", agentID)
+    }
+
+    msg := &pb.PlatformMessage{
+        Payload: &pb.PlatformMessage_HealthCheck{
+            HealthCheck: req,
+        },
+    }
+    if err := session.Stream.Send(msg); err != nil {
+        return nil, fmt.Errorf("send health check: %w", err)
+    }
+
+    // 等待最终结果 (completed=true)
+    select {
+    case <-ctx.Done():
+        return nil, ctx.Err()
+    case result := <-session.healthCh:
+        return result, nil
+    }
+}
+```
+
+需要在 `AgentSession` 中增加 channel:
+
+```go
+type AgentSession struct {
+    // ... 已有字段 ...
+    healthCh chan *pb.HealthCheckResult // 健康检查最终结果
+}
+```
+
+初始化时:
+
+```go
+session := &AgentSession{
+    // ... 已有字段 ...
+    healthCh: make(chan *pb.HealthCheckResult, 5),
+}
+```
+
+### 9.5 配置
+
+Agent 侧的健康检查配置:
+
+```yaml
+checker:
+  enabled: true                    # 是否启用健康检查功能
+  max_concurrent: 5                # 最大并发检查数 (预留)
+  default_timeout_seconds: 30      # 默认超时时间
+  disabled_checkers: []            # 禁用的检查器类型列表
+```
+
+### 9.6 错误处理
+
+| 场景 | 行为 |
+|------|------|
+| 未知检查器类型 | 该单项返回 `STATUS_ERROR`，不中断整体请求 |
+| 检查器执行出错 | 该单项返回 `STATUS_ERROR`，继续执行其余项 |
+| 参数校验失败 | 该单项返回 `STATUS_ERROR`，错误信息在 `message` 中 |
+| 整体超时 | 取消剩余检查项，返回已完成的结果 + 汇总 |
+| 检查器未注册 | 与未知类型相同，返回 `STATUS_ERROR` |
+
+### 9.7 安全
+
+- **参数校验**: 每个检查器在入口处校验参数格式
+- **路径遍历防护**: 文件路径类检查器使用 `filepath.Clean()` + 前缀白名单
+- **超时控制**: 支持整体请求超时和单检查项超时
+- **无权限提升**: 检查器以 Agent 进程权限运行 (通常为 root)
+- **审计日志**: 每次健康检查请求记录 `request_id`, `item_count`, `duration`
+
+---
+
+## 10. 健康检查检查器参考
+
+### 10.1 检查器通用结构
+
+每个检查项 (`CheckItem`) 包含:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | string | 平台定义的唯一标识，结果中原样返回 |
+| `type` | string | 检查器类型，决定使用哪个 checker |
+| `category` | string | 分类 (仅用于展示，不影响路由) |
+| `name` | string | 可读名称 |
+| `description` | string | 检查说明 |
+| `params` | bytes | JSON 编码的检查器参数 |
+| `severity` | enum | 严重程度: `SEVERITY_INFO` / `LOW` / `MEDIUM` / `HIGH` / `CRITICAL` |
+
+每个检查结果 (`CheckResult`) 包含:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `item_id` | string | 对应 CheckItem.id |
+| `type` | string | 检查器类型 |
+| `name` | string | 检查项名称 |
+| `status` | enum | `STATUS_PASS` / `FAIL` / `WARN` / `ERROR` / `SKIP` |
+| `actual_value` | string | 实际检测到的值 |
+| `expected_value` | string | 期望值 |
+| `message` | string | 可读的结果描述 |
+| `remediation` | string | 修复建议 (部分检查器提供) |
+| `severity` | enum | 严重程度 (原样返回) |
+| `duration_ms` | int64 | 检查耗时 (毫秒) |
+
+### 10.2 内核与系统参数 (`kernel`)
+
+#### sysctl_check
+
+读取 `/proc/sys/` 下的内核参数值并与期望值比较。
+
+**params**:
+
+```json
+{
+  "path": "/proc/sys/net/ipv4/ip_forward",
+  "expected": "0"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `path` | string | 是 | `/proc/sys/` 下的路径 |
+| `expected` | string | 是 | 期望值 |
+
+**示例**: 检查 IP 转发是否关闭
+
+```json
+{"path": "/proc/sys/net/ipv4/ip_forward", "expected": "0"}
+```
+
+#### kernel_version_check
+
+获取当前内核版本 (信息性检查，始终返回 `STATUS_PASS`)。
+
+**params**: `{}` 或不传
+
+#### kernel_module_check
+
+检查内核模块是否已加载。
+
+**params**:
+
+```json
+{
+  "module": "dccp",
+  "expected": "not_loaded"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `module` | string | 是 | 内核模块名称 |
+| `expected` | string | 是 | `"loaded"` 或 `"not_loaded"` |
+
+#### boot_param_check
+
+检查 `/proc/cmdline` 中的启动参数。
+
+**params**:
+
+```json
+{
+  "param": "selinux",
+  "expected": "1"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `param` | string | 是 | 启动参数名 |
+| `expected` | string | 是 | 期望值 (裸标志返回 `"1"`) |
+
+### 10.3 文件系统安全 (`filesystem`)
+
+#### file_perm_check
+
+检查文件权限 (使用 `os.Lstat`，不跟随符号链接)。
+
+**params**:
+
+```json
+{
+  "path": "/etc/shadow",
+  "expected_mode": "0640"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `path` | string | 是 | 文件路径 (必须为 clean 路径) |
+| `expected_mode` | string | 是 | 4 位八进制权限，如 `"0644"` |
+
+#### file_exist_check
+
+检查文件是否存在。
+
+**params**:
+
+```json
+{
+  "path": "/etc/docker/daemon.json",
+  "expected": "exists"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `path` | string | 是 | 文件路径 (必须为 clean 路径) |
+| `expected` | string | 是 | `"exists"` 或 `"not_exists"` |
+
+#### dir_perm_check
+
+检查目录权限和 sticky bit。
+
+**params**:
+
+```json
+{
+  "path": "/tmp",
+  "expected_mode": "1777",
+  "sticky_bit": true
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `path` | string | 是 | 目录路径 (必须为 clean 路径) |
+| `expected_mode` | string | 是 | 4 位八进制权限 (含特殊位) |
+| `sticky_bit` | bool | 否 | 省略则不检查 sticky bit |
+
+#### mount_option_check
+
+检查挂载点是否有指定选项 (解析 `/proc/mounts`)。
+
+**params**:
+
+```json
+{
+  "mount_point": "/tmp",
+  "expected_option": "noexec"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `mount_point` | string | 是 | 挂载点路径 |
+| `expected_option` | string | 是 | 期望存在的挂载选项 |
+
+### 10.4 网络安全配置 (`network`)
+
+#### port_check
+
+检查 TCP 端口是否在监听 (解析 `/proc/net/tcp` 和 `/proc/net/tcp6`)。
+
+**params**:
+
+```json
+{
+  "port": 22,
+  "expected_state": "listening"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `port` | int | 是 | 端口号 (1-65535) |
+| `expected_state` | string | 是 | `"listening"` 或 `"not_listening"` |
+
+#### ssh_config_check
+
+检查 SSH 配置项 (解析 `/etc/ssh/sshd_config`)。
+
+**params**:
+
+```json
+{
+  "key": "PermitRootLogin",
+  "expected": "no"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `key` | string | 是 | 配置项名称 (大小写不敏感) |
+| `expected` | string | 是 | 期望值 |
+
+#### iptables_check
+
+检查 iptables 链的默认策略 (执行 `iptables -L <chain> -n`)。
+
+**params**:
+
+```json
+{
+  "chain": "INPUT",
+  "expected_policy": "DROP"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `chain` | string | 是 | 链名: `"INPUT"` / `"OUTPUT"` / `"FORWARD"` |
+| `expected_policy` | string | 是 | 期望策略: `"ACCEPT"` / `"DROP"` / `"REJECT"` |
+
+#### network_param_check
+
+检查网络内核参数 (sysctl 格式转 `/proc/sys/` 路径)。
+
+**params**:
+
+```json
+{
+  "key": "net.ipv4.ip_forward",
+  "expected": "0"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `key` | string | 是 | sysctl 格式的参数名，如 `"net.ipv4.ip_forward"` |
+| `expected` | string | 是 | 期望值 |
+
+### 10.5 服务与账户 (`service`)
+
+#### service_check
+
+检查 systemd 服务状态 (执行 `systemctl is-active`)。
+
+**params**:
+
+```json
+{
+  "name": "sshd",
+  "expected_status": "active"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `name` | string | 是 | 服务名称 |
+| `expected_status` | string | 是 | 期望状态: `"active"` / `"inactive"` / `"failed"` 等 |
+
+#### user_check
+
+检查用户账户状态 (解析 `/etc/passwd` + `/etc/shadow`)。
+
+**params**:
+
+```json
+{
+  "username": "root",
+  "check": "exists"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `username` | string | 是 | 用户名 |
+| `check` | string | 是 | `"exists"` (是否存在) 或 `"locked"` (是否已锁定) |
+
+#### cron_check
+
+审计用户的 crontab (信息性检查，始终返回 `STATUS_PASS`)。
+
+**params**:
+
+```json
+{
+  "user": "root"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `user` | string | 是 | 用户名 |
+
+#### pam_check
+
+检查 PAM 配置中是否引用了指定模块 (读取 `/etc/pam.d/` 下的文件)。
+
+**params**:
+
+```json
+{
+  "module": "pam_wheel.so",
+  "file": "su"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `module` | string | 是 | PAM 模块名称 |
+| `file` | string | 是 | PAM 配置文件名 (不含路径，读取 `/etc/pam.d/<file>`) |
+
+### 10.6 容器运行时 (`container`)
+
+#### docker_check
+
+检查 Docker daemon 配置 (解析 `/etc/docker/daemon.json`)。
+
+**params**:
+
+```json
+{
+  "key": "storage-driver",
+  "expected": "overlay2"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `key` | string | 是 | JSON 配置键名 |
+| `expected` | string | 是 | 期望值 |
+
+#### containerd_check
+
+检查 containerd 配置 (解析 `/etc/containerd/config.toml`)。
+
+**params**:
+
+```json
+{
+  "key": "SystemdCgroup",
+  "expected": "true"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `key` | string | 是 | TOML 配置键名 |
+| `expected` | string | 是 | 期望值 |
+
+#### cgroup_check
+
+检测 cgroup 版本 (信息性检查，始终返回 `STATUS_PASS`)。
+
+**params**: `{}` 或不传
+
+#### container_runtime_check
+
+检查容器运行时 socket 是否存在。
+
+**params**:
+
+```json
+{
+  "runtime": "docker",
+  "expected": "available"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `runtime` | string | 是 | 运行时名称: `"docker"` / `"containerd"` / `"cri-o"` |
+| `expected` | string | 是 | `"available"` 或 `"not_available"` |
+
+**运行时与 Socket 路径对应**:
+
+| 运行时 | Socket 路径 |
+|--------|------------|
+| `docker` | `/var/run/docker.sock` |
+| `containerd` | `/var/run/containerd/containerd.sock` |
+| `cri-o` | `/var/run/crio/crio.sock` |
+
+### 10.7 快速参考表
+
+| 类型 | 分类 | 参数 | 说明 |
+|------|------|------|------|
+| `sysctl_check` | kernel | `path`, `expected` | 内核参数值 |
+| `kernel_version_check` | kernel | 无 | 内核版本 (信息性) |
+| `kernel_module_check` | kernel | `module`, `expected` | 内核模块加载状态 |
+| `boot_param_check` | kernel | `param`, `expected` | 启动参数 |
+| `file_perm_check` | filesystem | `path`, `expected_mode` | 文件权限 |
+| `file_exist_check` | filesystem | `path`, `expected` | 文件存在性 |
+| `dir_perm_check` | filesystem | `path`, `expected_mode`, `sticky_bit` | 目录权限 |
+| `mount_option_check` | filesystem | `mount_point`, `expected_option` | 挂载选项 |
+| `port_check` | network | `port`, `expected_state` | 端口监听状态 |
+| `ssh_config_check` | network | `key`, `expected` | SSH 配置项 |
+| `iptables_check` | network | `chain`, `expected_policy` | 防火墙规则 |
+| `network_param_check` | network | `key`, `expected` | 网络内核参数 |
+| `service_check` | service | `name`, `expected_status` | systemd 服务状态 |
+| `user_check` | service | `username`, `check` | 用户账户状态 |
+| `cron_check` | service | `user` | crontab 审计 (信息性) |
+| `pam_check` | service | `module`, `file` | PAM 配置检查 |
+| `docker_check` | container | `key`, `expected` | Docker daemon 配置 |
+| `containerd_check` | container | `key`, `expected` | containerd 配置 |
+| `cgroup_check` | container | 无 | cgroup 版本 (信息性) |
+| `container_runtime_check` | container | `runtime`, `expected` | 运行时 socket 可用性 |
