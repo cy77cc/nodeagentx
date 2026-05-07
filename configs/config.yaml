@@ -128,3 +128,9 @@ collector:
     #     fields: ["response_time_ms"]
     #     percentiles: [50, 95, 99]
   outputs: []
+
+checker:
+  enabled: true
+  max_concurrent: 5
+  default_timeout_seconds: 30
+  disabled_checkers: []

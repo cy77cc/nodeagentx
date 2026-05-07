@@ -20,6 +20,7 @@ type Config struct {
 	Sandbox       SandboxConfig       `mapstructure:"sandbox"`
 	Collector     CollectorConfig     `mapstructure:"collector"`
 	PluginGateway PluginGatewayConfig `mapstructure:"plugin_gateway"`
+	Checker       CheckerConfig       `mapstructure:"checker"`
 }
 
 // AgentConfig controls agent identity and collection cadence.
@@ -153,6 +154,14 @@ type PluginGatewayConfig struct {
 	PluginConfigs           map[string]map[string]interface{} `mapstructure:"plugin_configs"`
 }
 
+// CheckerConfig controls the system health checker subsystem.
+type CheckerConfig struct {
+	Enabled               bool     `mapstructure:"enabled"`
+	MaxConcurrent         int      `mapstructure:"max_concurrent"`
+	DefaultTimeoutSeconds int      `mapstructure:"default_timeout_seconds"`
+	DisabledCheckers      []string `mapstructure:"disabled_checkers"`
+}
+
 // Load reads and validates configuration from a file path.
 func Load(path string) (*Config, error) {
 	v := viper.New()
@@ -202,6 +211,9 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("plugin_gateway.max_restarts", 3)
 	v.SetDefault("plugin_gateway.restart_backoff_seconds", 5)
 	v.SetDefault("plugin_gateway.file_watch_debounce_seconds", 2)
+	v.SetDefault("checker.enabled", true)
+	v.SetDefault("checker.max_concurrent", 5)
+	v.SetDefault("checker.default_timeout_seconds", 30)
 
 	if err := v.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("read config: %w", err)
@@ -367,6 +379,16 @@ func (c *Config) Validate() error {
 		}
 		if c.PluginGateway.MaxRestarts < 0 {
 			return fmt.Errorf("plugin_gateway.max_restarts must be >= 0")
+		}
+	}
+
+	// Checker validation (only when enabled).
+	if c.Checker.Enabled {
+		if c.Checker.MaxConcurrent <= 0 {
+			return fmt.Errorf("checker.max_concurrent must be > 0 when checker.enabled=true")
+		}
+		if c.Checker.DefaultTimeoutSeconds <= 0 {
+			return fmt.Errorf("checker.default_timeout_seconds must be > 0 when checker.enabled=true")
 		}
 	}
 
