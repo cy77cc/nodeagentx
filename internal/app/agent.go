@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/cy77cc/opsagent/internal/checker"
 	"github.com/cy77cc/opsagent/internal/collector"
 	"github.com/cy77cc/opsagent/internal/config"
 	"github.com/cy77cc/opsagent/internal/executor"
@@ -61,6 +62,7 @@ type Agent struct {
 	scheduler        Scheduler
 	grpcClient       GRPCClient
 	sandboxExec      *sandbox.Executor
+	checkerExec      *checker.Executor
 	configReloader   *config.ConfigReloader
 	metricsReg       *MetricsRegistry
 	auditLog         *AuditLogger
@@ -183,6 +185,12 @@ func NewAgent(cfg *config.Config, log zerolog.Logger, opts ...Option) (*Agent, e
 			HeartbeatSeconds: cfg.GRPC.HeartbeatIntervalSeconds,
 			ReconnectMaxSec:  cfg.GRPC.ReconnectMaxBackoffMS / 1000,
 		}
+		caps := []string{"health_check"}
+		for _, typ := range checker.DefaultRegistry.Types() {
+			caps = append(caps, "checker:"+typ)
+		}
+		grpcCfg.Capabilities = caps
+
 		grpcRecv = grpcclient.NewReceiver(log)
 		a.grpcClient = grpcclient.NewClient(grpcCfg, log, grpcRecv)
 		a.grpcClient.SetOnStateChange(func(connected bool) {
@@ -219,6 +227,11 @@ func NewAgent(cfg *config.Config, log zerolog.Logger, opts ...Option) (*Agent, e
 				MaxScriptBytes:      cfg.Sandbox.Policy.ScriptMaxBytes,
 			},
 		}, log)
+	}
+
+	// Build checker executor if enabled.
+	if cfg.Checker.Enabled {
+		a.checkerExec = checker.NewExecutor(checker.DefaultRegistry, log)
 	}
 
 	// Build HTTP server if not injected.
@@ -991,6 +1004,39 @@ func (a *Agent) registerGRPCHandlers(recv *grpcclient.Receiver) {
 			TaskID: fmt.Sprintf("config-update-%d", update.GetVersion()),
 		})
 		return nil
+	})
+
+	// Health check handler: execute system health checks.
+	recv.SetHealthCheckHandler(func(ctx context.Context, req *pb.HealthCheckRequest) error {
+		if a.shuttingDown.Load() {
+			return fmt.Errorf("agent is shutting down")
+		}
+		if a.checkerExec == nil {
+			a.log.Warn().Str("request_id", req.RequestId).Msg("checker not enabled, skipping health check")
+			return nil
+		}
+
+		a.auditLog.Log(AuditEvent{
+			EventType: "health_check.started", Component: "checker",
+			Action: "health_check", Status: "success",
+			Details: map[string]interface{}{"request_id": req.RequestId, "item_count": len(req.Items)},
+		})
+
+		start := time.Now()
+		err := a.checkerExec.Execute(ctx, req, func(result *pb.HealthCheckResult) {
+			a.grpcClient.SendHealthCheckResult(result)
+		})
+
+		a.auditLog.Log(AuditEvent{
+			EventType: "health_check.completed", Component: "checker",
+			Action: "health_check", Status: "success",
+			Details: map[string]interface{}{
+				"request_id": req.RequestId,
+				"duration_ms": time.Since(start).Milliseconds(),
+			},
+		})
+
+		return err
 	})
 }
 
