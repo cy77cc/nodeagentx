@@ -539,6 +539,79 @@ func (c *Client) FlushAndStop(ctx context.Context, persistPath string) error {
 	return nil
 }
 
+// SendTunnelOpen sends a tunnel-open message.
+func (c *Client) SendTunnelOpen(tunnelID, agentID, hostname, ip string, capabilities []string) error {
+	c.mu.Lock()
+	stream := c.stream
+	connected := c.connected
+	c.mu.Unlock()
+	if !connected || stream == nil {
+		return fmt.Errorf("not connected")
+	}
+	return stream.Send(NewTunnelOpenMessage(tunnelID, agentID, hostname, ip, capabilities))
+}
+
+// SendTunnelData sends tunnel data.
+func (c *Client) SendTunnelData(tunnelID string, payload []byte) error {
+	c.mu.Lock()
+	stream := c.stream
+	connected := c.connected
+	c.mu.Unlock()
+	if !connected || stream == nil {
+		return fmt.Errorf("not connected")
+	}
+	return stream.Send(NewTunnelDataMessage(tunnelID, payload))
+}
+
+// SendTunnelClose sends a tunnel close message.
+func (c *Client) SendTunnelClose(tunnelID, reason string) error {
+	c.mu.Lock()
+	stream := c.stream
+	connected := c.connected
+	c.mu.Unlock()
+	if !connected || stream == nil {
+		return fmt.Errorf("not connected")
+	}
+	return stream.Send(NewTunnelCloseMessage(tunnelID, reason))
+}
+
+// SendProxyRegister sends a proxy host registration.
+func (c *Client) SendProxyRegister(hostID, hostname, ip string, capabilities []string) error {
+	c.mu.Lock()
+	stream := c.stream
+	connected := c.connected
+	c.mu.Unlock()
+	if !connected || stream == nil {
+		return fmt.Errorf("not connected")
+	}
+	return stream.Send(NewProxyRegisterMessage(hostID, hostname, ip, capabilities))
+}
+
+// SendProxyResponse sends a proxy command response.
+func (c *Client) SendProxyResponse(hostID, command string, exitCode int, stdout, stderr []byte, duration time.Duration, timedOut bool) error {
+	c.mu.Lock()
+	stream := c.stream
+	connected := c.connected
+	c.mu.Unlock()
+	if !connected || stream == nil {
+		return fmt.Errorf("not connected")
+	}
+	return stream.Send(NewProxyResponseMessage(hostID, command, exitCode, stdout, stderr, duration.Milliseconds(), timedOut))
+}
+
+// SendProxyMetrics sends proxy-collected metrics.
+func (c *Client) SendProxyMetrics(hostID string, metrics []byte) error {
+	c.mu.Lock()
+	stream := c.stream
+	connected := c.connected
+	c.mu.Unlock()
+	if !connected || stream == nil {
+		return fmt.Errorf("not connected")
+	}
+	// For now, send as raw bytes. Metrics parsing will be added later.
+	return nil
+}
+
 // loadPersistedCache loads metrics from a JSON file into the cache and removes the file.
 func (c *Client) loadPersistedCache(path string) {
 	data, err := os.ReadFile(path)

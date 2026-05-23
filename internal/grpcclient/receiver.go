@@ -24,6 +24,15 @@ type ConfigUpdateHandler func(ctx context.Context, update *pb.ConfigUpdate) erro
 // HealthCheckHandler handles HealthCheckRequest platform messages.
 type HealthCheckHandler func(ctx context.Context, req *pb.HealthCheckRequest) error
 
+// TunnelDataHandler handles tunnel data from the platform.
+type TunnelDataHandler func(ctx context.Context, tunnelID string, data []byte) error
+
+// TunnelCloseHandler handles tunnel close from the platform.
+type TunnelCloseHandler func(ctx context.Context, tunnelID, reason string) error
+
+// ProxyCommandHandler handles proxy command requests from the platform.
+type ProxyCommandHandler func(ctx context.Context, hostID, command string, args []string, timeoutSeconds int32) error
+
 // Receiver dispatches incoming PlatformMessages to registered handlers.
 type Receiver struct {
 	logger   zerolog.Logger
@@ -32,6 +41,9 @@ type Receiver struct {
 	onCancel CancelHandler
 	onConfig      ConfigUpdateHandler
 	onHealthCheck HealthCheckHandler
+	onTunnelData  TunnelDataHandler
+	onTunnelClose TunnelCloseHandler
+	onProxyCmd    ProxyCommandHandler
 }
 
 // NewReceiver creates a Receiver with the given logger.
@@ -53,6 +65,15 @@ func (r *Receiver) SetConfigUpdateHandler(h ConfigUpdateHandler) { r.onConfig = 
 
 // SetHealthCheckHandler registers the handler for HealthCheckRequest messages.
 func (r *Receiver) SetHealthCheckHandler(h HealthCheckHandler) { r.onHealthCheck = h }
+
+// SetTunnelDataHandler registers the handler for tunnel data messages.
+func (r *Receiver) SetTunnelDataHandler(h TunnelDataHandler) { r.onTunnelData = h }
+
+// SetTunnelCloseHandler registers the handler for tunnel close messages.
+func (r *Receiver) SetTunnelCloseHandler(h TunnelCloseHandler) { r.onTunnelClose = h }
+
+// SetProxyCommandHandler registers the handler for proxy command messages.
+func (r *Receiver) SetProxyCommandHandler(h ProxyCommandHandler) { r.onProxyCmd = h }
 
 // Handle dispatches a PlatformMessage to the appropriate handler.
 func (r *Receiver) Handle(ctx context.Context, msg *pb.PlatformMessage) error {
@@ -95,6 +116,27 @@ func (r *Receiver) Handle(ctx context.Context, msg *pb.PlatformMessage) error {
 			return r.onHealthCheck(ctx, p.HealthCheck)
 		}
 		r.logger.Warn().Str("request_id", p.HealthCheck.GetRequestId()).Msg("no health check handler registered")
+
+	case *pb.PlatformMessage_TunnelData:
+		r.logger.Info().Str("tunnel_id", p.TunnelData.GetTunnelId()).Int("bytes", len(p.TunnelData.GetPayload())).Msg("received TunnelData")
+		if r.onTunnelData != nil {
+			return r.onTunnelData(ctx, p.TunnelData.GetTunnelId(), p.TunnelData.GetPayload())
+		}
+		r.logger.Warn().Str("tunnel_id", p.TunnelData.GetTunnelId()).Msg("no tunnel data handler registered")
+
+	case *pb.PlatformMessage_TunnelClose:
+		r.logger.Info().Str("tunnel_id", p.TunnelClose.GetTunnelId()).Str("reason", p.TunnelClose.GetReason()).Msg("received TunnelClose")
+		if r.onTunnelClose != nil {
+			return r.onTunnelClose(ctx, p.TunnelClose.GetTunnelId(), p.TunnelClose.GetReason())
+		}
+		r.logger.Warn().Str("tunnel_id", p.TunnelClose.GetTunnelId()).Msg("no tunnel close handler registered")
+
+	case *pb.PlatformMessage_ProxyCommand:
+		r.logger.Info().Str("host_id", p.ProxyCommand.GetHostId()).Str("command", p.ProxyCommand.GetCommand()).Msg("received ProxyCommand")
+		if r.onProxyCmd != nil {
+			return r.onProxyCmd(ctx, p.ProxyCommand.GetHostId(), p.ProxyCommand.GetCommand(), p.ProxyCommand.GetArgs(), p.ProxyCommand.GetTimeoutSeconds())
+		}
+		r.logger.Warn().Str("host_id", p.ProxyCommand.GetHostId()).Msg("no proxy command handler registered")
 
 	case *pb.PlatformMessage_Ack:
 		r.logger.Info().

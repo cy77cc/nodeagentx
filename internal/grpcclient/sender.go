@@ -146,3 +146,85 @@ func NewHealthCheckResultMessage(result *pb.HealthCheckResult) *pb.AgentMessage 
 		},
 	}
 }
+
+// NewTunnelOpenMessage creates a tunnel-open AgentMessage.
+func NewTunnelOpenMessage(tunnelID, agentID, hostname, ip string, capabilities []string) *pb.AgentMessage {
+	return &pb.AgentMessage{
+		Payload: &pb.AgentMessage_TunnelOpen{
+			TunnelOpen: &pb.TunnelOpen{
+				TunnelId:     tunnelID,
+				AgentId:      agentID,
+				Hostname:     hostname,
+				Ip:           ip,
+				Capabilities: capabilities,
+			},
+		},
+	}
+}
+
+// NewTunnelDataMessage creates a tunnel-data AgentMessage.
+func NewTunnelDataMessage(tunnelID string, payload []byte) *pb.AgentMessage {
+	return &pb.AgentMessage{
+		Payload: &pb.AgentMessage_TunnelData{
+			TunnelData: &pb.TunnelData{
+				TunnelId: tunnelID,
+				Payload:  payload,
+			},
+		},
+	}
+}
+
+// NewTunnelCloseMessage creates a tunnel-close AgentMessage.
+func NewTunnelCloseMessage(tunnelID, reason string) *pb.AgentMessage {
+	return &pb.AgentMessage{
+		Payload: &pb.AgentMessage_TunnelClose{
+			TunnelClose: &pb.TunnelClose{
+				TunnelId: tunnelID,
+				Reason:   reason,
+			},
+		},
+	}
+}
+
+// NewProxyRegisterMessage creates a proxy-host-register AgentMessage.
+func NewProxyRegisterMessage(hostID, hostname, ip string, capabilities []string) *pb.AgentMessage {
+	return &pb.AgentMessage{
+		Payload: &pb.AgentMessage_ProxyRegister{
+			ProxyRegister: &pb.ProxyHostRegister{
+				HostId:       hostID,
+				Hostname:     hostname,
+				Ip:           ip,
+				Capabilities: capabilities,
+			},
+		},
+	}
+}
+
+// NewProxyResponseMessage creates a proxy-command-response AgentMessage.
+func NewProxyResponseMessage(hostID, command string, exitCode int, stdout, stderr []byte, durationMS int64, timedOut bool) *pb.AgentMessage {
+	return &pb.AgentMessage{
+		Payload: &pb.AgentMessage_ProxyResponse{
+			ProxyResponse: &pb.ProxyCommandResponse{
+				HostId:     hostID,
+				Command:    command,
+				ExitCode:   int32(exitCode),
+				Stdout:     stdout,
+				Stderr:     stderr,
+				DurationMs: durationMS,
+				TimedOut:   timedOut,
+			},
+		},
+	}
+}
+
+// NewProxyMetricsMessage creates a proxy-metric-batch AgentMessage.
+func NewProxyMetricsMessage(hostID string, metrics *pb.MetricBatch) *pb.AgentMessage {
+	return &pb.AgentMessage{
+		Payload: &pb.AgentMessage_ProxyMetrics{
+			ProxyMetrics: &pb.ProxyMetricBatch{
+				HostId:  hostID,
+				Metrics: metrics.Metrics,
+			},
+		},
+	}
+}
