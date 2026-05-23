@@ -51,6 +51,7 @@ func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 		{"grpc", s.healthCheckers.GRPC, true},
 		{"scheduler", s.healthCheckers.Scheduler, true},
 		{"plugin_runtime", s.healthCheckers.PluginRT, false},
+		{"gateway", s.healthCheckers.Gateway, false},
 	}
 
 	for _, e := range entries {

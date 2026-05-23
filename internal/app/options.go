@@ -34,3 +34,8 @@ func WithConfigReloader(r *config.ConfigReloader) Option {
 func WithPluginGateway(gw PluginGateway) Option {
 	return func(a *Agent) { a.pluginGateway = gw }
 }
+
+// WithGateway injects a custom Gateway (for testing).
+func WithGateway(gw Gateway) Option {
+	return func(a *Agent) { a.gateway = gw }
+}

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"time"
 
 	"github.com/cy77cc/opsagent/internal/collector"
 	"github.com/cy77cc/opsagent/internal/grpcclient"
@@ -24,6 +25,14 @@ type GRPCClient interface {
 	IsConnected() bool
 	HealthStatus() health.Status
 	SetOnStateChange(fn func(connected bool))
+	// Tunnel operations
+	SendTunnelOpen(tunnelID, agentID, hostname, ip string, capabilities []string) error
+	SendTunnelData(tunnelID string, payload []byte) error
+	SendTunnelClose(tunnelID, reason string) error
+	// Proxy operations
+	SendProxyRegister(hostID, hostname, ip string, capabilities []string) error
+	SendProxyResponse(hostID, command string, exitCode int, stdout, stderr []byte, duration time.Duration, timedOut bool) error
+	SendProxyMetrics(hostID string, metrics []byte) error
 }
 
 // HTTPServer abstracts the local HTTP server for health, metrics, and task APIs.
@@ -62,6 +71,16 @@ type PluginGateway interface {
 	DisablePlugin(name string) error
 	OnPluginLoaded(fn func(name string, taskTypes []string))
 	OnPluginUnloaded(fn func(name string, taskTypes []string))
+	HealthStatus() health.Status
+}
+
+// Gateway manages tunnel and proxy subsystems for jump-host functionality.
+type Gateway interface {
+	Start(ctx context.Context) error
+	Stop(ctx context.Context) error
+	HandleTunnelData(tunnelID string, data []byte) error
+	HandleTunnelClose(tunnelID, reason string) error
+	HandleProxyCommand(ctx context.Context, hostID, command string, args []string, timeoutSec int32) error
 	HealthStatus() health.Status
 }
 

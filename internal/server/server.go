@@ -19,6 +19,7 @@ type HealthCheckers struct {
 	GRPC      health.Statuser
 	Scheduler health.Statuser
 	PluginRT  health.Statuser
+	Gateway   health.Statuser
 }
 
 // AuthConfig controls optional bearer auth middleware.

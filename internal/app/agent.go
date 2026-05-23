@@ -12,6 +12,7 @@ import (
 	"github.com/cy77cc/opsagent/internal/collector"
 	"github.com/cy77cc/opsagent/internal/config"
 	"github.com/cy77cc/opsagent/internal/executor"
+	"github.com/cy77cc/opsagent/internal/gateway"
 	"github.com/cy77cc/opsagent/internal/grpcclient"
 	pb "github.com/cy77cc/opsagent/internal/grpcclient/proto"
 	"github.com/cy77cc/opsagent/internal/pluginruntime"
@@ -64,6 +65,7 @@ type Agent struct {
 	executor         *executor.Executor
 	pluginRuntime    PluginRuntime
 	pluginGateway    PluginGateway
+	gateway          Gateway
 	scheduler        Scheduler
 	grpcClient       GRPCClient
 	sandboxExec      *sandbox.Executor
@@ -239,6 +241,30 @@ func NewAgent(cfg *config.Config, log zerolog.Logger, opts ...Option) (*Agent, e
 		a.checkerExec = checker.NewExecutor(checker.DefaultRegistry, log)
 	}
 
+	// Build gateway if enabled and not injected.
+	if a.gateway == nil && cfg.Gateway.Enabled {
+		gwCfg := gateway.Config{
+			ListenAddr:    cfg.Gateway.ListenAddr,
+			MaxTunnels:    cfg.Gateway.MaxTunnels,
+			TunnelTimeout: time.Duration(cfg.Gateway.TunnelTimeoutSeconds) * time.Second,
+			IdleTimeout:   time.Duration(cfg.Gateway.IdleTimeoutSeconds) * time.Second,
+		}
+		for _, h := range cfg.Gateway.Hosts {
+			gwCfg.Hosts = append(gwCfg.Hosts, gateway.HostConfig{
+				ID:   h.ID,
+				Addr: h.Addr,
+				Mode: h.Mode,
+				SSH: gateway.SSHConfig{
+					User:     h.SSH.User,
+					Password: h.SSH.Password,
+					KeyFile:  h.SSH.KeyFile,
+					Port:     h.SSH.Port,
+				},
+			})
+		}
+		a.gateway = gateway.New(gwCfg, log, a.grpcClient, a.grpcClient)
+	}
+
 	// Build HTTP server if not injected.
 	dispatcher := task.NewDispatcher()
 	if a.server == nil {
@@ -263,6 +289,7 @@ func NewAgent(cfg *config.Config, log zerolog.Logger, opts ...Option) (*Agent, e
 					GRPC:      a.grpcClient,
 					Scheduler: a.scheduler,
 					PluginRT:  a.pluginRuntime,
+					Gateway:   a.gateway,
 				},
 				Version:   Version,
 				GitCommit: GitCommit,
@@ -390,6 +417,16 @@ func (a *Agent) startSubsystems(ctx context.Context) (<-chan []*collector.Metric
 		return nil, nil, fmt.Errorf("start grpc client: %w", err)
 	}
 
+	if a.gateway != nil {
+		if err := a.gateway.Start(ctx); err != nil {
+			return nil, nil, fmt.Errorf("start gateway: %w", err)
+		}
+		a.auditLog.Log(AuditEvent{
+			EventType: "gateway.started", Component: "gateway",
+			Action: "start", Status: "success",
+		})
+	}
+
 	errCh := make(chan error, 1)
 	go func() {
 		errCh <- a.server.Start()
@@ -485,6 +522,13 @@ func (a *Agent) shutdown(ctx context.Context) {
 	if a.pluginGateway != nil {
 		if err := a.pluginGateway.Stop(stopCtx); err != nil {
 			a.log.Error().Err(err).Msg("failed to stop plugin gateway")
+		}
+	}
+
+	// 5c. Stop gateway.
+	if a.gateway != nil {
+		if err := a.gateway.Stop(stopCtx); err != nil {
+			a.log.Error().Err(err).Msg("failed to stop gateway")
 		}
 	}
 
@@ -1043,6 +1087,19 @@ func (a *Agent) registerGRPCHandlers(recv *grpcclient.Receiver) {
 
 		return err
 	})
+
+	// Gateway tunnel handlers.
+	if a.gateway != nil {
+		recv.SetTunnelDataHandler(func(ctx context.Context, tunnelID string, data []byte) error {
+			return a.gateway.HandleTunnelData(tunnelID, data)
+		})
+		recv.SetTunnelCloseHandler(func(ctx context.Context, tunnelID, reason string) error {
+			return a.gateway.HandleTunnelClose(tunnelID, reason)
+		})
+		recv.SetProxyCommandHandler(func(ctx context.Context, hostID, command string, args []string, timeoutSec int32) error {
+			return a.gateway.HandleProxyCommand(ctx, hostID, command, args, timeoutSec)
+		})
+	}
 }
 
 func (a *Agent) executePluginTask(ctx context.Context, t task.AgentTask, taskType string) (any, error) {

@@ -70,6 +70,15 @@ func (m *mockGRPCClient) FlushAndStop(_ context.Context, _ string) error {
 	return nil
 }
 
+func (m *mockGRPCClient) SendTunnelOpen(_, _, _, _ string, _ []string) error { return nil }
+func (m *mockGRPCClient) SendTunnelData(_ string, _ []byte) error           { return nil }
+func (m *mockGRPCClient) SendTunnelClose(_, _ string) error                 { return nil }
+func (m *mockGRPCClient) SendProxyRegister(_, _, _ string, _ []string) error { return nil }
+func (m *mockGRPCClient) SendProxyResponse(_ string, _ string, _ int, _, _ []byte, _ time.Duration, _ bool) error {
+	return nil
+}
+func (m *mockGRPCClient) SendProxyMetrics(_ string, _ []byte) error { return nil }
+
 // mockHTTPServer implements HTTPServer for testing.
 //
 // Start blocks until Shutdown is called, mirroring the real server
