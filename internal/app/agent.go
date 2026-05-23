@@ -1094,9 +1094,19 @@ func (a *Agent) registerGRPCHandlers(recv *grpcclient.Receiver) {
 			return a.gateway.HandleTunnelData(tunnelID, data)
 		})
 		recv.SetTunnelCloseHandler(func(ctx context.Context, tunnelID, reason string) error {
+			a.auditLog.Log(AuditEvent{
+				EventType: "gateway.tunnel.close", Component: "gateway",
+				Action: "tunnel_close", Status: "success",
+				Details: map[string]interface{}{"tunnel_id": tunnelID, "reason": reason},
+			})
 			return a.gateway.HandleTunnelClose(tunnelID, reason)
 		})
 		recv.SetProxyCommandHandler(func(ctx context.Context, hostID, command string, args []string, timeoutSec int32) error {
+			a.auditLog.Log(AuditEvent{
+				EventType: "gateway.proxy.exec", Component: "gateway",
+				Action: "proxy_command", Status: "started",
+				Details: map[string]interface{}{"host_id": hostID, "command": command},
+			})
 			return a.gateway.HandleProxyCommand(ctx, hostID, command, args, timeoutSec)
 		})
 	}
