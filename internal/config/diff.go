@@ -72,13 +72,7 @@ func Diff(old, new *Config) (*ChangeSet, []NonReloadableChange, error) {
 		})
 	}
 
-	if !reflect.DeepEqual(old.Gateway, new.Gateway) {
-		nonReloadable = append(nonReloadable, NonReloadableChange{
-			Field:  "gateway.*",
-			OldVal: old.Gateway,
-			NewVal: new.Gateway,
-		})
-	}
+	nonReloadable = append(nonReloadable, diffGateway(old, new)...)
 
 	return cs, nonReloadable, nil
 }
@@ -166,6 +160,49 @@ func diffExecutor(old, new *Config) []NonReloadableChange {
 	}
 	if old.Executor.MaxOutputBytes != new.Executor.MaxOutputBytes {
 		changes = append(changes, NonReloadableChange{"executor.max_output_bytes", old.Executor.MaxOutputBytes, new.Executor.MaxOutputBytes})
+	}
+	return changes
+}
+
+func diffGateway(old, new *Config) []NonReloadableChange {
+	var changes []NonReloadableChange
+	if old.Gateway.Enabled != new.Gateway.Enabled {
+		changes = append(changes, NonReloadableChange{"gateway.enabled", old.Gateway.Enabled, new.Gateway.Enabled})
+	}
+	if old.Gateway.ListenAddr != new.Gateway.ListenAddr {
+		changes = append(changes, NonReloadableChange{"gateway.listen_addr", old.Gateway.ListenAddr, new.Gateway.ListenAddr})
+	}
+	if old.Gateway.MaxTunnels != new.Gateway.MaxTunnels {
+		changes = append(changes, NonReloadableChange{"gateway.max_tunnels", old.Gateway.MaxTunnels, new.Gateway.MaxTunnels})
+	}
+	if old.Gateway.TunnelTimeoutSeconds != new.Gateway.TunnelTimeoutSeconds {
+		changes = append(changes, NonReloadableChange{"gateway.tunnel_timeout_seconds", old.Gateway.TunnelTimeoutSeconds, new.Gateway.TunnelTimeoutSeconds})
+	}
+	if old.Gateway.IdleTimeoutSeconds != new.Gateway.IdleTimeoutSeconds {
+		changes = append(changes, NonReloadableChange{"gateway.idle_timeout_seconds", old.Gateway.IdleTimeoutSeconds, new.Gateway.IdleTimeoutSeconds})
+	}
+	// Compare hosts with password masking
+	if len(old.Gateway.Hosts) != len(new.Gateway.Hosts) {
+		changes = append(changes, NonReloadableChange{"gateway.hosts", len(old.Gateway.Hosts), len(new.Gateway.Hosts)})
+	} else {
+		for i := range old.Gateway.Hosts {
+			oh, nh := old.Gateway.Hosts[i], new.Gateway.Hosts[i]
+			if oh.ID != nh.ID || oh.Addr != nh.Addr || oh.Mode != nh.Mode {
+				changes = append(changes, NonReloadableChange{fmt.Sprintf("gateway.hosts[%d]", i), oh, nh})
+			}
+			if oh.SSH.User != nh.SSH.User {
+				changes = append(changes, NonReloadableChange{fmt.Sprintf("gateway.hosts[%d].ssh.user", i), oh.SSH.User, nh.SSH.User})
+			}
+			if oh.SSH.Password != nh.SSH.Password {
+				changes = append(changes, NonReloadableChange{fmt.Sprintf("gateway.hosts[%d].ssh.password", i), maskSecret(oh.SSH.Password), maskSecret(nh.SSH.Password)})
+			}
+			if oh.SSH.KeyFile != nh.SSH.KeyFile {
+				changes = append(changes, NonReloadableChange{fmt.Sprintf("gateway.hosts[%d].ssh.key_file", i), oh.SSH.KeyFile, nh.SSH.KeyFile})
+			}
+			if oh.SSH.Port != nh.SSH.Port {
+				changes = append(changes, NonReloadableChange{fmt.Sprintf("gateway.hosts[%d].ssh.port", i), oh.SSH.Port, nh.SSH.Port})
+			}
+		}
 	}
 	return changes
 }

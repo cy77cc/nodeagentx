@@ -28,7 +28,7 @@ reporter:
 
 auth:
   enabled: true
-  bearer_token: "mvLr1eumjpuXQeafEpbAGHGPBHyqfr1W"  # Must be set to a 32+ character value in deployment
+  bearer_token: ""  # Must be set to a 32+ character value in deployment
 
 prometheus:
   enabled: true

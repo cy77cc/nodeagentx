@@ -811,6 +811,78 @@ func TestValidatePluginGatewayDisabledSkipsChecks(t *testing.T) {
 	}
 }
 
+// --- Gateway validation ---
+
+func TestValidateGatewayDisabledSkipsChecks(t *testing.T) {
+	cfg := validBaseConfig()
+	cfg.Gateway = GatewayConfig{Enabled: false}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("expected no error when gateway disabled, got: %v", err)
+	}
+}
+
+func TestValidateGatewayListenAddrRequired(t *testing.T) {
+	cfg := validBaseConfig()
+	cfg.Gateway = GatewayConfig{
+		Enabled:              true,
+		ListenAddr:           "",
+		MaxTunnels:           100,
+		TunnelTimeoutSeconds: 30,
+		IdleTimeoutSeconds:   300,
+	}
+	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "gateway.listen_addr") {
+		t.Fatalf("expected gateway.listen_addr error, got: %v", err)
+	}
+}
+
+func TestValidateGatewayMaxTunnelsMustBePositive(t *testing.T) {
+	cfg := validBaseConfig()
+	cfg.Gateway = GatewayConfig{
+		Enabled:              true,
+		ListenAddr:           ":18081",
+		MaxTunnels:           0,
+		TunnelTimeoutSeconds: 30,
+		IdleTimeoutSeconds:   300,
+	}
+	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "gateway.max_tunnels") {
+		t.Fatalf("expected gateway.max_tunnels error, got: %v", err)
+	}
+}
+
+func TestValidateGatewayHostModeMustBeValid(t *testing.T) {
+	cfg := validBaseConfig()
+	cfg.Gateway = GatewayConfig{
+		Enabled:              true,
+		ListenAddr:           ":18081",
+		MaxTunnels:           100,
+		TunnelTimeoutSeconds: 30,
+		IdleTimeoutSeconds:   300,
+		Hosts: []GatewayHostConfig{
+			{ID: "h1", Addr: "192.168.1.1", Mode: "invalid"},
+		},
+	}
+	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "mode must be one of") {
+		t.Fatalf("expected host mode error, got: %v", err)
+	}
+}
+
+func TestValidateGatewaySSHUserRequiredWhenProxy(t *testing.T) {
+	cfg := validBaseConfig()
+	cfg.Gateway = GatewayConfig{
+		Enabled:              true,
+		ListenAddr:           ":18081",
+		MaxTunnels:           100,
+		TunnelTimeoutSeconds: 30,
+		IdleTimeoutSeconds:   300,
+		Hosts: []GatewayHostConfig{
+			{ID: "h1", Addr: "192.168.1.1", Mode: "proxy", SSH: GatewaySSHConfig{User: "", Port: 22}},
+		},
+	}
+	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "ssh.user is required") {
+		t.Fatalf("expected ssh.user required error, got: %v", err)
+	}
+}
+
 func TestValidate_AuthTokenMinLength(t *testing.T) {
 	tests := []struct {
 		name    string

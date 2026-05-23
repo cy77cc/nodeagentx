@@ -292,6 +292,112 @@ func TestDiff_GRPCFieldsChanged(t *testing.T) {
 	}
 }
 
+func TestDiff_GatewayChangedNonReloadable(t *testing.T) {
+	old := &Config{
+		Agent:    AgentConfig{ID: "a", Name: "n", IntervalSeconds: 10},
+		Server:   ServerConfig{ListenAddr: ":8080"},
+		Executor: ExecutorConfig{TimeoutSeconds: 10, AllowedCommands: []string{"ls"}, MaxOutputBytes: 1024},
+		Reporter: ReporterConfig{Mode: "stdout", TimeoutSeconds: 5},
+		GRPC:     GRPCConfig{ServerAddr: "x:443", HeartbeatIntervalSeconds: 15, ReconnectInitialBackoffMS: 1000, ReconnectMaxBackoffMS: 30000},
+		Gateway: GatewayConfig{
+			Enabled:              true,
+			ListenAddr:           ":18081",
+			MaxTunnels:           100,
+			TunnelTimeoutSeconds: 30,
+			IdleTimeoutSeconds:   300,
+		},
+	}
+	newCfg := &Config{
+		Agent:    AgentConfig{ID: "a", Name: "n", IntervalSeconds: 10},
+		Server:   ServerConfig{ListenAddr: ":8080"},
+		Executor: ExecutorConfig{TimeoutSeconds: 10, AllowedCommands: []string{"ls"}, MaxOutputBytes: 1024},
+		Reporter: ReporterConfig{Mode: "stdout", TimeoutSeconds: 5},
+		GRPC:     GRPCConfig{ServerAddr: "x:443", HeartbeatIntervalSeconds: 15, ReconnectInitialBackoffMS: 1000, ReconnectMaxBackoffMS: 30000},
+		Gateway: GatewayConfig{
+			Enabled:              true,
+			ListenAddr:           ":18082", // changed
+			MaxTunnels:           200,      // changed
+			TunnelTimeoutSeconds: 30,
+			IdleTimeoutSeconds:   300,
+		},
+	}
+	_, nonReloadable, err := Diff(old, newCfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	expectedFields := []string{"gateway.listen_addr", "gateway.max_tunnels"}
+	for _, field := range expectedFields {
+		found := false
+		for _, nr := range nonReloadable {
+			if nr.Field == field {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("expected %s in non-reloadable list", field)
+		}
+	}
+}
+
+func TestDiff_GatewayPasswordMasked(t *testing.T) {
+	old := &Config{
+		Agent:    AgentConfig{ID: "a", Name: "n", IntervalSeconds: 10},
+		Server:   ServerConfig{ListenAddr: ":8080"},
+		Executor: ExecutorConfig{TimeoutSeconds: 10, AllowedCommands: []string{"ls"}, MaxOutputBytes: 1024},
+		Reporter: ReporterConfig{Mode: "stdout", TimeoutSeconds: 5},
+		GRPC:     GRPCConfig{ServerAddr: "x:443", HeartbeatIntervalSeconds: 15, ReconnectInitialBackoffMS: 1000, ReconnectMaxBackoffMS: 30000},
+		Gateway: GatewayConfig{
+			Enabled:              true,
+			ListenAddr:           ":18081",
+			MaxTunnels:           100,
+			TunnelTimeoutSeconds: 30,
+			IdleTimeoutSeconds:   300,
+			Hosts: []GatewayHostConfig{
+				{ID: "h1", Addr: "192.168.1.1", Mode: "proxy", SSH: GatewaySSHConfig{User: "root", Password: "secret123", Port: 22}},
+			},
+		},
+	}
+	newCfg := &Config{
+		Agent:    AgentConfig{ID: "a", Name: "n", IntervalSeconds: 10},
+		Server:   ServerConfig{ListenAddr: ":8080"},
+		Executor: ExecutorConfig{TimeoutSeconds: 10, AllowedCommands: []string{"ls"}, MaxOutputBytes: 1024},
+		Reporter: ReporterConfig{Mode: "stdout", TimeoutSeconds: 5},
+		GRPC:     GRPCConfig{ServerAddr: "x:443", HeartbeatIntervalSeconds: 15, ReconnectInitialBackoffMS: 1000, ReconnectMaxBackoffMS: 30000},
+		Gateway: GatewayConfig{
+			Enabled:              true,
+			ListenAddr:           ":18081",
+			MaxTunnels:           100,
+			TunnelTimeoutSeconds: 30,
+			IdleTimeoutSeconds:   300,
+			Hosts: []GatewayHostConfig{
+				{ID: "h1", Addr: "192.168.1.1", Mode: "proxy", SSH: GatewaySSHConfig{User: "root", Password: "newpassword456", Port: 22}},
+			},
+		},
+	}
+	_, nonReloadable, err := Diff(old, newCfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	found := false
+	for _, nr := range nonReloadable {
+		if nr.Field == "gateway.hosts[0].ssh.password" {
+			found = true
+			// Verify the password values are masked (not plain text)
+			oldMasked, okOld := nr.OldVal.(string)
+			newMasked, okNew := nr.NewVal.(string)
+			if !okOld || !okNew {
+				t.Fatal("expected string values for masked password")
+			}
+			if oldMasked == "secret123" || newMasked == "newpassword456" {
+				t.Errorf("passwords should be masked, got old=%q new=%q", oldMasked, newMasked)
+			}
+		}
+	}
+	if !found {
+		t.Error("expected gateway.hosts[0].ssh.password in non-reloadable list")
+	}
+}
+
 func TestMaskSecret(t *testing.T) {
 	tests := []struct {
 		name  string
