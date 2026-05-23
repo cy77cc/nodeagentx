@@ -191,6 +191,12 @@ type AgentMessage struct {
 	//	*AgentMessage_ExecResult
 	//	*AgentMessage_Ack
 	//	*AgentMessage_HealthCheckResult
+	//	*AgentMessage_TunnelOpen
+	//	*AgentMessage_TunnelData
+	//	*AgentMessage_TunnelClose
+	//	*AgentMessage_ProxyRegister
+	//	*AgentMessage_ProxyResponse
+	//	*AgentMessage_ProxyMetrics
 	Payload       isAgentMessage_Payload `protobuf_oneof:"payload"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -296,6 +302,60 @@ func (x *AgentMessage) GetHealthCheckResult() *HealthCheckResult {
 	return nil
 }
 
+func (x *AgentMessage) GetTunnelOpen() *TunnelOpen {
+	if x != nil {
+		if x, ok := x.Payload.(*AgentMessage_TunnelOpen); ok {
+			return x.TunnelOpen
+		}
+	}
+	return nil
+}
+
+func (x *AgentMessage) GetTunnelData() *TunnelData {
+	if x != nil {
+		if x, ok := x.Payload.(*AgentMessage_TunnelData); ok {
+			return x.TunnelData
+		}
+	}
+	return nil
+}
+
+func (x *AgentMessage) GetTunnelClose() *TunnelClose {
+	if x != nil {
+		if x, ok := x.Payload.(*AgentMessage_TunnelClose); ok {
+			return x.TunnelClose
+		}
+	}
+	return nil
+}
+
+func (x *AgentMessage) GetProxyRegister() *ProxyHostRegister {
+	if x != nil {
+		if x, ok := x.Payload.(*AgentMessage_ProxyRegister); ok {
+			return x.ProxyRegister
+		}
+	}
+	return nil
+}
+
+func (x *AgentMessage) GetProxyResponse() *ProxyCommandResponse {
+	if x != nil {
+		if x, ok := x.Payload.(*AgentMessage_ProxyResponse); ok {
+			return x.ProxyResponse
+		}
+	}
+	return nil
+}
+
+func (x *AgentMessage) GetProxyMetrics() *ProxyMetricBatch {
+	if x != nil {
+		if x, ok := x.Payload.(*AgentMessage_ProxyMetrics); ok {
+			return x.ProxyMetrics
+		}
+	}
+	return nil
+}
+
 type isAgentMessage_Payload interface {
 	isAgentMessage_Payload()
 }
@@ -328,6 +388,31 @@ type AgentMessage_HealthCheckResult struct {
 	HealthCheckResult *HealthCheckResult `protobuf:"bytes,7,opt,name=health_check_result,json=healthCheckResult,proto3,oneof"`
 }
 
+type AgentMessage_TunnelOpen struct {
+	// Gateway tunnel
+	TunnelOpen *TunnelOpen `protobuf:"bytes,8,opt,name=tunnel_open,json=tunnelOpen,proto3,oneof"`
+}
+
+type AgentMessage_TunnelData struct {
+	TunnelData *TunnelData `protobuf:"bytes,9,opt,name=tunnel_data,json=tunnelData,proto3,oneof"`
+}
+
+type AgentMessage_TunnelClose struct {
+	TunnelClose *TunnelClose `protobuf:"bytes,10,opt,name=tunnel_close,json=tunnelClose,proto3,oneof"`
+}
+
+type AgentMessage_ProxyRegister struct {
+	ProxyRegister *ProxyHostRegister `protobuf:"bytes,11,opt,name=proxy_register,json=proxyRegister,proto3,oneof"`
+}
+
+type AgentMessage_ProxyResponse struct {
+	ProxyResponse *ProxyCommandResponse `protobuf:"bytes,12,opt,name=proxy_response,json=proxyResponse,proto3,oneof"`
+}
+
+type AgentMessage_ProxyMetrics struct {
+	ProxyMetrics *ProxyMetricBatch `protobuf:"bytes,13,opt,name=proxy_metrics,json=proxyMetrics,proto3,oneof"`
+}
+
 func (*AgentMessage_Registration) isAgentMessage_Payload() {}
 
 func (*AgentMessage_Heartbeat) isAgentMessage_Payload() {}
@@ -342,6 +427,18 @@ func (*AgentMessage_Ack) isAgentMessage_Payload() {}
 
 func (*AgentMessage_HealthCheckResult) isAgentMessage_Payload() {}
 
+func (*AgentMessage_TunnelOpen) isAgentMessage_Payload() {}
+
+func (*AgentMessage_TunnelData) isAgentMessage_Payload() {}
+
+func (*AgentMessage_TunnelClose) isAgentMessage_Payload() {}
+
+func (*AgentMessage_ProxyRegister) isAgentMessage_Payload() {}
+
+func (*AgentMessage_ProxyResponse) isAgentMessage_Payload() {}
+
+func (*AgentMessage_ProxyMetrics) isAgentMessage_Payload() {}
+
 type PlatformMessage struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Payload:
@@ -352,6 +449,9 @@ type PlatformMessage struct {
 	//	*PlatformMessage_ConfigUpdate
 	//	*PlatformMessage_Ack
 	//	*PlatformMessage_HealthCheck
+	//	*PlatformMessage_TunnelData
+	//	*PlatformMessage_TunnelClose
+	//	*PlatformMessage_ProxyCommand
 	Payload       isPlatformMessage_Payload `protobuf_oneof:"payload"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -448,6 +548,33 @@ func (x *PlatformMessage) GetHealthCheck() *HealthCheckRequest {
 	return nil
 }
 
+func (x *PlatformMessage) GetTunnelData() *TunnelData {
+	if x != nil {
+		if x, ok := x.Payload.(*PlatformMessage_TunnelData); ok {
+			return x.TunnelData
+		}
+	}
+	return nil
+}
+
+func (x *PlatformMessage) GetTunnelClose() *TunnelClose {
+	if x != nil {
+		if x, ok := x.Payload.(*PlatformMessage_TunnelClose); ok {
+			return x.TunnelClose
+		}
+	}
+	return nil
+}
+
+func (x *PlatformMessage) GetProxyCommand() *ProxyCommandRequest {
+	if x != nil {
+		if x, ok := x.Payload.(*PlatformMessage_ProxyCommand); ok {
+			return x.ProxyCommand
+		}
+	}
+	return nil
+}
+
 type isPlatformMessage_Payload interface {
 	isPlatformMessage_Payload()
 }
@@ -476,6 +603,19 @@ type PlatformMessage_HealthCheck struct {
 	HealthCheck *HealthCheckRequest `protobuf:"bytes,6,opt,name=health_check,json=healthCheck,proto3,oneof"`
 }
 
+type PlatformMessage_TunnelData struct {
+	// Gateway tunnel
+	TunnelData *TunnelData `protobuf:"bytes,7,opt,name=tunnel_data,json=tunnelData,proto3,oneof"`
+}
+
+type PlatformMessage_TunnelClose struct {
+	TunnelClose *TunnelClose `protobuf:"bytes,8,opt,name=tunnel_close,json=tunnelClose,proto3,oneof"`
+}
+
+type PlatformMessage_ProxyCommand struct {
+	ProxyCommand *ProxyCommandRequest `protobuf:"bytes,9,opt,name=proxy_command,json=proxyCommand,proto3,oneof"`
+}
+
 func (*PlatformMessage_ExecCommand) isPlatformMessage_Payload() {}
 
 func (*PlatformMessage_ExecScript) isPlatformMessage_Payload() {}
@@ -487,6 +627,12 @@ func (*PlatformMessage_ConfigUpdate) isPlatformMessage_Payload() {}
 func (*PlatformMessage_Ack) isPlatformMessage_Payload() {}
 
 func (*PlatformMessage_HealthCheck) isPlatformMessage_Payload() {}
+
+func (*PlatformMessage_TunnelData) isPlatformMessage_Payload() {}
+
+func (*PlatformMessage_TunnelClose) isPlatformMessage_Payload() {}
+
+func (*PlatformMessage_ProxyCommand) isPlatformMessage_Payload() {}
 
 type AgentRegistration struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -2062,11 +2208,471 @@ func (x *CheckSummary) GetTotalDurationMs() int64 {
 	return 0
 }
 
+type TunnelOpen struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TunnelId      string                 `protobuf:"bytes,1,opt,name=tunnel_id,json=tunnelId,proto3" json:"tunnel_id,omitempty"`
+	AgentId       string                 `protobuf:"bytes,2,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"` // C's agent ID
+	Hostname      string                 `protobuf:"bytes,3,opt,name=hostname,proto3" json:"hostname,omitempty"`
+	Ip            string                 `protobuf:"bytes,4,opt,name=ip,proto3" json:"ip,omitempty"`
+	Capabilities  []string               `protobuf:"bytes,5,rep,name=capabilities,proto3" json:"capabilities,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TunnelOpen) Reset() {
+	*x = TunnelOpen{}
+	mi := &file_proto_agent_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TunnelOpen) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TunnelOpen) ProtoMessage() {}
+
+func (x *TunnelOpen) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TunnelOpen.ProtoReflect.Descriptor instead.
+func (*TunnelOpen) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *TunnelOpen) GetTunnelId() string {
+	if x != nil {
+		return x.TunnelId
+	}
+	return ""
+}
+
+func (x *TunnelOpen) GetAgentId() string {
+	if x != nil {
+		return x.AgentId
+	}
+	return ""
+}
+
+func (x *TunnelOpen) GetHostname() string {
+	if x != nil {
+		return x.Hostname
+	}
+	return ""
+}
+
+func (x *TunnelOpen) GetIp() string {
+	if x != nil {
+		return x.Ip
+	}
+	return ""
+}
+
+func (x *TunnelOpen) GetCapabilities() []string {
+	if x != nil {
+		return x.Capabilities
+	}
+	return nil
+}
+
+type TunnelData struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TunnelId      string                 `protobuf:"bytes,1,opt,name=tunnel_id,json=tunnelId,proto3" json:"tunnel_id,omitempty"`
+	Payload       []byte                 `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"` // Serialized AgentMessage or PlatformMessage
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TunnelData) Reset() {
+	*x = TunnelData{}
+	mi := &file_proto_agent_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TunnelData) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TunnelData) ProtoMessage() {}
+
+func (x *TunnelData) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TunnelData.ProtoReflect.Descriptor instead.
+func (*TunnelData) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *TunnelData) GetTunnelId() string {
+	if x != nil {
+		return x.TunnelId
+	}
+	return ""
+}
+
+func (x *TunnelData) GetPayload() []byte {
+	if x != nil {
+		return x.Payload
+	}
+	return nil
+}
+
+type TunnelClose struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TunnelId      string                 `protobuf:"bytes,1,opt,name=tunnel_id,json=tunnelId,proto3" json:"tunnel_id,omitempty"`
+	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TunnelClose) Reset() {
+	*x = TunnelClose{}
+	mi := &file_proto_agent_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TunnelClose) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TunnelClose) ProtoMessage() {}
+
+func (x *TunnelClose) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TunnelClose.ProtoReflect.Descriptor instead.
+func (*TunnelClose) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *TunnelClose) GetTunnelId() string {
+	if x != nil {
+		return x.TunnelId
+	}
+	return ""
+}
+
+func (x *TunnelClose) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type ProxyHostRegister struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	HostId        string                 `protobuf:"bytes,1,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty"`
+	Hostname      string                 `protobuf:"bytes,2,opt,name=hostname,proto3" json:"hostname,omitempty"`
+	Ip            string                 `protobuf:"bytes,3,opt,name=ip,proto3" json:"ip,omitempty"`
+	Capabilities  []string               `protobuf:"bytes,4,rep,name=capabilities,proto3" json:"capabilities,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProxyHostRegister) Reset() {
+	*x = ProxyHostRegister{}
+	mi := &file_proto_agent_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProxyHostRegister) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProxyHostRegister) ProtoMessage() {}
+
+func (x *ProxyHostRegister) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProxyHostRegister.ProtoReflect.Descriptor instead.
+func (*ProxyHostRegister) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *ProxyHostRegister) GetHostId() string {
+	if x != nil {
+		return x.HostId
+	}
+	return ""
+}
+
+func (x *ProxyHostRegister) GetHostname() string {
+	if x != nil {
+		return x.Hostname
+	}
+	return ""
+}
+
+func (x *ProxyHostRegister) GetIp() string {
+	if x != nil {
+		return x.Ip
+	}
+	return ""
+}
+
+func (x *ProxyHostRegister) GetCapabilities() []string {
+	if x != nil {
+		return x.Capabilities
+	}
+	return nil
+}
+
+type ProxyCommandRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	HostId         string                 `protobuf:"bytes,1,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty"`
+	Command        string                 `protobuf:"bytes,2,opt,name=command,proto3" json:"command,omitempty"`
+	Args           []string               `protobuf:"bytes,3,rep,name=args,proto3" json:"args,omitempty"`
+	TimeoutSeconds int32                  `protobuf:"varint,4,opt,name=timeout_seconds,json=timeoutSeconds,proto3" json:"timeout_seconds,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ProxyCommandRequest) Reset() {
+	*x = ProxyCommandRequest{}
+	mi := &file_proto_agent_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProxyCommandRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProxyCommandRequest) ProtoMessage() {}
+
+func (x *ProxyCommandRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProxyCommandRequest.ProtoReflect.Descriptor instead.
+func (*ProxyCommandRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *ProxyCommandRequest) GetHostId() string {
+	if x != nil {
+		return x.HostId
+	}
+	return ""
+}
+
+func (x *ProxyCommandRequest) GetCommand() string {
+	if x != nil {
+		return x.Command
+	}
+	return ""
+}
+
+func (x *ProxyCommandRequest) GetArgs() []string {
+	if x != nil {
+		return x.Args
+	}
+	return nil
+}
+
+func (x *ProxyCommandRequest) GetTimeoutSeconds() int32 {
+	if x != nil {
+		return x.TimeoutSeconds
+	}
+	return 0
+}
+
+type ProxyCommandResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	HostId        string                 `protobuf:"bytes,1,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty"`
+	Command       string                 `protobuf:"bytes,2,opt,name=command,proto3" json:"command,omitempty"`
+	ExitCode      int32                  `protobuf:"varint,3,opt,name=exit_code,json=exitCode,proto3" json:"exit_code,omitempty"`
+	Stdout        []byte                 `protobuf:"bytes,4,opt,name=stdout,proto3" json:"stdout,omitempty"`
+	Stderr        []byte                 `protobuf:"bytes,5,opt,name=stderr,proto3" json:"stderr,omitempty"`
+	DurationMs    int64                  `protobuf:"varint,6,opt,name=duration_ms,json=durationMs,proto3" json:"duration_ms,omitempty"`
+	TimedOut      bool                   `protobuf:"varint,7,opt,name=timed_out,json=timedOut,proto3" json:"timed_out,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProxyCommandResponse) Reset() {
+	*x = ProxyCommandResponse{}
+	mi := &file_proto_agent_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProxyCommandResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProxyCommandResponse) ProtoMessage() {}
+
+func (x *ProxyCommandResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProxyCommandResponse.ProtoReflect.Descriptor instead.
+func (*ProxyCommandResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *ProxyCommandResponse) GetHostId() string {
+	if x != nil {
+		return x.HostId
+	}
+	return ""
+}
+
+func (x *ProxyCommandResponse) GetCommand() string {
+	if x != nil {
+		return x.Command
+	}
+	return ""
+}
+
+func (x *ProxyCommandResponse) GetExitCode() int32 {
+	if x != nil {
+		return x.ExitCode
+	}
+	return 0
+}
+
+func (x *ProxyCommandResponse) GetStdout() []byte {
+	if x != nil {
+		return x.Stdout
+	}
+	return nil
+}
+
+func (x *ProxyCommandResponse) GetStderr() []byte {
+	if x != nil {
+		return x.Stderr
+	}
+	return nil
+}
+
+func (x *ProxyCommandResponse) GetDurationMs() int64 {
+	if x != nil {
+		return x.DurationMs
+	}
+	return 0
+}
+
+func (x *ProxyCommandResponse) GetTimedOut() bool {
+	if x != nil {
+		return x.TimedOut
+	}
+	return false
+}
+
+type ProxyMetricBatch struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	HostId        string                 `protobuf:"bytes,1,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty"`
+	Metrics       []*Metric              `protobuf:"bytes,2,rep,name=metrics,proto3" json:"metrics,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProxyMetricBatch) Reset() {
+	*x = ProxyMetricBatch{}
+	mi := &file_proto_agent_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProxyMetricBatch) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProxyMetricBatch) ProtoMessage() {}
+
+func (x *ProxyMetricBatch) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProxyMetricBatch.ProtoReflect.Descriptor instead.
+func (*ProxyMetricBatch) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *ProxyMetricBatch) GetHostId() string {
+	if x != nil {
+		return x.HostId
+	}
+	return ""
+}
+
+func (x *ProxyMetricBatch) GetMetrics() []*Metric {
+	if x != nil {
+		return x.Metrics
+	}
+	return nil
+}
+
 var File_proto_agent_proto protoreflect.FileDescriptor
 
 const file_proto_agent_proto_rawDesc = "" +
 	"\n" +
-	"\x11proto/agent.proto\x12\bopsagent\"\xa8\x03\n" +
+	"\x11proto/agent.proto\x12\bopsagent\"\xa8\x06\n" +
 	"\fAgentMessage\x12A\n" +
 	"\fregistration\x18\x01 \x01(\v2\x1b.opsagent.AgentRegistrationH\x00R\fregistration\x123\n" +
 	"\theartbeat\x18\x02 \x01(\v2\x13.opsagent.HeartbeatH\x00R\theartbeat\x121\n" +
@@ -2076,8 +2682,17 @@ const file_proto_agent_proto_rawDesc = "" +
 	"\vexec_result\x18\x05 \x01(\v2\x14.opsagent.ExecResultH\x00R\n" +
 	"execResult\x12!\n" +
 	"\x03ack\x18\x06 \x01(\v2\r.opsagent.AckH\x00R\x03ack\x12M\n" +
-	"\x13health_check_result\x18\a \x01(\v2\x1b.opsagent.HealthCheckResultH\x00R\x11healthCheckResultB\t\n" +
-	"\apayload\"\xf2\x02\n" +
+	"\x13health_check_result\x18\a \x01(\v2\x1b.opsagent.HealthCheckResultH\x00R\x11healthCheckResult\x127\n" +
+	"\vtunnel_open\x18\b \x01(\v2\x14.opsagent.TunnelOpenH\x00R\n" +
+	"tunnelOpen\x127\n" +
+	"\vtunnel_data\x18\t \x01(\v2\x14.opsagent.TunnelDataH\x00R\n" +
+	"tunnelData\x12:\n" +
+	"\ftunnel_close\x18\n" +
+	" \x01(\v2\x15.opsagent.TunnelCloseH\x00R\vtunnelClose\x12D\n" +
+	"\x0eproxy_register\x18\v \x01(\v2\x1b.opsagent.ProxyHostRegisterH\x00R\rproxyRegister\x12G\n" +
+	"\x0eproxy_response\x18\f \x01(\v2\x1e.opsagent.ProxyCommandResponseH\x00R\rproxyResponse\x12A\n" +
+	"\rproxy_metrics\x18\r \x01(\v2\x1a.opsagent.ProxyMetricBatchH\x00R\fproxyMetricsB\t\n" +
+	"\apayload\"\xad\x04\n" +
 	"\x0fPlatformMessage\x12=\n" +
 	"\fexec_command\x18\x01 \x01(\v2\x18.opsagent.ExecuteCommandH\x00R\vexecCommand\x12:\n" +
 	"\vexec_script\x18\x02 \x01(\v2\x17.opsagent.ExecuteScriptH\x00R\n" +
@@ -2086,7 +2701,11 @@ const file_proto_agent_proto_rawDesc = "" +
 	"cancel_job\x18\x03 \x01(\v2\x13.opsagent.CancelJobH\x00R\tcancelJob\x12=\n" +
 	"\rconfig_update\x18\x04 \x01(\v2\x16.opsagent.ConfigUpdateH\x00R\fconfigUpdate\x12!\n" +
 	"\x03ack\x18\x05 \x01(\v2\r.opsagent.AckH\x00R\x03ack\x12A\n" +
-	"\fhealth_check\x18\x06 \x01(\v2\x1c.opsagent.HealthCheckRequestH\x00R\vhealthCheckB\t\n" +
+	"\fhealth_check\x18\x06 \x01(\v2\x1c.opsagent.HealthCheckRequestH\x00R\vhealthCheck\x127\n" +
+	"\vtunnel_data\x18\a \x01(\v2\x14.opsagent.TunnelDataH\x00R\n" +
+	"tunnelData\x12:\n" +
+	"\ftunnel_close\x18\b \x01(\v2\x15.opsagent.TunnelCloseH\x00R\vtunnelClose\x12D\n" +
+	"\rproxy_command\x18\t \x01(\v2\x1d.opsagent.ProxyCommandRequestH\x00R\fproxyCommandB\t\n" +
 	"\apayload\"\x9c\x01\n" +
 	"\x11AgentRegistration\x12\x19\n" +
 	"\bagent_id\x18\x01 \x01(\tR\aagentId\x12\x14\n" +
@@ -2231,7 +2850,43 @@ const file_proto_agent_proto_rawDesc = "" +
 	"\x04warn\x18\x04 \x01(\x05R\x04warn\x12\x14\n" +
 	"\x05error\x18\x05 \x01(\x05R\x05error\x12\x12\n" +
 	"\x04skip\x18\x06 \x01(\x05R\x04skip\x12*\n" +
-	"\x11total_duration_ms\x18\a \x01(\x03R\x0ftotalDurationMs*3\n" +
+	"\x11total_duration_ms\x18\a \x01(\x03R\x0ftotalDurationMs\"\x94\x01\n" +
+	"\n" +
+	"TunnelOpen\x12\x1b\n" +
+	"\ttunnel_id\x18\x01 \x01(\tR\btunnelId\x12\x19\n" +
+	"\bagent_id\x18\x02 \x01(\tR\aagentId\x12\x1a\n" +
+	"\bhostname\x18\x03 \x01(\tR\bhostname\x12\x0e\n" +
+	"\x02ip\x18\x04 \x01(\tR\x02ip\x12\"\n" +
+	"\fcapabilities\x18\x05 \x03(\tR\fcapabilities\"C\n" +
+	"\n" +
+	"TunnelData\x12\x1b\n" +
+	"\ttunnel_id\x18\x01 \x01(\tR\btunnelId\x12\x18\n" +
+	"\apayload\x18\x02 \x01(\fR\apayload\"B\n" +
+	"\vTunnelClose\x12\x1b\n" +
+	"\ttunnel_id\x18\x01 \x01(\tR\btunnelId\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"|\n" +
+	"\x11ProxyHostRegister\x12\x17\n" +
+	"\ahost_id\x18\x01 \x01(\tR\x06hostId\x12\x1a\n" +
+	"\bhostname\x18\x02 \x01(\tR\bhostname\x12\x0e\n" +
+	"\x02ip\x18\x03 \x01(\tR\x02ip\x12\"\n" +
+	"\fcapabilities\x18\x04 \x03(\tR\fcapabilities\"\x85\x01\n" +
+	"\x13ProxyCommandRequest\x12\x17\n" +
+	"\ahost_id\x18\x01 \x01(\tR\x06hostId\x12\x18\n" +
+	"\acommand\x18\x02 \x01(\tR\acommand\x12\x12\n" +
+	"\x04args\x18\x03 \x03(\tR\x04args\x12'\n" +
+	"\x0ftimeout_seconds\x18\x04 \x01(\x05R\x0etimeoutSeconds\"\xd4\x01\n" +
+	"\x14ProxyCommandResponse\x12\x17\n" +
+	"\ahost_id\x18\x01 \x01(\tR\x06hostId\x12\x18\n" +
+	"\acommand\x18\x02 \x01(\tR\acommand\x12\x1b\n" +
+	"\texit_code\x18\x03 \x01(\x05R\bexitCode\x12\x16\n" +
+	"\x06stdout\x18\x04 \x01(\fR\x06stdout\x12\x16\n" +
+	"\x06stderr\x18\x05 \x01(\fR\x06stderr\x12\x1f\n" +
+	"\vduration_ms\x18\x06 \x01(\x03R\n" +
+	"durationMs\x12\x1b\n" +
+	"\ttimed_out\x18\a \x01(\bR\btimedOut\"W\n" +
+	"\x10ProxyMetricBatch\x12\x17\n" +
+	"\ahost_id\x18\x01 \x01(\tR\x06hostId\x12*\n" +
+	"\ametrics\x18\x02 \x03(\v2\x10.opsagent.MetricR\ametrics*3\n" +
 	"\n" +
 	"MetricType\x12\t\n" +
 	"\x05GAUGE\x10\x00\x12\v\n" +
@@ -2265,36 +2920,43 @@ func file_proto_agent_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_agent_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_proto_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_proto_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
 var file_proto_agent_proto_goTypes = []any{
-	(MetricType)(0),            // 0: opsagent.MetricType
-	(CheckSeverity)(0),         // 1: opsagent.CheckSeverity
-	(CheckStatus)(0),           // 2: opsagent.CheckStatus
-	(*AgentMessage)(nil),       // 3: opsagent.AgentMessage
-	(*PlatformMessage)(nil),    // 4: opsagent.PlatformMessage
-	(*AgentRegistration)(nil),  // 5: opsagent.AgentRegistration
-	(*AgentInfo)(nil),          // 6: opsagent.AgentInfo
-	(*Heartbeat)(nil),          // 7: opsagent.Heartbeat
-	(*MetricBatch)(nil),        // 8: opsagent.MetricBatch
-	(*Metric)(nil),             // 9: opsagent.Metric
-	(*Field)(nil),              // 10: opsagent.Field
-	(*ExecuteCommand)(nil),     // 11: opsagent.ExecuteCommand
-	(*ExecuteScript)(nil),      // 12: opsagent.ExecuteScript
-	(*SandboxConfig)(nil),      // 13: opsagent.SandboxConfig
-	(*ExecOutput)(nil),         // 14: opsagent.ExecOutput
-	(*ExecResult)(nil),         // 15: opsagent.ExecResult
-	(*ExecStats)(nil),          // 16: opsagent.ExecStats
-	(*CancelJob)(nil),          // 17: opsagent.CancelJob
-	(*ConfigUpdate)(nil),       // 18: opsagent.ConfigUpdate
-	(*Ack)(nil),                // 19: opsagent.Ack
-	(*HealthCheckRequest)(nil), // 20: opsagent.HealthCheckRequest
-	(*CheckItem)(nil),          // 21: opsagent.CheckItem
-	(*HealthCheckResult)(nil),  // 22: opsagent.HealthCheckResult
-	(*CheckResult)(nil),        // 23: opsagent.CheckResult
-	(*CheckSummary)(nil),       // 24: opsagent.CheckSummary
-	nil,                        // 25: opsagent.Metric.TagsEntry
-	nil,                        // 26: opsagent.ExecuteCommand.EnvEntry
-	nil,                        // 27: opsagent.ExecuteScript.EnvEntry
+	(MetricType)(0),              // 0: opsagent.MetricType
+	(CheckSeverity)(0),           // 1: opsagent.CheckSeverity
+	(CheckStatus)(0),             // 2: opsagent.CheckStatus
+	(*AgentMessage)(nil),         // 3: opsagent.AgentMessage
+	(*PlatformMessage)(nil),      // 4: opsagent.PlatformMessage
+	(*AgentRegistration)(nil),    // 5: opsagent.AgentRegistration
+	(*AgentInfo)(nil),            // 6: opsagent.AgentInfo
+	(*Heartbeat)(nil),            // 7: opsagent.Heartbeat
+	(*MetricBatch)(nil),          // 8: opsagent.MetricBatch
+	(*Metric)(nil),               // 9: opsagent.Metric
+	(*Field)(nil),                // 10: opsagent.Field
+	(*ExecuteCommand)(nil),       // 11: opsagent.ExecuteCommand
+	(*ExecuteScript)(nil),        // 12: opsagent.ExecuteScript
+	(*SandboxConfig)(nil),        // 13: opsagent.SandboxConfig
+	(*ExecOutput)(nil),           // 14: opsagent.ExecOutput
+	(*ExecResult)(nil),           // 15: opsagent.ExecResult
+	(*ExecStats)(nil),            // 16: opsagent.ExecStats
+	(*CancelJob)(nil),            // 17: opsagent.CancelJob
+	(*ConfigUpdate)(nil),         // 18: opsagent.ConfigUpdate
+	(*Ack)(nil),                  // 19: opsagent.Ack
+	(*HealthCheckRequest)(nil),   // 20: opsagent.HealthCheckRequest
+	(*CheckItem)(nil),            // 21: opsagent.CheckItem
+	(*HealthCheckResult)(nil),    // 22: opsagent.HealthCheckResult
+	(*CheckResult)(nil),          // 23: opsagent.CheckResult
+	(*CheckSummary)(nil),         // 24: opsagent.CheckSummary
+	(*TunnelOpen)(nil),           // 25: opsagent.TunnelOpen
+	(*TunnelData)(nil),           // 26: opsagent.TunnelData
+	(*TunnelClose)(nil),          // 27: opsagent.TunnelClose
+	(*ProxyHostRegister)(nil),    // 28: opsagent.ProxyHostRegister
+	(*ProxyCommandRequest)(nil),  // 29: opsagent.ProxyCommandRequest
+	(*ProxyCommandResponse)(nil), // 30: opsagent.ProxyCommandResponse
+	(*ProxyMetricBatch)(nil),     // 31: opsagent.ProxyMetricBatch
+	nil,                          // 32: opsagent.Metric.TagsEntry
+	nil,                          // 33: opsagent.ExecuteCommand.EnvEntry
+	nil,                          // 34: opsagent.ExecuteScript.EnvEntry
 }
 var file_proto_agent_proto_depIdxs = []int32{
 	5,  // 0: opsagent.AgentMessage.registration:type_name -> opsagent.AgentRegistration
@@ -2304,36 +2966,46 @@ var file_proto_agent_proto_depIdxs = []int32{
 	15, // 4: opsagent.AgentMessage.exec_result:type_name -> opsagent.ExecResult
 	19, // 5: opsagent.AgentMessage.ack:type_name -> opsagent.Ack
 	22, // 6: opsagent.AgentMessage.health_check_result:type_name -> opsagent.HealthCheckResult
-	11, // 7: opsagent.PlatformMessage.exec_command:type_name -> opsagent.ExecuteCommand
-	12, // 8: opsagent.PlatformMessage.exec_script:type_name -> opsagent.ExecuteScript
-	17, // 9: opsagent.PlatformMessage.cancel_job:type_name -> opsagent.CancelJob
-	18, // 10: opsagent.PlatformMessage.config_update:type_name -> opsagent.ConfigUpdate
-	19, // 11: opsagent.PlatformMessage.ack:type_name -> opsagent.Ack
-	20, // 12: opsagent.PlatformMessage.health_check:type_name -> opsagent.HealthCheckRequest
-	6,  // 13: opsagent.AgentRegistration.agent_info:type_name -> opsagent.AgentInfo
-	6,  // 14: opsagent.Heartbeat.agent_info:type_name -> opsagent.AgentInfo
-	9,  // 15: opsagent.MetricBatch.metrics:type_name -> opsagent.Metric
-	25, // 16: opsagent.Metric.tags:type_name -> opsagent.Metric.TagsEntry
-	10, // 17: opsagent.Metric.fields:type_name -> opsagent.Field
-	0,  // 18: opsagent.Metric.type:type_name -> opsagent.MetricType
-	26, // 19: opsagent.ExecuteCommand.env:type_name -> opsagent.ExecuteCommand.EnvEntry
-	13, // 20: opsagent.ExecuteCommand.sandbox:type_name -> opsagent.SandboxConfig
-	27, // 21: opsagent.ExecuteScript.env:type_name -> opsagent.ExecuteScript.EnvEntry
-	13, // 22: opsagent.ExecuteScript.sandbox:type_name -> opsagent.SandboxConfig
-	16, // 23: opsagent.ExecResult.stats:type_name -> opsagent.ExecStats
-	21, // 24: opsagent.HealthCheckRequest.items:type_name -> opsagent.CheckItem
-	1,  // 25: opsagent.CheckItem.severity:type_name -> opsagent.CheckSeverity
-	23, // 26: opsagent.HealthCheckResult.results:type_name -> opsagent.CheckResult
-	24, // 27: opsagent.HealthCheckResult.summary:type_name -> opsagent.CheckSummary
-	2,  // 28: opsagent.CheckResult.status:type_name -> opsagent.CheckStatus
-	1,  // 29: opsagent.CheckResult.severity:type_name -> opsagent.CheckSeverity
-	3,  // 30: opsagent.AgentService.Connect:input_type -> opsagent.AgentMessage
-	4,  // 31: opsagent.AgentService.Connect:output_type -> opsagent.PlatformMessage
-	31, // [31:32] is the sub-list for method output_type
-	30, // [30:31] is the sub-list for method input_type
-	30, // [30:30] is the sub-list for extension type_name
-	30, // [30:30] is the sub-list for extension extendee
-	0,  // [0:30] is the sub-list for field type_name
+	25, // 7: opsagent.AgentMessage.tunnel_open:type_name -> opsagent.TunnelOpen
+	26, // 8: opsagent.AgentMessage.tunnel_data:type_name -> opsagent.TunnelData
+	27, // 9: opsagent.AgentMessage.tunnel_close:type_name -> opsagent.TunnelClose
+	28, // 10: opsagent.AgentMessage.proxy_register:type_name -> opsagent.ProxyHostRegister
+	30, // 11: opsagent.AgentMessage.proxy_response:type_name -> opsagent.ProxyCommandResponse
+	31, // 12: opsagent.AgentMessage.proxy_metrics:type_name -> opsagent.ProxyMetricBatch
+	11, // 13: opsagent.PlatformMessage.exec_command:type_name -> opsagent.ExecuteCommand
+	12, // 14: opsagent.PlatformMessage.exec_script:type_name -> opsagent.ExecuteScript
+	17, // 15: opsagent.PlatformMessage.cancel_job:type_name -> opsagent.CancelJob
+	18, // 16: opsagent.PlatformMessage.config_update:type_name -> opsagent.ConfigUpdate
+	19, // 17: opsagent.PlatformMessage.ack:type_name -> opsagent.Ack
+	20, // 18: opsagent.PlatformMessage.health_check:type_name -> opsagent.HealthCheckRequest
+	26, // 19: opsagent.PlatformMessage.tunnel_data:type_name -> opsagent.TunnelData
+	27, // 20: opsagent.PlatformMessage.tunnel_close:type_name -> opsagent.TunnelClose
+	29, // 21: opsagent.PlatformMessage.proxy_command:type_name -> opsagent.ProxyCommandRequest
+	6,  // 22: opsagent.AgentRegistration.agent_info:type_name -> opsagent.AgentInfo
+	6,  // 23: opsagent.Heartbeat.agent_info:type_name -> opsagent.AgentInfo
+	9,  // 24: opsagent.MetricBatch.metrics:type_name -> opsagent.Metric
+	32, // 25: opsagent.Metric.tags:type_name -> opsagent.Metric.TagsEntry
+	10, // 26: opsagent.Metric.fields:type_name -> opsagent.Field
+	0,  // 27: opsagent.Metric.type:type_name -> opsagent.MetricType
+	33, // 28: opsagent.ExecuteCommand.env:type_name -> opsagent.ExecuteCommand.EnvEntry
+	13, // 29: opsagent.ExecuteCommand.sandbox:type_name -> opsagent.SandboxConfig
+	34, // 30: opsagent.ExecuteScript.env:type_name -> opsagent.ExecuteScript.EnvEntry
+	13, // 31: opsagent.ExecuteScript.sandbox:type_name -> opsagent.SandboxConfig
+	16, // 32: opsagent.ExecResult.stats:type_name -> opsagent.ExecStats
+	21, // 33: opsagent.HealthCheckRequest.items:type_name -> opsagent.CheckItem
+	1,  // 34: opsagent.CheckItem.severity:type_name -> opsagent.CheckSeverity
+	23, // 35: opsagent.HealthCheckResult.results:type_name -> opsagent.CheckResult
+	24, // 36: opsagent.HealthCheckResult.summary:type_name -> opsagent.CheckSummary
+	2,  // 37: opsagent.CheckResult.status:type_name -> opsagent.CheckStatus
+	1,  // 38: opsagent.CheckResult.severity:type_name -> opsagent.CheckSeverity
+	9,  // 39: opsagent.ProxyMetricBatch.metrics:type_name -> opsagent.Metric
+	3,  // 40: opsagent.AgentService.Connect:input_type -> opsagent.AgentMessage
+	4,  // 41: opsagent.AgentService.Connect:output_type -> opsagent.PlatformMessage
+	41, // [41:42] is the sub-list for method output_type
+	40, // [40:41] is the sub-list for method input_type
+	40, // [40:40] is the sub-list for extension type_name
+	40, // [40:40] is the sub-list for extension extendee
+	0,  // [0:40] is the sub-list for field type_name
 }
 
 func init() { file_proto_agent_proto_init() }
@@ -2349,6 +3021,12 @@ func file_proto_agent_proto_init() {
 		(*AgentMessage_ExecResult)(nil),
 		(*AgentMessage_Ack)(nil),
 		(*AgentMessage_HealthCheckResult)(nil),
+		(*AgentMessage_TunnelOpen)(nil),
+		(*AgentMessage_TunnelData)(nil),
+		(*AgentMessage_TunnelClose)(nil),
+		(*AgentMessage_ProxyRegister)(nil),
+		(*AgentMessage_ProxyResponse)(nil),
+		(*AgentMessage_ProxyMetrics)(nil),
 	}
 	file_proto_agent_proto_msgTypes[1].OneofWrappers = []any{
 		(*PlatformMessage_ExecCommand)(nil),
@@ -2357,6 +3035,9 @@ func file_proto_agent_proto_init() {
 		(*PlatformMessage_ConfigUpdate)(nil),
 		(*PlatformMessage_Ack)(nil),
 		(*PlatformMessage_HealthCheck)(nil),
+		(*PlatformMessage_TunnelData)(nil),
+		(*PlatformMessage_TunnelClose)(nil),
+		(*PlatformMessage_ProxyCommand)(nil),
 	}
 	file_proto_agent_proto_msgTypes[7].OneofWrappers = []any{
 		(*Field_DoubleValue)(nil),
@@ -2370,7 +3051,7 @@ func file_proto_agent_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_agent_proto_rawDesc), len(file_proto_agent_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   25,
+			NumMessages:   32,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

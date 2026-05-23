@@ -15,6 +15,13 @@ message AgentMessage {
     ExecResult exec_result = 5;
     Ack ack = 6;
     HealthCheckResult health_check_result = 7;
+    // Gateway tunnel
+    TunnelOpen tunnel_open = 8;
+    TunnelData tunnel_data = 9;
+    TunnelClose tunnel_close = 10;
+    ProxyHostRegister proxy_register = 11;
+    ProxyCommandResponse proxy_response = 12;
+    ProxyMetricBatch proxy_metrics = 13;
   }
 }
 
@@ -26,6 +33,10 @@ message PlatformMessage {
     ConfigUpdate config_update = 4;
     Ack ack = 5;
     HealthCheckRequest health_check = 6;
+    // Gateway tunnel
+    TunnelData tunnel_data = 7;
+    TunnelClose tunnel_close = 8;
+    ProxyCommandRequest proxy_command = 9;
   }
 }
 
@@ -212,4 +223,53 @@ message CheckSummary {
   int32 error = 5;
   int32 skip = 6;
   int64 total_duration_ms = 7;
+}
+
+// --- Gateway Tunnel Messages ---
+
+message TunnelOpen {
+  string tunnel_id = 1;
+  string agent_id = 2;       // C's agent ID
+  string hostname = 3;
+  string ip = 4;
+  repeated string capabilities = 5;
+}
+
+message TunnelData {
+  string tunnel_id = 1;
+  bytes payload = 2;         // Serialized AgentMessage or PlatformMessage
+}
+
+message TunnelClose {
+  string tunnel_id = 1;
+  string reason = 2;
+}
+
+message ProxyHostRegister {
+  string host_id = 1;
+  string hostname = 2;
+  string ip = 3;
+  repeated string capabilities = 4;
+}
+
+message ProxyCommandRequest {
+  string host_id = 1;
+  string command = 2;
+  repeated string args = 3;
+  int32 timeout_seconds = 4;
+}
+
+message ProxyCommandResponse {
+  string host_id = 1;
+  string command = 2;
+  int32 exit_code = 3;
+  bytes stdout = 4;
+  bytes stderr = 5;
+  int64 duration_ms = 6;
+  bool timed_out = 7;
+}
+
+message ProxyMetricBatch {
+  string host_id = 1;
+  repeated Metric metrics = 2;
 }
