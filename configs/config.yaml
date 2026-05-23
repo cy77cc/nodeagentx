@@ -28,7 +28,7 @@ reporter:
 
 auth:
   enabled: true
-  bearer_token: ""  # Must be set to a 32+ character value in deployment
+  bearer_token: "mvLr1eumjpuXQeafEpbAGHGPBHyqfr1W"  # Must be set to a 32+ character value in deployment
 
 prometheus:
   enabled: true
@@ -134,3 +134,19 @@ checker:
   max_concurrent: 5
   default_timeout_seconds: 30
   disabled_checkers: []
+
+# Gateway (jump host mode)
+gateway:
+  enabled: false
+  listen_addr: ":18081"          # C's Agent 连入端口（隧道模式）
+  max_tunnels: 100               # 最大隧道数
+  tunnel_timeout_seconds: 30     # 隧道建立超时
+  idle_timeout_seconds: 300      # 空闲隧道回收
+  hosts: []                      # 内网主机列表（代理模式）
+  #  - id: "vm-web-01"
+  #    addr: "192.168.122.100"
+  #    mode: "auto"
+  #    ssh:
+  #      user: "root"
+  #      key_file: "/etc/opsagent/keys/id_rsa"
+  #      port: 22

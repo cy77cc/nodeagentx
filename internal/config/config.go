@@ -21,6 +21,7 @@ type Config struct {
 	Collector     CollectorConfig     `mapstructure:"collector"`
 	PluginGateway PluginGatewayConfig `mapstructure:"plugin_gateway"`
 	Checker       CheckerConfig       `mapstructure:"checker"`
+	Gateway       GatewayConfig       `mapstructure:"gateway"`
 }
 
 // AgentConfig controls agent identity and collection cadence.
@@ -162,6 +163,32 @@ type CheckerConfig struct {
 	DisabledCheckers      []string `mapstructure:"disabled_checkers"`
 }
 
+// GatewayConfig controls the gateway/tunnel subsystem.
+type GatewayConfig struct {
+	Enabled              bool                `mapstructure:"enabled"`
+	ListenAddr           string              `mapstructure:"listen_addr"`
+	MaxTunnels           int                 `mapstructure:"max_tunnels"`
+	TunnelTimeoutSeconds int                 `mapstructure:"tunnel_timeout_seconds"`
+	IdleTimeoutSeconds   int                 `mapstructure:"idle_timeout_seconds"`
+	Hosts                []GatewayHostConfig `mapstructure:"hosts"`
+}
+
+// GatewayHostConfig defines an internal host behind this gateway.
+type GatewayHostConfig struct {
+	ID   string           `mapstructure:"id"`
+	Addr string           `mapstructure:"addr"`
+	Mode string           `mapstructure:"mode"` // "tunnel", "proxy", "auto"
+	SSH  GatewaySSHConfig `mapstructure:"ssh"`
+}
+
+// GatewaySSHConfig holds SSH credentials for proxy mode.
+type GatewaySSHConfig struct {
+	User     string `mapstructure:"user"`
+	Password string `mapstructure:"password"`
+	KeyFile  string `mapstructure:"key_file"`
+	Port     int    `mapstructure:"port"`
+}
+
 // Load reads and validates configuration from a file path.
 func Load(path string) (*Config, error) {
 	v := viper.New()
@@ -214,6 +241,11 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("checker.enabled", true)
 	v.SetDefault("checker.max_concurrent", 5)
 	v.SetDefault("checker.default_timeout_seconds", 30)
+	v.SetDefault("gateway.enabled", false)
+	v.SetDefault("gateway.listen_addr", ":18081")
+	v.SetDefault("gateway.max_tunnels", 100)
+	v.SetDefault("gateway.tunnel_timeout_seconds", 30)
+	v.SetDefault("gateway.idle_timeout_seconds", 300)
 
 	if err := v.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("read config: %w", err)
@@ -389,6 +421,43 @@ func (c *Config) Validate() error {
 		}
 		if c.Checker.DefaultTimeoutSeconds <= 0 {
 			return fmt.Errorf("checker.default_timeout_seconds must be > 0 when checker.enabled=true")
+		}
+	}
+
+	// Gateway validation (only when enabled).
+	if c.Gateway.Enabled {
+		if strings.TrimSpace(c.Gateway.ListenAddr) == "" {
+			return fmt.Errorf("gateway.listen_addr is required when gateway.enabled=true")
+		}
+		if c.Gateway.MaxTunnels <= 0 {
+			return fmt.Errorf("gateway.max_tunnels must be > 0 when gateway.enabled=true")
+		}
+		if c.Gateway.TunnelTimeoutSeconds <= 0 {
+			return fmt.Errorf("gateway.tunnel_timeout_seconds must be > 0 when gateway.enabled=true")
+		}
+		if c.Gateway.IdleTimeoutSeconds <= 0 {
+			return fmt.Errorf("gateway.idle_timeout_seconds must be > 0 when gateway.enabled=true")
+		}
+		for i, h := range c.Gateway.Hosts {
+			if h.ID == "" {
+				return fmt.Errorf("gateway.hosts[%d].id is required", i)
+			}
+			if h.Addr == "" {
+				return fmt.Errorf("gateway.hosts[%d].addr is required", i)
+			}
+			switch h.Mode {
+			case "tunnel", "proxy", "auto":
+			default:
+				return fmt.Errorf("gateway.hosts[%d].mode must be one of: tunnel, proxy, auto", i)
+			}
+			if h.Mode == "proxy" || h.Mode == "auto" {
+				if h.SSH.User == "" {
+					return fmt.Errorf("gateway.hosts[%d].ssh.user is required when mode=%s", i, h.Mode)
+				}
+				if h.SSH.Port <= 0 {
+					return fmt.Errorf("gateway.hosts[%d].ssh.port must be > 0 when mode=%s", i, h.Mode)
+				}
+			}
 		}
 	}
 

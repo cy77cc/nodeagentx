@@ -72,6 +72,14 @@ func Diff(old, new *Config) (*ChangeSet, []NonReloadableChange, error) {
 		})
 	}
 
+	if !reflect.DeepEqual(old.Gateway, new.Gateway) {
+		nonReloadable = append(nonReloadable, NonReloadableChange{
+			Field:  "gateway.*",
+			OldVal: old.Gateway,
+			NewVal: new.Gateway,
+		})
+	}
+
 	return cs, nonReloadable, nil
 }
 
