@@ -73,8 +73,8 @@ func TestPoolCloseAll(t *testing.T) {
 
 func TestPoolCloseIdle(t *testing.T) {
 	p := NewPool(10)
-	t1 := &Tunnel{id: "idle", lastActivity: time.Now().Add(-10 * time.Minute)}
-	t2 := &Tunnel{id: "active", lastActivity: time.Now()}
+	t1 := &Tunnel{id: "idle", lastActivity: time.Now().Add(-10 * time.Minute), idleTimeout: time.Minute}
+	t2 := &Tunnel{id: "active", lastActivity: time.Now(), idleTimeout: time.Minute}
 	p.Add(t1)
 	p.Add(t2)
 
