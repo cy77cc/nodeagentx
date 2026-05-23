@@ -49,6 +49,12 @@ type Gateway struct {
 
 // New creates a Gateway. Call Start to begin accepting connections.
 func New(cfg Config, logger zerolog.Logger, tunnelSender TunnelSender, proxySender ProxySender) *Gateway {
+	if tunnelSender == nil {
+		panic("gateway: tunnelSender must not be nil")
+	}
+	if proxySender == nil {
+		panic("gateway: proxySender must not be nil")
+	}
 	return &Gateway{
 		cfg:          cfg,
 		logger:       logger.With().Str("component", "gateway").Logger(),
