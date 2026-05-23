@@ -104,9 +104,8 @@ func checkProcNetTCP(path, hexPort string) (bool, error) {
 
 	scanner := bufio.NewScanner(f)
 	// Skip header line.
-	if scanner.Scan() {
-		// header consumed
-	}
+	// Skip header line.
+	scanner.Scan()
 
 	for scanner.Scan() {
 		line := scanner.Text()

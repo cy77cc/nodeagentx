@@ -27,7 +27,7 @@ reporter:
   retry_interval_ms: 500
 
 auth:
-  enabled: true
+  enabled: false
   bearer_token: ""  # Must be set to a 32+ character value in deployment
 
 prometheus:

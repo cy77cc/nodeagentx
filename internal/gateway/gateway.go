@@ -37,9 +37,8 @@ type Gateway struct {
 
 	listener net.Listener
 	pool     *TunnelPool
-	proxyMgr *ProxyManager
 
-	mu      sync.RWMutex
+	mu sync.RWMutex
 	running bool
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -328,5 +327,3 @@ func (t *Tunnel) SendToTarget(data []byte) error { return nil }
 func (t *Tunnel) Close() error                   { return nil }
 func (t *Tunnel) Relay(ctx context.Context)      {}
 
-// ProxyManager stub - replaced by proxy/proxy.go in Task 7
-type ProxyManager struct{}
