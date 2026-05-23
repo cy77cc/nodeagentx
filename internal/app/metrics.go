@@ -24,6 +24,12 @@ type MetricsRegistry struct {
 	Load15      prometheus.Gauge
 	NetSent     prometheus.Counter
 	NetRecv     prometheus.Counter
+
+	GatewayTunnelsActive prometheus.Gauge
+	GatewayTunnelBytes   prometheus.Counter
+	GatewayTunnelErrors  prometheus.Counter
+	GatewayProxyRequests prometheus.Counter
+	GatewayProxyLatency  prometheus.Histogram
 }
 
 // NewMetricsRegistry creates a new isolated Prometheus registry with all agent metrics.
@@ -82,6 +88,23 @@ func NewMetricsRegistry() *MetricsRegistry {
 		NetRecv: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "opsagent_network_bytes_recv_total", Help: "Total bytes received",
 		}),
+		GatewayTunnelsActive: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "opsagent_gateway_tunnels_active", Help: "Number of active gateway tunnels",
+		}),
+		GatewayTunnelBytes: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "opsagent_gateway_tunnel_bytes_total", Help: "Total bytes tunneled",
+		}),
+		GatewayTunnelErrors: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "opsagent_gateway_tunnel_errors_total", Help: "Total tunnel errors",
+		}),
+		GatewayProxyRequests: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "opsagent_gateway_proxy_requests_total", Help: "Total proxy requests",
+		}),
+		GatewayProxyLatency: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name:    "opsagent_gateway_proxy_latency_seconds",
+			Help:    "Proxy command execution latency",
+			Buckets: prometheus.DefBuckets,
+		}),
 	}
 
 	reg.MustRegister(
@@ -91,6 +114,8 @@ func NewMetricsRegistry() *MetricsRegistry {
 		m.CPUUsage, m.MemoryUsage, m.DiskUsage,
 		m.Load1, m.Load5, m.Load15,
 		m.NetSent, m.NetRecv,
+		m.GatewayTunnelsActive, m.GatewayTunnelBytes, m.GatewayTunnelErrors,
+		m.GatewayProxyRequests, m.GatewayProxyLatency,
 	)
 
 	// Seed CounterVec metrics with a default label combination so they
