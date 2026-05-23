@@ -1,7 +1,6 @@
 package gateway
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net"
@@ -9,8 +8,8 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"golang.org/x/crypto/ssh"
 
+	"github.com/cy77cc/opsagent/internal/gateway/proxy"
 	"github.com/cy77cc/opsagent/internal/health"
 )
 
@@ -269,6 +268,13 @@ func (g *Gateway) idleReaper() {
 }
 
 func (g *Gateway) executeProxyCommand(ctx context.Context, host HostConfig, command string, args []string, timeoutSec int32) (int, []byte, []byte, bool) {
+	sshClient := proxy.NewSSHClient(proxy.SSHConfig{
+		User:     host.SSH.User,
+		Password: host.SSH.Password,
+		KeyFile:  host.SSH.KeyFile,
+		Port:     host.SSH.Port,
+	})
+
 	timeout := time.Duration(timeoutSec) * time.Second
 	if timeout <= 0 {
 		timeout = 30 * time.Second
@@ -276,50 +282,15 @@ func (g *Gateway) executeProxyCommand(ctx context.Context, host HostConfig, comm
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	client, err := g.connectSSH(ctx, host)
+	conn, err := sshClient.Connect(ctx, host.Addr)
 	if err != nil {
 		g.logger.Error().Err(err).Str("host_id", host.ID).Msg("ssh connect failed")
 		return -1, nil, []byte(err.Error()), false
 	}
-	defer client.Close()
+	defer conn.Close()
 
-	session, err := client.NewSession()
-	if err != nil {
-		return -1, nil, []byte(err.Error()), false
-	}
-	defer session.Close()
-
-	var stdout, stderr bytes.Buffer
-	session.Stdout = &stdout
-	session.Stderr = &stderr
-
-	fullCmd := command
-	for _, arg := range args {
-		fullCmd += " " + arg
-	}
-
-	err = session.Run(fullCmd)
-	exitCode := 0
-	timedOut := false
-	if err != nil {
-		if exitErr, ok := err.(*ssh.ExitError); ok {
-			exitCode = exitErr.ExitStatus()
-		} else if ctx.Err() == context.DeadlineExceeded {
-			timedOut = true
-			exitCode = -1
-		} else {
-			exitCode = -1
-		}
-	}
-
-	return exitCode, stdout.Bytes(), stderr.Bytes(), timedOut
-}
-
-// connectSSH establishes an SSH connection to the given host.
-// Stub implementation - replaced by proxy/ssh.go in Task 8.
-func (g *Gateway) connectSSH(ctx context.Context, host HostConfig) (*ssh.Client, error) {
-	// Implemented in proxy/ssh.go
-	return nil, fmt.Errorf("not implemented")
+	exitCode, stdout, stderr, timedOut := sshClient.Execute(ctx, conn, command, args)
+	return exitCode, stdout, stderr, timedOut
 }
 
 // ---------------------------------------------------------------------------
