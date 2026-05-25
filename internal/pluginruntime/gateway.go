@@ -676,15 +676,17 @@ func (g *Gateway) healthCheckAll() {
 				case <-time.After(backoff):
 				}
 
-				p.mu.Lock()
-				p.RestartCount = restartCount + 1
-				p.mu.Unlock()
-
 				if err := g.loadPlugin(manifest); err != nil {
 					g.logger.Error().Err(err).Str("plugin", name).Msg("failed to restart plugin")
-					p.mu.Lock()
-					p.Status = PluginStatusError
-					p.mu.Unlock()
+					// Re-read from map to get the current (possibly stale) entry.
+					g.mu.RLock()
+					current, ok := g.plugins[name]
+					g.mu.RUnlock()
+					if ok {
+						current.mu.Lock()
+						current.Status = PluginStatusError
+						current.mu.Unlock()
+					}
 				}
 			} else {
 				g.logger.Error().
@@ -692,9 +694,15 @@ func (g *Gateway) healthCheckAll() {
 					Int("restart_count", restartCount).
 					Int("max_restarts", g.cfg.MaxRestarts).
 					Msg("plugin exceeded max restarts, marking as error")
-				p.mu.Lock()
-				p.Status = PluginStatusError
-				p.mu.Unlock()
+				// Re-read from map.
+				g.mu.RLock()
+				current, ok := g.plugins[name]
+				g.mu.RUnlock()
+				if ok {
+					current.mu.Lock()
+					current.Status = PluginStatusError
+					current.mu.Unlock()
+				}
 			}
 		} else {
 			p.mu.Lock()
