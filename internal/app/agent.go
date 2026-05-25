@@ -262,7 +262,11 @@ func NewAgent(cfg *config.Config, log zerolog.Logger, opts ...Option) (*Agent, e
 				},
 			})
 		}
-		a.gateway = gateway.New(gwCfg, log, a.grpcClient, a.grpcClient)
+		gw, err := gateway.New(gwCfg, log, a.grpcClient, a.grpcClient)
+		if err != nil {
+			return nil, fmt.Errorf("create gateway: %w", err)
+		}
+		a.gateway = gw
 	}
 
 	// Build HTTP server if not injected.

@@ -49,12 +49,12 @@ type Gateway struct {
 }
 
 // New creates a Gateway. Call Start to begin accepting connections.
-func New(cfg Config, logger zerolog.Logger, tunnelSender TunnelSender, proxySender ProxySender) *Gateway {
+func New(cfg Config, logger zerolog.Logger, tunnelSender TunnelSender, proxySender ProxySender) (*Gateway, error) {
 	if tunnelSender == nil {
-		panic("gateway: tunnelSender must not be nil")
+		return nil, fmt.Errorf("gateway: tunnelSender must not be nil")
 	}
 	if proxySender == nil {
-		panic("gateway: proxySender must not be nil")
+		return nil, fmt.Errorf("gateway: proxySender must not be nil")
 	}
 	return &Gateway{
 		cfg:          cfg,
@@ -62,7 +62,7 @@ func New(cfg Config, logger zerolog.Logger, tunnelSender TunnelSender, proxySend
 		tunnelSender: tunnelSender,
 		proxySender:  proxySender,
 		pool:         tunnel.NewPool(cfg.MaxTunnels),
-	}
+	}, nil
 }
 
 // Start begins the gateway listener and background routines.
