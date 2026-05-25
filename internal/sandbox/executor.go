@@ -20,8 +20,9 @@ type Config struct {
 	MemoryMB    int    `json:"memory_mb"`
 	CPUPercent  int    `json:"cpu_percent"`
 	MaxPIDs     int    `json:"max_pids"`
-	TimeoutSec  int    `json:"timeout_sec"`
-	MaxOutputKB int    `json:"max_output_kb"`
+	TimeoutSec     int    `json:"timeout_sec"`
+	MaxTimeoutSec  int    `json:"max_timeout_sec"`
+	MaxOutputKB    int    `json:"max_output_kb"`
 	NetworkMode        string `json:"network_mode"`
 	Policy             Policy `json:"policy"`
 	MaxConcurrentTasks int    `json:"max_concurrent_tasks"`
@@ -91,6 +92,9 @@ func NewExecutor(cfg Config, logger zerolog.Logger) *Executor {
 	}
 	if cfg.TimeoutSec <= 0 {
 		cfg.TimeoutSec = 30
+	}
+	if cfg.MaxTimeoutSec <= 0 {
+		cfg.MaxTimeoutSec = cfg.TimeoutSec * 10
 	}
 	if cfg.MaxOutputKB <= 0 {
 		cfg.MaxOutputKB = 512
@@ -194,6 +198,12 @@ func (e *Executor) run(ctx context.Context, req ExecRequest, nsCfg NsjailConfig,
 	timeout := req.Timeout
 	if timeout <= 0 {
 		timeout = time.Duration(e.cfg.TimeoutSec) * time.Second
+	}
+
+	// Cap to maximum timeout.
+	maxTimeout := time.Duration(e.cfg.MaxTimeoutSec) * time.Second
+	if timeout > maxTimeout {
+		timeout = maxTimeout
 	}
 
 	// Create context with timeout.
@@ -303,6 +313,11 @@ func (e *Executor) buildNsjailConfig(req ExecRequest) NsjailConfig {
 		MaxPIDs:     e.cfg.MaxPIDs,
 		NetworkMode: e.cfg.NetworkMode,
 		WorkDir:     e.cfg.WorkDir,
+	}
+
+	// Cap timeout to maximum.
+	if cfg.TimeLimit > e.cfg.MaxTimeoutSec {
+		cfg.TimeLimit = e.cfg.MaxTimeoutSec
 	}
 
 	if req.SandboxCfg != nil {
