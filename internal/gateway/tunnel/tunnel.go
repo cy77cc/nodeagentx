@@ -90,8 +90,6 @@ func (t *Tunnel) Close() error {
 
 // Relay reads from the TCP connection and sends to platform until context cancelled or connection closed.
 func (t *Tunnel) Relay(ctx context.Context) {
-	defer t.conn.Close()
-
 	buf := make([]byte, 32*1024)
 	for {
 		select {
