@@ -525,6 +525,13 @@ func (c *Client) FlushAndStop(ctx context.Context, persistPath string) error {
 			// Send in batches of 100.
 			batchSize := 100
 			for i := 0; i < len(metrics); i += batchSize {
+				select {
+				case <-ctx.Done():
+					metrics = metrics[i:]
+					goto persist
+				default:
+				}
+
 				end := i + batchSize
 				if end > len(metrics) {
 					end = len(metrics)
