@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -69,6 +70,11 @@ func (c *SSHClient) Connect(ctx context.Context, addr string) (*ssh.Client, erro
 	return ssh.NewClient(sshConn, chans, reqs), nil
 }
 
+// shellQuote wraps s in single quotes, escaping any embedded single quotes.
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
+}
+
 // Execute runs a command on an SSH client and returns the result.
 func (c *SSHClient) Execute(ctx context.Context, client *ssh.Client, command string, args []string) (exitCode int, stdout, stderr []byte, timedOut bool) {
 	session, err := client.NewSession()
@@ -81,9 +87,9 @@ func (c *SSHClient) Execute(ctx context.Context, client *ssh.Client, command str
 	session.Stdout = &outBuf
 	session.Stderr = &errBuf
 
-	fullCmd := command
+	fullCmd := shellQuote(command)
 	for _, arg := range args {
-		fullCmd += " " + arg
+		fullCmd += " " + shellQuote(arg)
 	}
 
 	done := make(chan error, 1)
