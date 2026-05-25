@@ -11,29 +11,51 @@ import (
 )
 
 type rateLimiter struct {
-	visitors map[string]*rate.Limiter
+	visitors map[string]*visitorEntry
 	mu       sync.Mutex
 	rate     rate.Limit
 	burst    int
 }
 
+type visitorEntry struct {
+	limiter  *rate.Limiter
+	lastSeen time.Time
+}
+
 func newRateLimiter(r rate.Limit, burst int) *rateLimiter {
-	return &rateLimiter{
-		visitors: make(map[string]*rate.Limiter),
+	rl := &rateLimiter{
+		visitors: make(map[string]*visitorEntry),
 		rate:     r,
 		burst:    burst,
 	}
+	go rl.evictionLoop()
+	return rl
 }
 
 func (rl *rateLimiter) getLimiter(ip string) *rate.Limiter {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
-	if lim, ok := rl.visitors[ip]; ok {
-		return lim
+	if entry, ok := rl.visitors[ip]; ok {
+		entry.lastSeen = time.Now()
+		return entry.limiter
 	}
 	lim := rate.NewLimiter(rl.rate, rl.burst)
-	rl.visitors[ip] = lim
+	rl.visitors[ip] = &visitorEntry{limiter: lim, lastSeen: time.Now()}
 	return lim
+}
+
+func (rl *rateLimiter) evictionLoop() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+		rl.mu.Lock()
+		for ip, entry := range rl.visitors {
+			if time.Since(entry.lastSeen) > 10*time.Minute {
+				delete(rl.visitors, ip)
+			}
+		}
+		rl.mu.Unlock()
+	}
 }
 
 func (s *Server) withMiddleware(next http.Handler) http.Handler {
