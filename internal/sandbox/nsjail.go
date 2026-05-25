@@ -2,6 +2,7 @@ package sandbox
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -272,6 +273,7 @@ func interpreterToPath(interpreter string) (string, error) {
 	case "python3":
 		return "/usr/bin/python3", nil
 	case "python":
+		log.Println(`WARNING: "python" interpreter is deprecated and will be removed in a future release. Use "python3" explicitly.`)
 		return "/usr/bin/python3", nil
 	case "ruby":
 		return "/usr/bin/ruby", nil
