@@ -2202,7 +2202,7 @@ func TestDispatch_SandboxExec_Command(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for disallowed sandbox command")
 	}
-	if !strings.Contains(err.Error(), "sandbox command exec") {
+	if !strings.Contains(err.Error(), "policy validation") {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
@@ -2213,7 +2213,7 @@ func TestDispatch_SandboxExec_Script(t *testing.T) {
 	dispatcher := task.NewDispatcher()
 	agent.registerTaskHandlers(dispatcher)
 
-	// Script with no interpreter configured will fail policy validation.
+	// Script-only payload (no command) should be rejected.
 	_, err := dispatcher.Dispatch(context.Background(), task.AgentTask{
 		TaskID: "sb-script-1",
 		Type:   task.TypeSandboxExec,
@@ -2225,7 +2225,7 @@ func TestDispatch_SandboxExec_Script(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for sandbox script execution")
 	}
-	if !strings.Contains(err.Error(), "sandbox script exec") {
+	if !strings.Contains(err.Error(), "task payload.command is required") {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
@@ -2278,9 +2278,9 @@ func TestDispatch_SandboxExec_EmptyTaskID(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for sandbox command")
 	}
-	// The error message should contain the sandbox command exec prefix,
-	// confirming the handler ran through the task ID generation path.
-	if !strings.Contains(err.Error(), "sandbox command exec") {
+	// The error message should contain the policy validation message,
+	// confirming the handler ran through to the executor.
+	if !strings.Contains(err.Error(), "policy validation") {
 		t.Errorf("unexpected error: %v", err)
 	}
 }

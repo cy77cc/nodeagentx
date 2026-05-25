@@ -2,10 +2,12 @@ package proxy
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/rs/zerolog"
+	"golang.org/x/crypto/ssh"
 
 	"github.com/cy77cc/opsagent/internal/health"
 )
@@ -15,6 +17,12 @@ type Sender interface {
 	SendProxyRegister(hostID, hostname, ip string, capabilities []string) error
 	SendProxyResponse(hostID, command string, exitCode int, stdout, stderr []byte, duration time.Duration, timedOut bool) error
 	SendProxyMetrics(hostID string, metrics []byte) error
+}
+
+// SSHExecutor executes commands over an SSH connection.
+type SSHExecutor interface {
+	Connect(ctx context.Context, addr string) (*ssh.Client, error)
+	Execute(ctx context.Context, client *ssh.Client, command string, args []string) (exitCode int, stdout, stderr []byte, timedOut bool)
 }
 
 // HostConfig defines a proxy host.
@@ -29,7 +37,7 @@ type Manager struct {
 	hosts      map[string]HostConfig
 	sender     Sender
 	logger     zerolog.Logger
-	sshClients map[string]*SSHClient
+	sshClients map[string]SSHExecutor
 }
 
 // NewManager creates a proxy Manager.
@@ -38,7 +46,7 @@ func NewManager(hosts []HostConfig, sender Sender, logger zerolog.Logger) *Manag
 		hosts:      make(map[string]HostConfig),
 		sender:     sender,
 		logger:     logger.With().Str("component", "proxy").Logger(),
-		sshClients: make(map[string]*SSHClient),
+		sshClients: make(map[string]SSHExecutor),
 	}
 	for _, h := range hosts {
 		m.hosts[h.ID] = h
@@ -126,7 +134,11 @@ func (m *Manager) ExecuteMetricsCollect(ctx context.Context, hostID string) erro
 	}
 	defer sshConn.Close()
 
-	// Collect basic system metrics via SSH commands.
+	return m.collectAndSendMetrics(ctx, hostID, client, sshConn)
+}
+
+// collectAndSendMetrics executes metric commands over SSH and sends the results.
+func (m *Manager) collectAndSendMetrics(ctx context.Context, hostID string, client SSHExecutor, sshConn *ssh.Client) error {
 	commands := map[string]string{
 		"cpu":    "top -bn1 | head -5",
 		"memory": "free -b",
@@ -136,11 +148,16 @@ func (m *Manager) ExecuteMetricsCollect(ctx context.Context, hostID string) erro
 
 	metrics := make(map[string]string)
 	for name, cmd := range commands {
-		_, stdout, _, _ := client.Execute(ctx, sshConn, cmd, nil)
+		_, stdout, stderr, _ := client.Execute(ctx, sshConn, cmd, nil)
+		if len(stderr) > 0 {
+			m.logger.Warn().Str("host_id", hostID).Str("metric", name).Bytes("stderr", stderr).Msg("metric collection command failed")
+		}
 		metrics[name] = string(stdout)
 	}
 
-	// TODO: Parse metrics into proper format and send via sender.SendProxyMetrics
-	_ = metrics
-	return nil
+	data, err := json.Marshal(metrics)
+	if err != nil {
+		return fmt.Errorf("marshal metrics for host %s: %w", hostID, err)
+	}
+	return m.sender.SendProxyMetrics(hostID, data)
 }
