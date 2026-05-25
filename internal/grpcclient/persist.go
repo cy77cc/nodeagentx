@@ -72,6 +72,8 @@ func metricTypeString(t collector.MetricType) string {
 		return "counter"
 	case collector.Gauge:
 		return "gauge"
+	case collector.Histogram:
+		return "histogram"
 	default:
 		return "gauge"
 	}
@@ -83,6 +85,8 @@ func metricTypeFromString(s string) collector.MetricType {
 		return collector.Counter
 	case "gauge":
 		return collector.Gauge
+	case "histogram":
+		return collector.Histogram
 	default:
 		return collector.Gauge
 	}

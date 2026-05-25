@@ -16,7 +16,7 @@ func TestMetricTypeString(t *testing.T) {
 	}{
 		{collector.Counter, "counter"},
 		{collector.Gauge, "gauge"},
-		{collector.Histogram, "gauge"}, // default falls through to "gauge"
+		{collector.Histogram, "histogram"},
 		{collector.MetricType(99), "gauge"},
 	}
 
@@ -35,6 +35,7 @@ func TestMetricTypeFromString(t *testing.T) {
 	}{
 		{"counter", collector.Counter},
 		{"gauge", collector.Gauge},
+		{"histogram", collector.Histogram},
 		{"unknown", collector.Gauge}, // default falls through to Gauge
 		{"", collector.Gauge},
 	}
@@ -48,8 +49,8 @@ func TestMetricTypeFromString(t *testing.T) {
 }
 
 func TestMetricTypeRoundTrip(t *testing.T) {
-	// Counter and Gauge should round-trip through string conversion.
-	types := []collector.MetricType{collector.Counter, collector.Gauge}
+	// Counter, Gauge, and Histogram should round-trip through string conversion.
+	types := []collector.MetricType{collector.Counter, collector.Gauge, collector.Histogram}
 	for _, mt := range types {
 		s := metricTypeString(mt)
 		got := metricTypeFromString(s)
