@@ -991,3 +991,59 @@ plugin_gateway:
 - [ ] `prometheus.protect_with_auth` 在需要时设为 `true`
 - [ ] 审计日志路径可写且权限正确
 - [ ] 沙箱 cgroup 基础路径存在且可写
+- [ ] Gateway PSK 设置为 32 字符以上的强随机值
+- [ ] Gateway 端口仅允许可信 IP 访问
+- [ ] SSH 私钥文件权限为 0600
+
+---
+
+## 11. Gateway 安全
+
+### 11.1 PSK 认证
+
+Gateway 隧道连接使用预共享密钥（PSK）进行认证，防止未授权的隧道建立。PSK 在握手阶段进行验证，未提供正确密钥的连接将被立即拒绝。
+
+**安全要求**：
+- PSK 长度不得少于 32 字符
+- 使用 `crypto/rand` 生成随机 PSK，不使用弱随机源
+- PSK 不得出现在日志、错误消息或 API 响应中
+- 配置差异报告中对 PSK 进行脱敏处理
+
+### 11.2 SSH 主机密钥验证
+
+Gateway 在代理模式下使用 SSH 隧道时，强制验证远程主机密钥：
+
+- 必须维护 `known_hosts` 文件，记录所有合法远程主机的公钥
+- 未在 `known_hosts` 中登记的主机连接将被拒绝
+- 不得使用 `StrictHostKeyChecking=no` 选项
+- 定期审计 `known_hosts` 文件，移除不再使用的主机条目
+
+### 11.3 crypto/rand 隧道 ID 生成
+
+每个隧道实例使用 `crypto/rand` 生成唯一 ID，确保 ID 的不可预测性：
+
+```go
+// 使用 crypto/rand 而非 math/rand，防止隧道 ID 被预测
+tunnelID, err := generateTunnelID()  // 内部使用 crypto/rand
+```
+
+这防止了攻击者通过预测隧道 ID 来劫持或干扰隧道连接。
+
+### 11.4 SSH 参数转义防止注入
+
+Gateway 在构建 SSH 命令时，对所有用户提供的参数进行严格转义，防止命令注入攻击：
+
+- 主机名仅允许字母、数字、连字符、下划线和点号
+- 端口号必须为 1-65535 范围内的整数
+- 用户名仅允许字母、数字、连字符和下划线
+- 所有参数经过 shell 元字符检测，拒绝包含危险字符的输入
+
+```go
+// 主机名验证：仅允许合法字符
+var validHostname = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9.-]*$`)
+
+// 用户名验证：防止注入
+var validUsername = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+```
+
+任何包含 shell 元字符（如 `;`、`|`、`&`、`` ` ``、`$` 等）的参数将被拒绝，确保 SSH 命令不会被注入恶意指令。

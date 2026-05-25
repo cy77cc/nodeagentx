@@ -415,3 +415,87 @@ git push origin v1.0.0
 1. 交叉编译 amd64 和 arm64 架构
 2. 生成压缩包（包含二进制、install.sh、默认配置）
 3. 创建 GitHub Release 并上传产物
+
+---
+
+## 9. Gateway 部署
+
+### 9.1 Gateway 配置
+
+Gateway 子系统提供反向隧道能力，允许远程主机通过隧道连接到本机服务。在 `config.yaml` 中配置 Gateway：
+
+```yaml
+gateway:
+  enabled: true                           # 启用 Gateway
+  listen_addr: "0.0.0.0:18081"           # Gateway 监听地址
+  hosts:                                  # 允许连接的目标主机列表
+    - "web-server-01"
+    - "db-server-02"
+```
+
+| 配置字段 | 说明 | 默认值 |
+|----------|------|--------|
+| `gateway.enabled` | 是否启用 Gateway 子系统 | `false` |
+| `gateway.listen_addr` | Gateway 监听地址 | `0.0.0.0:18081` |
+| `gateway.hosts` | 允许连接的目标主机列表 | `[]` |
+
+### 9.2 PSK 认证配置
+
+Gateway 隧道连接使用预共享密钥（PSK）进行认证。PSK 必须为 32 字符以上的强随机值：
+
+```yaml
+gateway:
+  enabled: true
+  listen_addr: "0.0.0.0:18081"
+  psk: "your-strong-random-psk-at-least-32-chars"  # 预共享密钥
+  hosts:
+    - "web-server-01"
+```
+
+> **安全提示**：PSK 不得硬编码在脚本中，建议通过环境变量或密钥管理系统注入。定期轮换 PSK，轮换时需同步更新所有连接端。
+
+### 9.3 SSH 密钥管理（Proxy 模式）
+
+Gateway 在代理模式下通过 SSH 隧道转发流量，需要配置 SSH 密钥认证：
+
+```yaml
+gateway:
+  mode: "proxy"                           # 代理模式
+  ssh:
+    key_path: "/etc/opsagent/ssh/id_ed25519"  # SSH 私钥路径
+    known_hosts: "/etc/opsagent/ssh/known_hosts"  # 已知主机文件
+```
+
+密钥管理要求：
+
+- 使用 Ed25519 或 RSA 4096 位密钥
+- 私钥文件权限设为 `0600`
+- 定期轮换 SSH 密钥
+- 维护 `known_hosts` 文件以验证远程主机身份
+
+```bash
+# 生成 SSH 密钥对
+ssh-keygen -t ed25519 -f /etc/opsagent/ssh/id_ed25519 -N ""
+
+# 设置正确的文件权限
+chmod 600 /etc/opsagent/ssh/id_ed25519
+chmod 644 /etc/opsagent/ssh/id_ed25519.pub
+```
+
+### 9.4 防火墙规则
+
+Gateway 默认监听端口 `18081`，需在防火墙中开放该端口：
+
+```bash
+# 使用 iptables 开放 Gateway 端口
+sudo iptables -A INPUT -p tcp --dport 18081 -s <trusted-ip-range> -j ACCEPT
+
+# 使用 firewalld 开放 Gateway 端口
+sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="<trusted-ip-range>" port protocol="tcp" port="18081" accept'
+sudo firewall-cmd --reload
+
+# 使用 ufw 开放 Gateway 端口
+sudo ufw allow from <trusted-ip-range> to any port 18081
+```
+
+> **安全提示**：不要将 Gateway 端口暴露到公网。仅允许可信的源 IP 地址段访问，建议配合 VPN 或私有网络使用。
