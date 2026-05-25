@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/cy77cc/opsagent/internal/collector"
+	"github.com/cy77cc/opsagent/internal/gateway"
 	"github.com/cy77cc/opsagent/internal/grpcclient"
 	pb "github.com/cy77cc/opsagent/internal/grpcclient/proto"
 	"github.com/cy77cc/opsagent/internal/health"
@@ -91,4 +92,5 @@ var (
 	_ Scheduler      = (*collector.Scheduler)(nil)
 	_ PluginRuntime  = (*pluginruntime.Runtime)(nil)
 	_ PluginGateway  = (*pluginruntime.Gateway)(nil)
+	_ Gateway        = (*gateway.Gateway)(nil)
 )
