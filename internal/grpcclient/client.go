@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -516,15 +515,10 @@ func (c *Client) FlushAndStop(ctx context.Context, persistPath string) error {
 
 	persist:
 		if len(metrics) > 0 && persistPath != "" {
-			data, err := json.Marshal(metrics)
-			if err != nil {
-				c.logger.Error().Err(err).Msg("failed to marshal metrics for persistence")
+			if err := persistMetrics(metrics, persistPath); err != nil {
+				c.logger.Error().Err(err).Msg("failed to persist cache")
 			} else {
-				if err := os.WriteFile(persistPath, data, 0600); err != nil {
-					c.logger.Error().Err(err).Str("path", persistPath).Msg("failed to persist cache")
-				} else {
-					c.logger.Info().Int("count", len(metrics)).Str("path", persistPath).Msg("cache persisted to disk")
-				}
+				c.logger.Info().Int("count", len(metrics)).Str("path", persistPath).Msg("cache persisted to disk")
 			}
 		} else if len(metrics) > 0 {
 			c.logger.Warn().Int("count", len(metrics)).Msg("cache not persisted (no persist path configured)")
@@ -614,12 +608,20 @@ func (c *Client) SendProxyMetrics(hostID string, metrics []byte) error {
 
 // loadPersistedCache loads metrics from a JSON file into the cache and removes the file.
 func (c *Client) loadPersistedCache(path string) {
-	data, err := os.ReadFile(path)
+	// Check file size before loading to prevent OOM.
+	const maxPersistFileBytes = 10 * 1024 * 1024 // 10 MB
+	fi, err := os.Stat(path)
 	if err != nil {
-		return // file doesn't exist or read error, ignore
+		return // file doesn't exist, ignore
 	}
-	var metrics []*collector.Metric
-	if err := json.Unmarshal(data, &metrics); err != nil {
+	if fi.Size() > maxPersistFileBytes {
+		c.logger.Warn().Int64("size_bytes", fi.Size()).Int64("max_bytes", maxPersistFileBytes).Str("path", path).Msg("persisted cache too large, discarding")
+		os.Remove(path)
+		return
+	}
+
+	metrics, err := loadMetrics(path)
+	if err != nil {
 		c.logger.Warn().Err(err).Msg("failed to parse persisted cache, discarding")
 		os.Remove(path)
 		return
