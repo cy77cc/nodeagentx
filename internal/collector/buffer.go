@@ -39,7 +39,8 @@ func (b *Buffer) Add(m *Metric) {
 		case DropNewest:
 			return // drop incoming metric
 		case DropOldest:
-			b.metrics = b.metrics[1:] // remove oldest
+			b.metrics[0] = nil  // allow GC of dropped element
+			b.metrics = b.metrics[1:]
 		}
 	}
 	b.metrics = append(b.metrics, m)
@@ -57,6 +58,9 @@ func (b *Buffer) Batch() []*Metric {
 
 	batch := make([]*Metric, n)
 	copy(batch, b.metrics[:n])
+	for i := 0; i < n; i++ {
+		b.metrics[i] = nil // allow GC of returned elements
+	}
 	b.metrics = b.metrics[n:]
 	return batch
 }
