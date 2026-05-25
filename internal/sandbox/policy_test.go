@@ -315,6 +315,29 @@ func TestPolicyBlockShellInjection_ExtendedChars(t *testing.T) {
 	}
 }
 
+func TestPolicyBlockShellInjection_ExtendedMetachars(t *testing.T) {
+	p := Policy{AllowedCommands: []string{"echo"}}
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{"exclamation", []string{"hello!world"}},
+		{"open-paren", []string{"hello(world"}},
+		{"close-paren", []string{"hello)world"}},
+		{"open-bracket", []string{"hello[world"}},
+		{"close-bracket", []string{"hello]world"}},
+		{"open-brace", []string{"hello{world"}},
+		{"close-brace", []string{"hello}world"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := p.ValidateCommand("echo", tc.args); err == nil {
+				t.Fatalf("expected shell metacharacter rejection for %q", tc.args)
+			}
+		})
+	}
+}
+
 func TestPolicyBlockedCommandCaseSensitive(t *testing.T) {
 	p := Policy{BlockedCommands: []string{"rm"}}
 	// "RM" is different from "rm" — command blocking is case-sensitive.
