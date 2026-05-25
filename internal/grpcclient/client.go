@@ -306,20 +306,34 @@ func (c *Client) connect(ctx context.Context) error {
 
 // messageLoop runs heartbeat + recv until the context is cancelled or stream errors.
 func (c *Client) messageLoop(ctx context.Context) {
-	ticker := time.NewTicker(time.Duration(c.cfg.HeartbeatSeconds) * time.Second)
-	defer ticker.Stop()
+	// Start heartbeat in a separate goroutine.
+	heartbeatDone := make(chan struct{})
+	go func() {
+		defer close(heartbeatDone)
+		ticker := time.NewTicker(time.Duration(c.cfg.HeartbeatSeconds) * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				c.sendHeartbeat()
+			}
+		}
+	}()
+
+	defer func() {
+		<-heartbeatDone // wait for heartbeat goroutine to exit
+	}()
 
 	for {
 		select {
 		case <-ctx.Done():
 			c.setConnected(false)
 			return
-		case <-ticker.C:
-			c.sendHeartbeat()
 		default:
 		}
 
-		// Non-blocking check then recv.
 		c.mu.Lock()
 		stream := c.stream
 		c.mu.Unlock()
