@@ -509,12 +509,13 @@ func (c *Client) setConnected(v bool) {
 // FlushAndStop drains the cache, sends all metrics, and closes the connection.
 // If sending fails and persistPath is non-empty, remaining metrics are written to disk.
 func (c *Client) FlushAndStop(ctx context.Context, persistPath string) error {
+	// Drain cache BEFORE canceling to avoid race with connectLoop.
+	metrics := c.cache.Drain()
+
 	// Cancel the connection loop.
 	if c.cancel != nil {
 		c.cancel()
 	}
-
-	metrics := c.cache.Drain()
 	if len(metrics) > 0 {
 		c.mu.Lock()
 		stream := c.stream
