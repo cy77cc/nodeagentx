@@ -609,35 +609,64 @@ func (a *Agent) handlePipelineMetrics(metrics []*collector.Metric) {
 	a.log.Debug().Int("count", len(metrics)).Msg("pipeline metrics sent via gRPC")
 }
 
-func (a *Agent) registerTaskHandlers(dispatcher *task.Dispatcher) {
-	dispatcher.Register(task.TypeCollectMetrics, func(_ context.Context, _ task.AgentTask) (any, error) {
-		return nil, fmt.Errorf("legacy collect-metrics path removed")
-	})
-
-	dispatcher.Register(task.TypeExecCommand, func(ctx context.Context, t task.AgentTask) (any, error) {
-		a.taskMu.Lock()
+func (a *Agent) withTaskMiddleware(taskType string, handler task.Handler) task.Handler {
+	return func(ctx context.Context, t task.AgentTask) (any, error) {
 		if a.shuttingDown.Load() {
-			a.taskMu.Unlock()
 			a.auditLog.Log(AuditEvent{
 				EventType: "task.failed", Component: "dispatcher",
-				Action: "exec_command", Status: "failure",
+				Action: taskType, Status: "failure",
 				Details: map[string]interface{}{"task_id": t.TaskID},
 				Error:   "agent is shutting down",
 			})
 			return nil, fmt.Errorf("agent is shutting down")
 		}
-		taskCtx, cancel := context.WithCancel(ctx)
-		a.activeTasks.Store(t.TaskID, cancel)
-		a.taskMu.Unlock()
 
 		a.auditLog.Log(AuditEvent{
 			EventType: "task.started", Component: "dispatcher",
-			Action: "exec_command", Status: "success",
+			Action: taskType, Status: "success",
 			Details: map[string]interface{}{"task_id": t.TaskID},
 		})
 		a.metricsReg.TasksRunning.Inc()
 		defer a.metricsReg.TasksRunning.Dec()
 
+		res, err := handler(ctx, t)
+		if err != nil {
+			a.metricsReg.IncTasksFailed(taskType, "error")
+			a.auditLog.Log(AuditEvent{
+				EventType: "task.failed", Component: "dispatcher",
+				Action: taskType, Status: "failure",
+				Details: map[string]interface{}{"task_id": t.TaskID},
+				Error:   err.Error(),
+			})
+			return nil, err
+		}
+
+		a.metricsReg.IncTasksCompleted()
+		a.auditLog.Log(AuditEvent{
+			EventType: "task.completed", Component: "dispatcher",
+			Action: taskType, Status: "success",
+			Details: map[string]interface{}{"task_id": t.TaskID},
+		})
+		return res, nil
+	}
+}
+
+func (a *Agent) registerTaskHandlers(dispatcher *task.Dispatcher) {
+	dispatcher.Register(task.TypeCollectMetrics, func(_ context.Context, _ task.AgentTask) (any, error) {
+		return nil, fmt.Errorf("legacy collect-metrics path removed")
+	})
+
+	dispatcher.Register(task.TypeExecCommand, a.withTaskMiddleware("exec_command", func(ctx context.Context, t task.AgentTask) (any, error) {
+		taskCtx, cancel := context.WithCancel(ctx)
+		a.taskMu.Lock()
+		if a.shuttingDown.Load() {
+			a.taskMu.Unlock()
+			cancel()
+			return nil, fmt.Errorf("agent is shutting down")
+		}
+		a.activeTasks.Store(t.TaskID, cancel)
+		a.taskMu.Unlock()
+		defer cancel()
 		defer a.activeTasks.Delete(t.TaskID)
 
 		cmdVal, ok := t.Payload["command"].(string)
@@ -674,30 +703,12 @@ func (a *Agent) registerTaskHandlers(dispatcher *task.Dispatcher) {
 			}
 		}
 
-		res, err := a.executor.Execute(taskCtx, executor.Request{
+		return a.executor.Execute(taskCtx, executor.Request{
 			Command:        cmdVal,
 			Args:           args,
 			TimeoutSeconds: timeoutSeconds,
 		})
-		if err != nil {
-			a.metricsReg.IncTasksFailed("exec_command", "error")
-			a.auditLog.Log(AuditEvent{
-				EventType: "task.failed", Component: "dispatcher",
-				Action: "exec_command", Status: "failure",
-				Details: map[string]interface{}{"task_id": t.TaskID},
-				Error:   err.Error(),
-			})
-			return nil, err
-		}
-
-		a.metricsReg.IncTasksCompleted()
-		a.auditLog.Log(AuditEvent{
-			EventType: "task.completed", Component: "dispatcher",
-			Action: "exec_command", Status: "success",
-			Details: map[string]interface{}{"task_id": t.TaskID},
-		})
-		return res, nil
-	})
+	}))
 
 	dispatcher.Register(task.TypeHealthCheck, func(_ context.Context, t task.AgentTask) (any, error) {
 		a.auditLog.Log(AuditEvent{
@@ -724,157 +735,51 @@ func (a *Agent) registerTaskHandlers(dispatcher *task.Dispatcher) {
 	}
 	for _, tt := range pluginTypes {
 		taskType := tt
-		dispatcher.Register(taskType, func(ctx context.Context, t task.AgentTask) (any, error) {
-			a.auditLog.Log(AuditEvent{
-				EventType: "task.started", Component: "dispatcher",
-				Action: taskType, Status: "success",
-				Details: map[string]interface{}{"task_id": t.TaskID},
-			})
-			a.metricsReg.TasksRunning.Inc()
-			defer a.metricsReg.TasksRunning.Dec()
-
-			res, err := a.executePluginTask(ctx, t, taskType)
-			if err != nil {
-				a.metricsReg.IncTasksFailed(taskType, "error")
-				a.metricsReg.IncPluginRequests(taskType, taskType, "error")
-				a.auditLog.Log(AuditEvent{
-					EventType: "task.failed", Component: "dispatcher",
-					Action: taskType, Status: "failure",
-					Details: map[string]interface{}{"task_id": t.TaskID},
-					Error:   err.Error(),
-				})
-				return nil, err
-			}
-
-			a.metricsReg.IncTasksCompleted()
-			a.metricsReg.IncPluginRequests(taskType, taskType, "success")
-			a.auditLog.Log(AuditEvent{
-				EventType: "task.completed", Component: "dispatcher",
-				Action: taskType, Status: "success",
-				Details: map[string]interface{}{"task_id": t.TaskID},
-			})
-			return res, nil
-		})
+		dispatcher.Register(taskType, a.withTaskMiddleware(taskType, func(ctx context.Context, t task.AgentTask) (any, error) {
+			return a.executePluginTask(ctx, t, taskType)
+		}))
 	}
 
 	// Sandbox exec task handler.
-	dispatcher.Register(task.TypeSandboxExec, func(ctx context.Context, t task.AgentTask) (any, error) {
+	dispatcher.Register(task.TypeSandboxExec, a.withTaskMiddleware("sandbox_exec", func(ctx context.Context, t task.AgentTask) (any, error) {
+		if a.sandboxExec == nil {
+			return nil, fmt.Errorf("sandbox not available")
+		}
+
+		taskCtx, cancel := context.WithCancel(ctx)
 		a.taskMu.Lock()
 		if a.shuttingDown.Load() {
 			a.taskMu.Unlock()
-			a.auditLog.Log(AuditEvent{
-				EventType: "task.failed", Component: "dispatcher",
-				Action: "sandbox_exec", Status: "failure",
-				Details: map[string]interface{}{"task_id": t.TaskID},
-				Error:   "agent is shutting down",
-			})
+			cancel()
 			return nil, fmt.Errorf("agent is shutting down")
 		}
-		taskCtx, cancel := context.WithCancel(ctx)
 		a.activeTasks.Store(t.TaskID, cancel)
 		a.taskMu.Unlock()
-
-		a.auditLog.Log(AuditEvent{
-			EventType: "task.started", Component: "dispatcher",
-			Action: "sandbox_exec", Status: "success",
-			Details: map[string]interface{}{"task_id": t.TaskID},
-		})
-		a.metricsReg.TasksRunning.Inc()
-		defer a.metricsReg.TasksRunning.Dec()
-
+		defer cancel()
 		defer a.activeTasks.Delete(t.TaskID)
 
-		if a.sandboxExec == nil {
-			return nil, fmt.Errorf("sandbox executor is not enabled")
-		}
-
 		cmdVal, _ := t.Payload["command"].(string)
-		scriptVal, _ := t.Payload["script"].(string)
-		interpreterVal, _ := t.Payload["interpreter"].(string)
-
-		if cmdVal == "" && scriptVal == "" {
-			return nil, fmt.Errorf("sandbox_exec requires either 'command' or 'script' in payload")
+		if cmdVal == "" {
+			return nil, fmt.Errorf("task payload.command is required")
 		}
 
-		taskID := t.TaskID
-		if taskID == "" {
-			taskID = fmt.Sprintf("sandbox-%d", time.Now().UnixNano())
-		}
-
-		req := sandbox.ExecRequest{
-			TaskID:      taskID,
-			Command:     cmdVal,
-			Script:      scriptVal,
-			Interpreter: interpreterVal,
-		}
-
+		args := make([]string, 0)
 		if rawArgs, ok := t.Payload["args"].([]any); ok {
 			for _, arg := range rawArgs {
-				if s, ok := arg.(string); ok {
-					req.Args = append(req.Args, s)
+				s, ok := arg.(string)
+				if !ok {
+					return nil, fmt.Errorf("task payload.args must be string array")
 				}
+				args = append(args, s)
 			}
 		}
 
-		if timeoutVal, ok := t.Payload["timeout_seconds"]; ok {
-			switch v := timeoutVal.(type) {
-			case float64:
-				req.Timeout = time.Duration(v) * time.Second
-			case int:
-				req.Timeout = time.Duration(v) * time.Second
-			}
-		}
-
-		if scriptVal != "" {
-			result, err := a.sandboxExec.ExecuteScript(taskCtx, req, nil)
-			if err != nil {
-				a.metricsReg.IncTasksFailed("sandbox_exec", "error")
-				a.auditLog.Log(AuditEvent{
-					EventType: "task.failed", Component: "dispatcher",
-					Action: "sandbox_exec", Status: "failure",
-					Details: map[string]interface{}{"task_id": t.TaskID},
-					Error:   err.Error(),
-				})
-				return nil, fmt.Errorf("sandbox script exec: %w", err)
-			}
-			a.metricsReg.IncTasksCompleted()
-			a.auditLog.Log(AuditEvent{
-				EventType: "task.completed", Component: "dispatcher",
-				Action: "sandbox_exec", Status: "success",
-				Details: map[string]interface{}{"task_id": t.TaskID},
-			})
-			a.auditLog.Log(AuditEvent{
-				EventType: "sandbox.executed", Component: "sandbox",
-				Action: "execute_script", Status: "success",
-				Details: map[string]interface{}{"task_id": t.TaskID},
-			})
-			return result, nil
-		}
-
-		result, err := a.sandboxExec.ExecuteCommand(taskCtx, req, nil)
-		if err != nil {
-			a.metricsReg.IncTasksFailed("sandbox_exec", "error")
-			a.auditLog.Log(AuditEvent{
-				EventType: "task.failed", Component: "dispatcher",
-				Action: "sandbox_exec", Status: "failure",
-				Details: map[string]interface{}{"task_id": t.TaskID},
-				Error:   err.Error(),
-			})
-			return nil, fmt.Errorf("sandbox command exec: %w", err)
-		}
-		a.metricsReg.IncTasksCompleted()
-		a.auditLog.Log(AuditEvent{
-			EventType: "task.completed", Component: "dispatcher",
-			Action: "sandbox_exec", Status: "success",
-			Details: map[string]interface{}{"task_id": t.TaskID},
-		})
-		a.auditLog.Log(AuditEvent{
-			EventType: "sandbox.executed", Component: "sandbox",
-			Action: "execute", Status: "success",
-			Details: map[string]interface{}{"task_id": t.TaskID},
-		})
-		return result, nil
-	})
+		return a.sandboxExec.ExecuteCommand(taskCtx, sandbox.ExecRequest{
+			TaskID:  t.TaskID,
+			Command: cmdVal,
+			Args:    args,
+		}, nil)
+	}))
 
 	// Register gateway plugin task handlers dynamically.
 	if gw, ok := a.pluginGateway.(*pluginruntime.Gateway); ok {
@@ -882,37 +787,9 @@ func (a *Agent) registerTaskHandlers(dispatcher *task.Dispatcher) {
 			for _, tt := range taskTypes {
 				fullType := pluginruntime.FullTaskType(name, tt)
 				ft := fullType
-				dispatcher.Register(ft, func(ctx context.Context, t task.AgentTask) (any, error) {
-					a.auditLog.Log(AuditEvent{
-						EventType: "task.started", Component: "dispatcher",
-						Action: ft, Status: "success",
-						Details: map[string]interface{}{"task_id": t.TaskID},
-					})
-					a.metricsReg.TasksRunning.Inc()
-					defer a.metricsReg.TasksRunning.Dec()
-
-					res, err := a.executeGatewayTask(ctx, t)
-					if err != nil {
-						a.metricsReg.IncTasksFailed(ft, "error")
-						a.metricsReg.IncPluginRequests(ft, ft, "error")
-						a.auditLog.Log(AuditEvent{
-							EventType: "task.failed", Component: "dispatcher",
-							Action: ft, Status: "failure",
-							Details: map[string]interface{}{"task_id": t.TaskID},
-							Error:   err.Error(),
-						})
-						return nil, err
-					}
-
-					a.metricsReg.IncTasksCompleted()
-					a.metricsReg.IncPluginRequests(ft, ft, "success")
-					a.auditLog.Log(AuditEvent{
-						EventType: "task.completed", Component: "dispatcher",
-						Action: ft, Status: "success",
-						Details: map[string]interface{}{"task_id": t.TaskID},
-					})
-					return res, nil
-				})
+				dispatcher.Register(ft, a.withTaskMiddleware(ft, func(ctx context.Context, t task.AgentTask) (any, error) {
+					return a.executeGatewayTask(ctx, t)
+				}))
 				a.log.Info().Str("task_type", ft).Msg("registered gateway task handler")
 			}
 		})
@@ -1173,7 +1050,12 @@ func (a *Agent) executeGatewayTask(ctx context.Context, t task.AgentTask) (any, 
 		taskID = fmt.Sprintf("gw-%d", time.Now().UnixNano())
 	}
 
-	deadline := time.Now().Add(30 * time.Second).UnixMilli()
+	timeoutSec := a.cfg.Plugin.RequestTimeoutSeconds
+	if timeoutSec <= 0 {
+		timeoutSec = 30
+	}
+	deadline := time.Now().Add(time.Duration(timeoutSec) * time.Second).UnixMilli()
+
 	return a.pluginGateway.ExecuteTask(ctx, pluginruntime.TaskRequest{
 		TaskID:     taskID,
 		Type:       t.Type,
