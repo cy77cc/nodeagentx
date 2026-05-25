@@ -206,6 +206,41 @@ func TestWriteScriptFile(t *testing.T) {
 	}
 }
 
+func TestBuildSandboxEnvAllowlist(t *testing.T) {
+	reqEnv := map[string]string{
+		"PATH":           "/custom/path",
+		"LD_PRELOAD":     "/evil.so",
+		"LD_LIBRARY_PATH": "/evil/lib",
+		"BASH_ENV":       "/evil/script",
+		"NODE_OPTIONS":   "--require /evil",
+		"MY_VAR":         "value",
+	}
+	env := buildSandboxEnv(reqEnv)
+
+	envMap := make(map[string]string)
+	for _, e := range env {
+		parts := strings.SplitN(e, "=", 2)
+		if len(parts) == 2 {
+			envMap[parts[0]] = parts[1]
+		}
+	}
+
+	// PATH should be overridden by request.
+	if envMap["PATH"] != "/custom/path" {
+		t.Errorf("PATH = %q, want /custom/path", envMap["PATH"])
+	}
+	// Blocked vars should not appear.
+	for _, blocked := range []string{"LD_PRELOAD", "LD_LIBRARY_PATH", "BASH_ENV", "NODE_OPTIONS"} {
+		if _, ok := envMap[blocked]; ok {
+			t.Errorf("blocked var %q should not be in env", blocked)
+		}
+	}
+	// Non-allowed var should not appear.
+	if _, ok := envMap["MY_VAR"]; ok {
+		t.Error("MY_VAR should not be in env (not in allowlist)")
+	}
+}
+
 func TestAuditLoggerWithFile(t *testing.T) {
 	f, err := os.CreateTemp(t.TempDir(), "audit-*.log")
 	if err != nil {

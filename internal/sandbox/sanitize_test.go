@@ -127,16 +127,9 @@ func TestBuildSandboxEnvBlocksDYLD(t *testing.T) {
 		if strings.HasPrefix(e, "DYLD_INSERT_LIBRARIES=") {
 			t.Error("DYLD_INSERT_LIBRARIES should be blocked")
 		}
-	}
-	// SAFE_VAR should be present
-	found := false
-	for _, e := range env {
-		if e == "SAFE_VAR=ok" {
-			found = true
+		if strings.HasPrefix(e, "SAFE_VAR=") {
+			t.Error("SAFE_VAR should be blocked (not in allowlist)")
 		}
-	}
-	if !found {
-		t.Error("SAFE_VAR should be present")
 	}
 }
 

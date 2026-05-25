@@ -334,10 +334,22 @@ func commandOrScript(req ExecRequest) string {
 	return "command"
 }
 
+// sandboxAllowedEnvVars is the set of environment variables that are safe
+// to pass into the sandboxed process. All others are blocked by default.
+var sandboxAllowedEnvVars = map[string]struct{}{
+	"PATH":     {},
+	"HOME":     {},
+	"LANG":     {},
+	"TERM":     {},
+	"USER":     {},
+	"SHELL":    {},
+	"HOSTNAME": {},
+	"TMPDIR":   {},
+}
+
 // buildSandboxEnv constructs a minimal environment for the sandboxed process.
-// It starts with a safe allowlist (PATH, HOME, LANG) and merges in request-specified
-// variables, blocking dangerous ones like LD_PRELOAD, LD_LIBRARY_PATH, and
-// DYLD_INSERT_LIBRARIES that could be used to inject code into the child process.
+// It starts with a safe allowlist and merges in request-specified variables
+// that are on the allowlist. All other variables are silently dropped.
 func buildSandboxEnv(reqEnv map[string]string) []string {
 	env := []string{
 		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
@@ -345,7 +357,7 @@ func buildSandboxEnv(reqEnv map[string]string) []string {
 		"LANG=C",
 	}
 	for k, v := range reqEnv {
-		if k == "LD_PRELOAD" || k == "LD_LIBRARY_PATH" || k == "DYLD_INSERT_LIBRARIES" {
+		if _, ok := sandboxAllowedEnvVars[k]; !ok {
 			continue
 		}
 		env = append(env, k+"="+v)
