@@ -87,7 +87,11 @@ func (g *Gateway) Start(ctx context.Context) error {
 	// Register proxy hosts.
 	for _, h := range g.cfg.Hosts {
 		if h.Mode == "proxy" || h.Mode == "auto" {
-			if err := g.proxySender.SendProxyRegister(h.ID, h.ID, h.Addr, nil); err != nil {
+			hostname := h.Hostname
+			if hostname == "" {
+				hostname = h.ID
+			}
+			if err := g.proxySender.SendProxyRegister(h.ID, hostname, h.Addr, nil); err != nil {
 				g.logger.Warn().Err(err).Str("host_id", h.ID).Msg("failed to register proxy host")
 			}
 		}

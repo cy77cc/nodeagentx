@@ -14,10 +14,11 @@ type Config struct {
 
 // HostConfig defines an internal host.
 type HostConfig struct {
-	ID   string
-	Addr string
-	Mode string // "tunnel", "proxy", "auto"
-	SSH  SSHConfig
+	ID       string
+	Hostname string // display name for registration; falls back to ID if empty
+	Addr     string
+	Mode     string // "tunnel", "proxy", "auto"
+	SSH      SSHConfig
 }
 
 // SSHConfig holds SSH connection credentials.
