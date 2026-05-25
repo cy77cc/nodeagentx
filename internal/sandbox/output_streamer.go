@@ -55,11 +55,10 @@ func (os *OutputStreamer) Flush() {
 	os.mu.Lock()
 	data := os.buf
 	os.buf = nil
-	os.mu.Unlock()
-
 	if len(data) > 0 && os.sender != nil {
 		os.sender(data)
 	}
+	os.mu.Unlock()
 }
 
 // Stop closes the stop channel, stops the periodic flush goroutine,
