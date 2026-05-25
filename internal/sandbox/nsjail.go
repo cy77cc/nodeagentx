@@ -141,11 +141,10 @@ func (c *NsjailConfig) ToArgs(taskID string) []string {
 
 // CommandArgs appends the executable command and arguments to the nsjail args.
 func (c *NsjailConfig) CommandArgs(taskID string, command string, cmdArgs []string) []string {
-	taskID, err := sanitizeTaskID(taskID)
-	if err != nil {
+	args := c.ToArgs(taskID)
+	if args == nil {
 		return nil
 	}
-	args := c.ToArgs(taskID)
 	args = append(args, "--", command)
 	args = append(args, cmdArgs...)
 	return args
