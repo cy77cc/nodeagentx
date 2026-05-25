@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/cy77cc/opsagent/internal/gateway/proxy"
+	"github.com/cy77cc/opsagent/internal/gateway/tunnel"
 	"github.com/cy77cc/opsagent/internal/health"
 )
 
@@ -36,7 +37,7 @@ type Gateway struct {
 	proxySender  ProxySender
 
 	listener net.Listener
-	pool     *TunnelPool
+	pool     *tunnel.Pool
 
 	mu sync.RWMutex
 	running bool
@@ -58,7 +59,7 @@ func New(cfg Config, logger zerolog.Logger, tunnelSender TunnelSender, proxySend
 		logger:       logger.With().Str("component", "gateway").Logger(),
 		tunnelSender: tunnelSender,
 		proxySender:  proxySender,
-		pool:         NewTunnelPool(cfg.MaxTunnels),
+		pool:         tunnel.NewPool(cfg.MaxTunnels),
 	}
 }
 
@@ -224,7 +225,7 @@ func (g *Gateway) handleIncoming(conn net.Conn) {
 	// For now, treat all incoming connections as tunnel candidates.
 	tunnelID := fmt.Sprintf("tunnel-%d", time.Now().UnixNano())
 
-	t, err := NewTunnel(tunnelID, conn, g.tunnelSender, g.cfg.TunnelTimeout, g.cfg.IdleTimeout)
+	t, err := tunnel.NewTunnel(tunnelID, conn, g.tunnelSender, g.cfg.TunnelTimeout, g.cfg.IdleTimeout)
 	if err != nil {
 		g.logger.Error().Err(err).Str("remote", remoteAddr).Msg("failed to create tunnel")
 		return
@@ -291,39 +292,3 @@ func (g *Gateway) executeProxyCommand(ctx context.Context, host HostConfig, comm
 	exitCode, stdout, stderr, timedOut := sshClient.Execute(ctx, conn, command, args)
 	return exitCode, stdout, stderr, timedOut
 }
-
-// ---------------------------------------------------------------------------
-// Stub types - replaced by real implementations in later tasks.
-// ---------------------------------------------------------------------------
-
-// TunnelPool stub - replaced by tunnel/pool.go in Task 4
-type TunnelPool struct {
-	maxCount int
-}
-
-func NewTunnelPool(maxCount int) *TunnelPool {
-	return &TunnelPool{maxCount: maxCount}
-}
-
-func (p *TunnelPool) Add(t *Tunnel) bool      { return true }
-func (p *TunnelPool) Get(id string) *Tunnel    { return nil }
-func (p *TunnelPool) Remove(id string) *Tunnel { return nil }
-func (p *TunnelPool) ActiveCount() int         { return 0 }
-func (p *TunnelPool) CloseIdle()               {}
-func (p *TunnelPool) CloseAll()                {}
-
-// Tunnel stub - replaced by tunnel/tunnel.go in Task 5
-type Tunnel struct {
-	id string
-}
-
-func NewTunnel(id string, conn net.Conn, sender TunnelSender, tunnelTimeout, idleTimeout time.Duration) (*Tunnel, error) {
-	return &Tunnel{id: id}, nil
-}
-
-func (t *Tunnel) ID() string                     { return t.id }
-func (t *Tunnel) IsIdle() bool                   { return false }
-func (t *Tunnel) SendToTarget(data []byte) error { return nil }
-func (t *Tunnel) Close() error                   { return nil }
-func (t *Tunnel) Relay(ctx context.Context)      {}
-
