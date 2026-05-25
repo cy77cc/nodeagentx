@@ -2,7 +2,9 @@ package gateway
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/subtle"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net"
@@ -240,7 +242,13 @@ func (g *Gateway) handleIncoming(conn net.Conn) {
 
 	// Read initial bytes to determine if this is an agent connection.
 	// For now, treat all incoming connections as tunnel candidates.
-	tunnelID := fmt.Sprintf("tunnel-%d", time.Now().UnixNano())
+	// Generate unpredictable tunnel ID.
+	randBytes := make([]byte, 8)
+	if _, err := rand.Read(randBytes); err != nil {
+		g.logger.Error().Err(err).Msg("failed to generate tunnel ID")
+		return
+	}
+	tunnelID := "tunnel-" + hex.EncodeToString(randBytes)
 
 	t, err := tunnel.NewTunnel(tunnelID, conn, g.tunnelSender, g.cfg.TunnelTimeout, g.cfg.IdleTimeout)
 	if err != nil {
