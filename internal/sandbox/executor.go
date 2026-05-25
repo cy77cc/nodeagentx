@@ -188,10 +188,15 @@ func (e *Executor) run(ctx context.Context, req ExecRequest, nsCfg NsjailConfig,
 
 	// Set up network isolation if allowlist mode.
 	if nsCfg.NetworkMode == "allowlist" && req.SandboxCfg != nil {
-		if err := e.net.SetupAllowlistNetwork(taskID, req.SandboxCfg.AllowedIPs); err != nil {
-			e.logger.Warn().Err(err).Str("task_id", taskID).Msg("failed to setup allowlist network")
+		if len(req.SandboxCfg.AllowedIPs) == 0 {
+			e.logger.Warn().Str("task_id", taskID).Msg("network mode is 'allowlist' but no IPs configured, falling back to 'disabled'")
+			nsCfg.NetworkMode = "disabled"
+		} else {
+			if err := e.net.SetupAllowlistNetwork(taskID, req.SandboxCfg.AllowedIPs); err != nil {
+				e.logger.Warn().Err(err).Str("task_id", taskID).Msg("failed to setup allowlist network")
+			}
+			defer e.net.CleanupNetwork(taskID)
 		}
-		defer e.net.CleanupNetwork(taskID)
 	}
 
 	// Determine timeout.
