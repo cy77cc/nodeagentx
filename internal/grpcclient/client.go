@@ -399,11 +399,21 @@ func (c *Client) replayCache() {
 		return
 	}
 
-	msg := NewMetricBatchMessage(metrics)
-	if err := stream.Send(msg); err != nil {
-		c.logger.Warn().Err(err).Msg("cache replay failed, re-caching")
-		for _, m := range metrics {
-			c.cache.Add(m)
+	// Send in batches to avoid exceeding gRPC message size limits.
+	const batchSize = 100
+	for i := 0; i < len(metrics); i += batchSize {
+		end := i + batchSize
+		if end > len(metrics) {
+			end = len(metrics)
+		}
+		batch := metrics[i:end]
+		msg := NewMetricBatchMessage(batch)
+		if err := stream.Send(msg); err != nil {
+			c.logger.Warn().Err(err).Msg("cache replay failed, re-caching remaining")
+			for _, m := range metrics[i:] {
+				c.cache.Add(m)
+			}
+			return
 		}
 	}
 }
