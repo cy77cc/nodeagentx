@@ -6,17 +6,21 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"time"
 
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/knownhosts"
 )
 
 // SSHConfig holds SSH connection parameters.
 type SSHConfig struct {
-	User     string
-	Password string
-	KeyFile  string
-	Port     int
+	User               string
+	Password           string
+	KeyFile            string
+	Port               int
+	KnownHostsFile     string // path to known_hosts file
+	InsecureSkipVerify bool   // if true, skip host key verification (with warning)
 }
 
 // SSHClient manages SSH connections to internal hosts.
@@ -38,10 +42,15 @@ func (c *SSHClient) Connect(ctx context.Context, addr string) (*ssh.Client, erro
 
 	addr = fmt.Sprintf("%s:%d", addr, c.cfg.Port)
 
+	hostKeyCallback, err := c.buildHostKeyCallback()
+	if err != nil {
+		return nil, fmt.Errorf("ssh host key: %w", err)
+	}
+
 	config := &ssh.ClientConfig{
 		User:            c.cfg.User,
 		Auth:            auth,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		HostKeyCallback: hostKeyCallback,
 		Timeout:         10 * time.Second,
 	}
 
@@ -121,4 +130,25 @@ func (c *SSHClient) buildAuth() ([]ssh.AuthMethod, error) {
 	}
 
 	return methods, nil
+}
+
+func (c *SSHClient) buildHostKeyCallback() (ssh.HostKeyCallback, error) {
+	if c.cfg.InsecureSkipVerify {
+		return ssh.InsecureIgnoreHostKey(), nil
+	}
+
+	knownHostsFile := c.cfg.KnownHostsFile
+	if knownHostsFile == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, fmt.Errorf("determine home directory: %w", err)
+		}
+		knownHostsFile = filepath.Join(home, ".ssh", "known_hosts")
+	}
+
+	callback, err := knownhosts.New(knownHostsFile)
+	if err != nil {
+		return nil, fmt.Errorf("load known hosts %s: %w", knownHostsFile, err)
+	}
+	return callback, nil
 }
