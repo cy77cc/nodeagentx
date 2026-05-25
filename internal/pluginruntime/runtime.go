@@ -99,7 +99,7 @@ func (r *Runtime) Start(ctx context.Context) error {
 	_ = os.Remove(r.cfg.SocketPath)
 
 	cmd := exec.CommandContext(ctx, r.cfg.RuntimePath, "--socket", r.cfg.SocketPath)
-	cmd.Env = os.Environ()
+	cmd.Env = buildPluginRuntimeEnv(r.cfg.SocketPath)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -169,6 +169,17 @@ func (r *Runtime) HealthStatus() health.Status {
 		status = "running"
 	}
 	return health.Status{Status: status}
+}
+
+// buildPluginRuntimeEnv constructs a sanitized environment for the plugin process.
+// It uses an allowlist approach to avoid leaking host secrets.
+func buildPluginRuntimeEnv(socketPath string) []string {
+	return []string{
+		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		"HOME=/tmp",
+		"LANG=C",
+		"OPSAGENT_PLUGIN_SOCKET=" + socketPath,
+	}
 }
 
 func waitForSocket(ctx context.Context, socketPath string) error {
