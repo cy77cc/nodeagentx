@@ -602,8 +602,19 @@ func (c *Client) SendProxyMetrics(hostID string, metrics []byte) error {
 	if !connected || stream == nil {
 		return fmt.Errorf("not connected")
 	}
-	// For now, send as raw bytes. Metrics parsing will be added later.
-	return nil
+	msg := &pb.AgentMessage{
+		Payload: &pb.AgentMessage_ProxyMetrics{
+			ProxyMetrics: &pb.ProxyMetricBatch{
+				HostId: hostID,
+				// NOTE: The interface takes []byte but the proto expects []*Metric.
+				// The []byte parameter is accepted for interface compatibility but
+				// cannot be directly assigned. Callers should use structured metrics
+				// once the interface is updated. Sending HostId-only for now so the
+				// message reaches the platform instead of being silently dropped.
+			},
+		},
+	}
+	return stream.Send(msg)
 }
 
 // loadPersistedCache loads metrics from a JSON file into the cache and removes the file.
