@@ -75,6 +75,7 @@ type Agent struct {
 	auditLog         *AuditLogger
 	startedAt        time.Time
 	activeTasks      sync.Map
+	taskMu           sync.Mutex // protects shutdown check + task registration
 	shuttingDown     atomic.Bool
 	shutdownComplete chan struct{}
 }
@@ -614,7 +615,9 @@ func (a *Agent) registerTaskHandlers(dispatcher *task.Dispatcher) {
 	})
 
 	dispatcher.Register(task.TypeExecCommand, func(ctx context.Context, t task.AgentTask) (any, error) {
+		a.taskMu.Lock()
 		if a.shuttingDown.Load() {
+			a.taskMu.Unlock()
 			a.auditLog.Log(AuditEvent{
 				EventType: "task.failed", Component: "dispatcher",
 				Action: "exec_command", Status: "failure",
@@ -623,6 +626,9 @@ func (a *Agent) registerTaskHandlers(dispatcher *task.Dispatcher) {
 			})
 			return nil, fmt.Errorf("agent is shutting down")
 		}
+		taskCtx, cancel := context.WithCancel(ctx)
+		a.activeTasks.Store(t.TaskID, cancel)
+		a.taskMu.Unlock()
 
 		a.auditLog.Log(AuditEvent{
 			EventType: "task.started", Component: "dispatcher",
@@ -632,8 +638,6 @@ func (a *Agent) registerTaskHandlers(dispatcher *task.Dispatcher) {
 		a.metricsReg.TasksRunning.Inc()
 		defer a.metricsReg.TasksRunning.Dec()
 
-		taskCtx, cancel := context.WithCancel(ctx)
-		a.activeTasks.Store(t.TaskID, cancel)
 		defer a.activeTasks.Delete(t.TaskID)
 
 		cmdVal, ok := t.Payload["command"].(string)
@@ -755,7 +759,9 @@ func (a *Agent) registerTaskHandlers(dispatcher *task.Dispatcher) {
 
 	// Sandbox exec task handler.
 	dispatcher.Register(task.TypeSandboxExec, func(ctx context.Context, t task.AgentTask) (any, error) {
+		a.taskMu.Lock()
 		if a.shuttingDown.Load() {
+			a.taskMu.Unlock()
 			a.auditLog.Log(AuditEvent{
 				EventType: "task.failed", Component: "dispatcher",
 				Action: "sandbox_exec", Status: "failure",
@@ -764,6 +770,9 @@ func (a *Agent) registerTaskHandlers(dispatcher *task.Dispatcher) {
 			})
 			return nil, fmt.Errorf("agent is shutting down")
 		}
+		taskCtx, cancel := context.WithCancel(ctx)
+		a.activeTasks.Store(t.TaskID, cancel)
+		a.taskMu.Unlock()
 
 		a.auditLog.Log(AuditEvent{
 			EventType: "task.started", Component: "dispatcher",
@@ -773,8 +782,6 @@ func (a *Agent) registerTaskHandlers(dispatcher *task.Dispatcher) {
 		a.metricsReg.TasksRunning.Inc()
 		defer a.metricsReg.TasksRunning.Dec()
 
-		taskCtx, cancel := context.WithCancel(ctx)
-		a.activeTasks.Store(t.TaskID, cancel)
 		defer a.activeTasks.Delete(t.TaskID)
 
 		if a.sandboxExec == nil {
