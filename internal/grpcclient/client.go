@@ -226,10 +226,12 @@ func (c *Client) connectLoop(ctx context.Context) {
 		maxBackoff := time.Duration(c.cfg.ReconnectMaxSec) * time.Second
 
 		for {
+			timer := time.NewTimer(backoff)
 			select {
 			case <-ctx.Done():
+				timer.Stop()
 				return
-			case <-time.After(backoff):
+			case <-timer.C:
 			}
 
 			if err := c.connect(ctx); err != nil {
