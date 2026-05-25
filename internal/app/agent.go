@@ -958,6 +958,16 @@ func (a *Agent) registerGRPCHandlers(recv *grpcclient.Receiver) {
 			return nil
 		}
 		// Fallback to local executor.
+		if !a.cfg.Sandbox.AllowUnsandboxedFallback {
+			a.log.Error().Str("task_id", cmd.GetTaskId()).Msg("sandbox unavailable and unsandboxed fallback is disabled")
+			a.grpcClient.SendExecResult(&grpcclient.ExecResult{
+				TaskID:   cmd.GetTaskId(),
+				ExitCode: -1,
+			})
+			return nil
+		}
+		a.log.Warn().Str("task_id", cmd.GetTaskId()).Msg("sandbox unavailable, falling back to unsandboxed execution")
+
 		timeoutSec := int(cmd.GetTimeoutSeconds())
 		if timeoutSec <= 0 {
 			timeoutSec = a.cfg.Executor.TimeoutSeconds

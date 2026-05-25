@@ -109,14 +109,15 @@ type MTLSConfig struct {
 
 // SandboxConfig controls nsjail sandbox execution.
 type SandboxConfig struct {
-	Enabled               bool         `mapstructure:"enabled"`
-	NsjailPath            string       `mapstructure:"nsjail_path"`
-	BaseWorkdir           string       `mapstructure:"base_workdir"`
-	DefaultTimeoutSeconds int          `mapstructure:"default_timeout_seconds"`
-	MaxConcurrentTasks    int          `mapstructure:"max_concurrent_tasks"`
-	CgroupBasePath        string       `mapstructure:"cgroup_base_path"`
-	AuditLogPath          string       `mapstructure:"audit_log_path"`
-	Policy                PolicyConfig `mapstructure:"policy"`
+	Enabled                  bool         `mapstructure:"enabled"`
+	NsjailPath               string       `mapstructure:"nsjail_path"`
+	BaseWorkdir              string       `mapstructure:"base_workdir"`
+	DefaultTimeoutSeconds    int          `mapstructure:"default_timeout_seconds"`
+	MaxConcurrentTasks       int          `mapstructure:"max_concurrent_tasks"`
+	CgroupBasePath           string       `mapstructure:"cgroup_base_path"`
+	AuditLogPath             string       `mapstructure:"audit_log_path"`
+	Policy                   PolicyConfig `mapstructure:"policy"`
+	AllowUnsandboxedFallback bool         `mapstructure:"allow_unsandboxed_fallback"`
 }
 
 // PolicyConfig defines the sandbox security policy.
