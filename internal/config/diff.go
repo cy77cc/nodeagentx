@@ -7,10 +7,12 @@ import (
 
 // ChangeSet records which reloadable field groups changed.
 type ChangeSet struct {
-	CollectorChanged  bool
-	ReporterChanged   bool
-	AuthChanged       bool
-	PrometheusChanged bool
+	CollectorChanged     bool
+	ReporterChanged      bool
+	AuthChanged          bool
+	PrometheusChanged    bool
+	PluginGatewayChanged bool
+	CheckerChanged       bool
 }
 
 // NonReloadableChange records a change to a field that requires restart.
@@ -48,6 +50,16 @@ func Diff(old, new *Config) (*ChangeSet, []NonReloadableChange, error) {
 	// Reloadable: prometheus
 	if diffPrometheus(old, new) {
 		cs.PrometheusChanged = true
+	}
+
+	// Reloadable: plugin gateway
+	if diffPluginGateway(old, new) {
+		cs.PluginGatewayChanged = true
+	}
+
+	// Reloadable: checker
+	if diffChecker(old, new) {
+		cs.CheckerChanged = true
 	}
 
 	// Non-reloadable checks
@@ -97,6 +109,14 @@ func diffAuth(old, new *Config) bool {
 
 func diffPrometheus(old, new *Config) bool {
 	return old.Prometheus != new.Prometheus
+}
+
+func diffPluginGateway(old, new *Config) bool {
+	return !reflect.DeepEqual(old.PluginGateway, new.PluginGateway)
+}
+
+func diffChecker(old, new *Config) bool {
+	return !reflect.DeepEqual(old.Checker, new.Checker)
 }
 
 func diffAgent(old, new *Config) []NonReloadableChange {
