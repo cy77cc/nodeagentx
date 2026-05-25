@@ -9,6 +9,7 @@ type Config struct {
 	TunnelTimeout time.Duration
 	IdleTimeout   time.Duration
 	Hosts         []HostConfig
+	AuthPSK       string // pre-shared key for tunnel authentication (empty = no auth)
 }
 
 // HostConfig defines an internal host.

@@ -2,7 +2,9 @@ package gateway
 
 import (
 	"context"
+	"crypto/subtle"
 	"fmt"
+	"io"
 	"net"
 	"sync"
 	"time"
@@ -219,6 +221,17 @@ func (g *Gateway) handleIncoming(conn net.Conn) {
 	defer conn.Close()
 
 	remoteAddr := conn.RemoteAddr().String()
+
+	// Authenticate if PSK is configured.
+	if g.cfg.AuthPSK != "" {
+		if err := g.authenticateConnection(conn); err != nil {
+			g.logger.Warn().Str("remote", remoteAddr).Err(err).Msg("tunnel auth failed")
+			return
+		}
+	} else {
+		g.logger.Warn().Str("remote", remoteAddr).Msg("tunnel auth disabled (no PSK configured)")
+	}
+
 	g.logger.Info().Str("remote", remoteAddr).Msg("incoming connection")
 
 	// Read initial bytes to determine if this is an agent connection.
@@ -251,6 +264,17 @@ func (g *Gateway) handleIncoming(conn net.Conn) {
 	t.Relay(g.ctx)
 	g.pool.Remove(tunnelID)
 	g.logger.Info().Str("tunnel_id", tunnelID).Msg("tunnel relay ended")
+}
+
+func (g *Gateway) authenticateConnection(conn net.Conn) error {
+	buf := make([]byte, 32)
+	if _, err := io.ReadFull(conn, buf); err != nil {
+		return fmt.Errorf("read auth token: %w", err)
+	}
+	if subtle.ConstantTimeCompare(buf, []byte(g.cfg.AuthPSK)) != 1 {
+		return fmt.Errorf("invalid auth token")
+	}
+	return nil
 }
 
 func (g *Gateway) idleReaper() {
