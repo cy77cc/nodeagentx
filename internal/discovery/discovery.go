@@ -59,7 +59,7 @@ func (d *DiscoveryService) Run(ctx context.Context) []Service {
 	if d.cfg.Interval <= 0 {
 		// No periodic execution; block until context is done
 		<-ctx.Done()
-		return d.lastRun
+		return d.LastResults()
 	}
 
 	ticker := time.NewTicker(d.cfg.Interval)
@@ -68,7 +68,7 @@ func (d *DiscoveryService) Run(ctx context.Context) []Service {
 	for {
 		select {
 		case <-ctx.Done():
-			return d.lastRun
+			return d.LastResults()
 		case <-ticker.C:
 			results := d.discover(ctx)
 			d.mu.Lock()
@@ -97,6 +97,7 @@ func (d *DiscoveryService) LastResults() []Service {
 func (d *DiscoveryService) discover(ctx context.Context) []Service {
 	seen := make(map[string]struct{})
 	var results []Service
+	now := time.Now()
 
 	for _, layer := range d.cfg.Layers {
 		services, err := layer.Discover(ctx)
@@ -113,7 +114,7 @@ func (d *DiscoveryService) discover(ctx context.Context) []Service {
 				continue
 			}
 			seen[key] = struct{}{}
-			svc.DiscoveredAt = time.Now()
+			svc.DiscoveredAt = now
 			results = append(results, svc)
 		}
 	}
