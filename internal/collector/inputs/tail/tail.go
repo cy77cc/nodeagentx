@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/cy77cc/opsagent/internal/collector"
@@ -21,7 +22,7 @@ func init() {
 // TailInput tails files and emits metrics line by line.
 type TailInput struct {
 	Files             []string `toml:"files"`
-	WatchMethod       string   `toml:"watch_method"`       // poll | inotify
+	WatchMethod       string   `toml:"watch_method"` // poll | inotify
 	FromBeginning     bool     `toml:"from_beginning"`
 	CursorPersistPath string   `toml:"cursor_persist_path"`
 	MaxLineBytes      int      `toml:"max_line_bytes"`
@@ -57,6 +58,9 @@ func (t *TailInput) Init(cfg map[string]interface{}) error {
 		if !ok {
 			return fmt.Errorf("tail: watch_method must be a string, got %T", v)
 		}
+		if s != "poll" {
+			return fmt.Errorf("tail: unsupported watch_method %q (supported: poll)", s)
+		}
 		t.WatchMethod = s
 	}
 
@@ -89,6 +93,11 @@ func (t *TailInput) Init(cfg map[string]interface{}) error {
 		}
 	}
 
+	// Load persisted cursors if configured
+	if t.CursorPersistPath != "" {
+		t.loadPersistedCursors()
+	}
+
 	return nil
 }
 
@@ -108,6 +117,17 @@ func (t *TailInput) Gather(ctx context.Context, acc collector.Accumulator) error
 		}
 	}
 
+	// Persist cursors if configured
+	if t.CursorPersistPath != "" {
+		t.mu.Lock()
+		for path, offset := range t.offsets {
+			c := &Cursor{Path: path, Offset: offset}
+			cursorPath := cursorFilename(t.CursorPersistPath, path)
+			c.Save(cursorPath) // best-effort; ignore errors
+		}
+		t.mu.Unlock()
+	}
+
 	return nil
 }
 
@@ -125,6 +145,40 @@ func (t *TailInput) SampleConfig() string {
   ## Maximum bytes per line before truncation
   # max_line_bytes = 65536
 `
+}
+
+// sanitizePath converts a file path into a safe filename by replacing
+// path separators and special characters with underscores.
+func sanitizePath(path string) string {
+	s := strings.ReplaceAll(path, string(os.PathSeparator), "_")
+	s = strings.ReplaceAll(s, ":", "_")
+	s = strings.ReplaceAll(s, " ", "_")
+	return s
+}
+
+// cursorFilename returns the cursor file path for a given tailed file.
+func cursorFilename(cursorDir, filePath string) string {
+	return filepath.Join(cursorDir, sanitizePath(filePath)+".cursor")
+}
+
+// loadPersistedCursors scans the cursor directory for .cursor files
+// and populates the offsets map with saved positions.
+func (t *TailInput) loadPersistedCursors() {
+	entries, err := os.ReadDir(t.CursorPersistPath)
+	if err != nil {
+		return // Directory may not exist yet; that's fine
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".cursor") {
+			continue
+		}
+		cursorPath := filepath.Join(t.CursorPersistPath, entry.Name())
+		c, err := LoadCursor(cursorPath)
+		if err != nil {
+			continue
+		}
+		t.offsets[c.Path] = c.Offset
+	}
 }
 
 // expandGlobs expands glob patterns in the configured file list.
@@ -184,7 +238,7 @@ func (t *TailInput) gatherFile(path string, acc collector.Accumulator) error {
 		line := scanner.Text()
 		tags := map[string]string{"file": path}
 		fields := map[string]interface{}{"message": line}
-		acc.AddFields("tail", tags, fields)
+		acc.AddGauge("tail", tags, fields)
 	}
 
 	if err := scanner.Err(); err != nil {
