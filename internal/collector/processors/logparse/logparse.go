@@ -21,8 +21,10 @@ type ParseRule struct {
 	// Patterns is a list of grok patterns to try in order (used when Parser is "grok").
 	Patterns []string `mapstructure:"patterns"`
 
-	// compiled holds the compiled grok (for "grok" parser).
+	// compiled holds the compiled primary grok (for "grok" parser).
 	compiled *Grok
+	// groks holds all pre-compiled grok patterns (for "grok" parser).
+	groks []*Grok
 	// compiledRegex holds the compiled regex (for "regex" parser).
 	compiledRegex *regexp.Regexp
 }
@@ -88,13 +90,17 @@ func (p *LogParseProcessor) Init(cfg map[string]interface{}) error {
 			if len(patterns) == 0 {
 				return fmt.Errorf("logparse: rule entry %d: grok parser requires grok_pattern or patterns", i)
 			}
-			// Compile the first pattern (primary). Additional patterns could be
-			// tried in sequence during Apply, but for now we use the first.
-			g, err := NewGrok(patterns[0], nil)
-			if err != nil {
-				return fmt.Errorf("logparse: rule entry %d: %w", i, err)
+			// Pre-compile all grok patterns.
+			groks := make([]*Grok, 0, len(patterns))
+			for j, pat := range patterns {
+				g, err := NewGrok(pat, nil)
+				if err != nil {
+					return fmt.Errorf("logparse: rule entry %d, pattern %d: %w", i, j, err)
+				}
+				groks = append(groks, g)
 			}
-			rule.compiled = g
+			rule.compiled = groks[0]
+			rule.groks = groks
 			rule.Patterns = patterns
 
 		case "regex":
@@ -123,8 +129,8 @@ func (p *LogParseProcessor) Init(cfg map[string]interface{}) error {
 // Apply applies parsing rules to metrics, extracting fields from raw text.
 func (p *LogParseProcessor) Apply(in []*collector.Metric) []*collector.Metric {
 	for _, m := range in {
+		fields := m.Fields()
 		for _, rule := range p.Rules {
-			fields := m.Fields()
 			rawVal, ok := fields[rule.Field]
 			if !ok {
 				continue
@@ -142,6 +148,9 @@ func (p *LogParseProcessor) Apply(in []*collector.Metric) []*collector.Metric {
 			case "json":
 				p.applyJSON(m, rawStr)
 			}
+			// Refresh the fields snapshot so subsequent rules see
+			// fields added by earlier rules.
+			fields = m.Fields()
 		}
 	}
 	return in
@@ -149,18 +158,8 @@ func (p *LogParseProcessor) Apply(in []*collector.Metric) []*collector.Metric {
 
 // applyGrok applies a grok rule to extract fields.
 func (p *LogParseProcessor) applyGrok(m *collector.Metric, rule ParseRule, input string) {
-	// Try patterns in order; use the first match.
-	for idx, pattern := range rule.Patterns {
-		var g *Grok
-		if idx == 0 && rule.compiled != nil {
-			g = rule.compiled
-		} else {
-			var err error
-			g, err = NewGrok(pattern, nil)
-			if err != nil {
-				continue
-			}
-		}
+	// Try pre-compiled patterns in order; use the first match.
+	for _, g := range rule.groks {
 		matches, err := g.Match(input)
 		if err != nil {
 			continue

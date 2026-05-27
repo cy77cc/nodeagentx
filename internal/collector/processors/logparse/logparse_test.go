@@ -259,6 +259,29 @@ func TestLogParseApplyNoMatch(t *testing.T) {
 	}
 }
 
+func TestLogParseProcessorInitErrors(t *testing.T) {
+	tests := []struct {
+		name string
+		cfg  map[string]interface{}
+	}{
+		{"rules wrong type", map[string]interface{}{"rules": "not a list"}},
+		{"rule not a map", map[string]interface{}{"rules": []interface{}{"not a map"}}},
+		{"empty parser", map[string]interface{}{"rules": []interface{}{map[string]interface{}{"field": "message"}}}},
+		{"unknown parser", map[string]interface{}{"rules": []interface{}{map[string]interface{}{"field": "message", "parser": "unknown"}}}},
+		{"grok no pattern", map[string]interface{}{"rules": []interface{}{map[string]interface{}{"field": "message", "parser": "grok"}}}},
+		{"regex empty pattern", map[string]interface{}{"rules": []interface{}{map[string]interface{}{"field": "message", "parser": "regex"}}}},
+		{"invalid regex", map[string]interface{}{"rules": []interface{}{map[string]interface{}{"field": "message", "parser": "regex", "regex_pattern": "[invalid"}}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lp := &LogParseProcessor{}
+			if err := lp.Init(tt.cfg); err == nil {
+				t.Error("expected error")
+			}
+		})
+	}
+}
+
 func TestLogParseRegisteredInDefaultRegistry(t *testing.T) {
 	f, ok := collector.DefaultRegistry.GetProcessor("logparse")
 	if !ok {
