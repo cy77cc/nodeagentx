@@ -13,6 +13,7 @@ type ChangeSet struct {
 	PrometheusChanged    bool
 	PluginGatewayChanged bool
 	CheckerChanged       bool
+	AlertingChanged      bool
 }
 
 // NonReloadableChange records a change to a field that requires restart.
@@ -60,6 +61,11 @@ func Diff(old, new *Config) (*ChangeSet, []NonReloadableChange, error) {
 	// Reloadable: checker
 	if diffChecker(old, new) {
 		cs.CheckerChanged = true
+	}
+
+	// Reloadable: alerting
+	if diffAlerting(old, new) {
+		cs.AlertingChanged = true
 	}
 
 	// Non-reloadable checks
@@ -117,6 +123,10 @@ func diffPluginGateway(old, new *Config) bool {
 
 func diffChecker(old, new *Config) bool {
 	return !reflect.DeepEqual(old.Checker, new.Checker)
+}
+
+func diffAlerting(old, new *Config) bool {
+	return !reflect.DeepEqual(old.Alerting, new.Alerting)
 }
 
 func diffAgent(old, new *Config) []NonReloadableChange {

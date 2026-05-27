@@ -22,6 +22,8 @@ type Config struct {
 	PluginGateway PluginGatewayConfig `mapstructure:"plugin_gateway"`
 	Checker       CheckerConfig       `mapstructure:"checker"`
 	Gateway       GatewayConfig       `mapstructure:"gateway"`
+	Tracing       TracingConfig       `mapstructure:"tracing"`
+	Alerting      AlertingConfig      `mapstructure:"alerting"`
 }
 
 // AgentConfig controls agent identity and collection cadence.
@@ -190,6 +192,61 @@ type GatewaySSHConfig struct {
 	Port     int    `mapstructure:"port"`
 }
 
+// TracingConfig controls distributed tracing subsystem.
+type TracingConfig struct {
+	Enabled   bool             `mapstructure:"enabled"`
+	Receiver  TracingReceiver  `mapstructure:"receiver"`
+	Processor TracingProcessor `mapstructure:"processor"`
+	Exporter  TracingExporter  `mapstructure:"exporter"`
+}
+
+// TracingReceiver configures the trace data receiver.
+type TracingReceiver struct {
+	GRPCAddr string `mapstructure:"grpc_addr"`
+	HTTPAddr string `mapstructure:"http_addr"`
+}
+
+// TracingProcessor configures trace batch processing.
+type TracingProcessor struct {
+	BatchTimeoutMs int `mapstructure:"batch_timeout_ms"`
+	MaxBatchSize   int `mapstructure:"max_batch_size"`
+}
+
+// TracingExporter configures where traces are sent.
+type TracingExporter struct {
+	Endpoint string `mapstructure:"endpoint"`
+	Protocol string `mapstructure:"protocol"`
+}
+
+// AlertingConfig controls the alerting subsystem.
+type AlertingConfig struct {
+	Enabled bool        `mapstructure:"enabled"`
+	Rules   []AlertRule `mapstructure:"rules"`
+}
+
+// AlertRule defines a single alerting rule.
+type AlertRule struct {
+	Name      string         `mapstructure:"name"`
+	Condition AlertCondition `mapstructure:"condition"`
+	Severity  string         `mapstructure:"severity"`
+	Notify    []AlertNotify  `mapstructure:"notify"`
+}
+
+// AlertCondition defines when an alert fires.
+type AlertCondition struct {
+	Metric    string  `mapstructure:"metric"`
+	Operator  string  `mapstructure:"operator"`
+	Threshold float64 `mapstructure:"threshold"`
+	For       string  `mapstructure:"for"`
+}
+
+// AlertNotify defines how alert notifications are sent.
+type AlertNotify struct {
+	Type    string            `mapstructure:"type"`
+	URL     string            `mapstructure:"url"`
+	Headers map[string]string `mapstructure:"headers"`
+}
+
 // Load reads and validates configuration from a file path.
 func Load(path string) (*Config, error) {
 	v := viper.New()
@@ -247,6 +304,13 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("gateway.max_tunnels", 100)
 	v.SetDefault("gateway.tunnel_timeout_seconds", 30)
 	v.SetDefault("gateway.idle_timeout_seconds", 300)
+	v.SetDefault("tracing.enabled", false)
+	v.SetDefault("tracing.receiver.grpc_addr", "0.0.0.0:4317")
+	v.SetDefault("tracing.receiver.http_addr", "0.0.0.0:4318")
+	v.SetDefault("tracing.processor.batch_timeout_ms", 5000)
+	v.SetDefault("tracing.processor.max_batch_size", 512)
+	v.SetDefault("tracing.exporter.protocol", "grpc")
+	v.SetDefault("alerting.enabled", false)
 
 	if err := v.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("read config: %w", err)
@@ -458,6 +522,29 @@ func (c *Config) Validate() error {
 				if h.SSH.Port <= 0 {
 					return fmt.Errorf("gateway.hosts[%d].ssh.port must be > 0 when mode=%s", i, h.Mode)
 				}
+			}
+		}
+	}
+
+	// Tracing validation (only when enabled).
+	if c.Tracing.Enabled {
+		if c.Tracing.Exporter.Endpoint == "" {
+			return fmt.Errorf("tracing.exporter.endpoint is required when tracing is enabled")
+		}
+	}
+
+	// Alerting validation (only when enabled).
+	if c.Alerting.Enabled {
+		for i, rule := range c.Alerting.Rules {
+			if rule.Name == "" {
+				return fmt.Errorf("alerting.rules[%d].name is required", i)
+			}
+			if rule.Condition.Metric == "" {
+				return fmt.Errorf("alerting.rules[%d].condition.metric is required", i)
+			}
+			validOps := map[string]bool{">": true, "<": true, ">=": true, "<=": true, "==": true, "!=": true}
+			if !validOps[rule.Condition.Operator] {
+				return fmt.Errorf("alerting.rules[%d].condition.operator must be one of: >, <, >=, <=, ==, !=", i)
 			}
 		}
 	}
