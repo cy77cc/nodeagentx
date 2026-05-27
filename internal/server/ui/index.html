@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpsAgent Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="header">
+        <h1>OpsAgent Dashboard</h1>
+        <span id="status-badge" class="badge">Connecting...</span>
+    </header>
+
+    <main class="container">
+        <section id="overview" class="card">
+            <h2>System Overview</h2>
+            <div id="overview-content" class="card-grid">
+                <div class="stat">
+                    <span class="stat-label">Status</span>
+                    <span id="stat-status" class="stat-value">--</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Uptime</span>
+                    <span id="stat-uptime" class="stat-value">--</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Version</span>
+                    <span id="stat-version" class="stat-value">--</span>
+                </div>
+            </div>
+        </section>
+
+        <section id="subsystems" class="card">
+            <h2>Subsystems</h2>
+            <div id="subsystem-list" class="card-grid">
+                <p class="muted">Loading...</p>
+            </div>
+        </section>
+
+        <section id="logs" class="card">
+            <h2>Recent Logs</h2>
+            <div class="log-controls">
+                <label for="log-filter">Level filter:</label>
+                <select id="log-filter">
+                    <option value="all">All</option>
+                    <option value="error">Error</option>
+                    <option value="warn">Warn</option>
+                    <option value="info">Info</option>
+                    <option value="debug">Debug</option>
+                </select>
+            </div>
+            <div id="log-entries" class="log-container">
+                <p class="muted">Waiting for log stream...</p>
+            </div>
+        </section>
+
+        <section id="config" class="card">
+            <h2>Configuration</h2>
+            <pre id="config-content" class="config-block">Loading...</pre>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

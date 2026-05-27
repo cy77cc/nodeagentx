@@ -531,3 +531,193 @@ func TestHandleTask_TimeoutCapped(t *testing.T) {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
 }
+
+func TestHandleUI_ServesHTML(t *testing.T) {
+	s := newTestServer(t)
+
+	// /ui/ serves index.html (FileServer serves index.html for directory root).
+	req := httptest.NewRequest(http.MethodGet, "/ui/", nil)
+	w := httptest.NewRecorder()
+	s.httpServer.Handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	ct := w.Header().Get("Content-Type")
+	if !strings.Contains(ct, "text/html") {
+		t.Errorf("expected Content-Type to contain text/html, got %q", ct)
+	}
+	if !strings.Contains(w.Body.String(), "OpsAgent Dashboard") {
+		t.Error("expected HTML body to contain 'OpsAgent Dashboard'")
+	}
+}
+
+func TestHandleUI_RedirectsToSlash(t *testing.T) {
+	s := newTestServer(t)
+
+	// /ui (without trailing slash) should redirect to /ui/.
+	req := httptest.NewRequest(http.MethodGet, "/ui", nil)
+	w := httptest.NewRecorder()
+	s.httpServer.Handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusTemporaryRedirect {
+		t.Fatalf("expected 307, got %d", w.Code)
+	}
+	loc := w.Header().Get("Location")
+	if loc != "/ui/" {
+		t.Errorf("expected Location /ui/, got %q", loc)
+	}
+}
+
+func TestHandleUI_ServesCSS(t *testing.T) {
+	s := newTestServer(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/ui/style.css", nil)
+	w := httptest.NewRecorder()
+	s.httpServer.Handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	ct := w.Header().Get("Content-Type")
+	if !strings.Contains(ct, "text/css") {
+		t.Errorf("expected Content-Type to contain text/css, got %q", ct)
+	}
+}
+
+func TestHandleUI_ServesJS(t *testing.T) {
+	s := newTestServer(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/ui/app.js", nil)
+	w := httptest.NewRecorder()
+	s.httpServer.Handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+}
+
+func TestHandleGetConfig(t *testing.T) {
+	s := newTestServer(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/config", nil)
+	w := httptest.NewRecorder()
+	s.handleGetConfig(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	var resp apiResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	if !resp.Success {
+		t.Error("expected success=true")
+	}
+}
+
+func TestHandleGetConfig_MethodNotAllowed(t *testing.T) {
+	s := newTestServer(t)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/config", nil)
+	w := httptest.NewRecorder()
+	s.handleGetConfig(w, req)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("expected 405, got %d", w.Code)
+	}
+}
+
+func TestHandleDetailedHealth(t *testing.T) {
+	s := newTestServer(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health/detailed", nil)
+	w := httptest.NewRecorder()
+	s.handleDetailedHealth(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	var resp map[string]any
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	if !resp["success"].(bool) {
+		t.Error("expected success=true")
+	}
+	data, ok := resp["data"].(map[string]any)
+	if !ok {
+		t.Fatal("expected data field")
+	}
+	if data["status"] == nil {
+		t.Error("expected status field")
+	}
+	if data["subsystems"] == nil {
+		t.Error("expected subsystems field")
+	}
+}
+
+func TestHandleDetailedHealth_AlwaysExposesVersion(t *testing.T) {
+	log := zerolog.Nop()
+	s := New(":0", log, &executor.Executor{}, task.NewDispatcher(), time.Now(), Options{
+		Version:   "2.0.0",
+		GitCommit: "deadbeef",
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health/detailed", nil)
+	w := httptest.NewRecorder()
+	s.handleDetailedHealth(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	var resp map[string]any
+	json.NewDecoder(w.Body).Decode(&resp)
+	data := resp["data"].(map[string]any)
+	if data["version"] != "2.0.0" {
+		t.Errorf("expected version 2.0.0, got %v", data["version"])
+	}
+	if data["git_commit"] != "deadbeef" {
+		t.Errorf("expected git_commit deadbeef, got %v", data["git_commit"])
+	}
+	if data["uptime_seconds"] == nil {
+		t.Error("expected uptime_seconds")
+	}
+}
+
+func TestHandleDetailedHealth_MethodNotAllowed(t *testing.T) {
+	s := newTestServer(t)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/health/detailed", nil)
+	w := httptest.NewRecorder()
+	s.handleDetailedHealth(w, req)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("expected 405, got %d", w.Code)
+	}
+}
+
+func TestHandleLogsSSE(t *testing.T) {
+	s := newTestServer(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs", nil)
+	w := httptest.NewRecorder()
+
+	// Use a context with immediate cancel to avoid blocking.
+	ctx, cancel := context.WithCancel(req.Context())
+	req = req.WithContext(ctx)
+	cancel()
+
+	s.handleLogsSSE(w, req)
+
+	ct := w.Header().Get("Content-Type")
+	if ct != "text/event-stream" {
+		t.Errorf("expected Content-Type text/event-stream, got %q", ct)
+	}
+	if !strings.Contains(w.Body.String(), ": connected") {
+		t.Error("expected SSE initial comment")
+	}
+}
