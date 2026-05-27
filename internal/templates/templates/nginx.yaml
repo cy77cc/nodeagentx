@@ -1,0 +1,27 @@
+name: "nginx"
+description: "Nginx web server monitoring"
+version: "1.0.0"
+requires:
+  - service: "nginx"
+
+variables:
+  stub_status_url:
+    description: "Nginx stub_status endpoint URL"
+    default: "http://127.0.0.1:80/nginx_status"
+    type: "string"
+  log_path:
+    description: "Nginx access log path"
+    default: "/var/log/nginx/access.log"
+    type: "string"
+
+collector:
+  inputs:
+    - type: http
+      config:
+        urls: ["{{.stub_status_url}}"]
+        method: "GET"
+        name_override: "nginx_status"
+    - type: tail
+      config:
+        files: ["{{.log_path}}"]
+        from_beginning: false

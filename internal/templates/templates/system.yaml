@@ -1,0 +1,16 @@
+name: "system"
+description: "Basic system monitoring (CPU, memory, disk, network)"
+version: "1.0.0"
+collector:
+  inputs:
+    - type: cpu
+      config:
+        percpu: false
+    - type: memory
+      config: {}
+    - type: disk
+      config: {}
+    - type: net
+      config: {}
+    - type: load
+      config: {}
