@@ -10,6 +10,28 @@ import (
 	"github.com/cy77cc/opsagent/internal/collector"
 )
 
+// waitForMetrics polls acc.Collect() until at least minCount metrics have been
+// accumulated (across all Collect calls) or the timeout elapses. Collect()
+// drains the buffer, so results from successive calls are merged.
+func waitForMetrics(t *testing.T, acc collector.Accumulator, minCount int) []*collector.Metric {
+	t.Helper()
+	var all []*collector.Metric
+	deadline := time.After(2 * time.Second)
+	for {
+		metrics := acc.Collect()
+		all = append(all, metrics...)
+		if len(all) >= minCount {
+			return all
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("timed out waiting for %d metrics, got %d", minCount, len(all))
+		default:
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
 func TestSyslogInputInit(t *testing.T) {
 	si := &SyslogInput{}
 	cfg := map[string]interface{}{
@@ -66,7 +88,7 @@ func TestSyslogInputGatherTCP(t *testing.T) {
 		errCh <- si.Gather(ctx, acc)
 	}()
 
-	// Wait for listener to start
+	// Wait for listener to start (ready is created in Init, closed by gatherTCP)
 	<-si.ready
 
 	// Connect and send a syslog message
@@ -77,8 +99,8 @@ func TestSyslogInputGatherTCP(t *testing.T) {
 	fmt.Fprintf(conn, "<13>Jan 15 10:30:00 myhost test: hello world\n")
 	conn.Close()
 
-	// Wait for message to be processed
-	time.Sleep(50 * time.Millisecond)
+	// Poll for metrics instead of fixed sleep
+	metrics := waitForMetrics(t, acc, 1)
 
 	// Cancel context to stop Gather
 	cancel()
@@ -94,7 +116,6 @@ func TestSyslogInputGatherTCP(t *testing.T) {
 	}
 
 	// Verify metrics
-	metrics := acc.Collect()
 	if len(metrics) < 1 {
 		t.Fatalf("expected at least 1 metric, got %d", len(metrics))
 	}
@@ -161,8 +182,8 @@ func TestSyslogInputGatherUDP(t *testing.T) {
 	fmt.Fprintf(conn, "<13>Jan 15 10:30:00 myhost udptest: udp hello")
 	conn.Close()
 
-	// Wait for message to be processed
-	time.Sleep(50 * time.Millisecond)
+	// Poll for metrics instead of fixed sleep
+	metrics := waitForMetrics(t, acc, 1)
 
 	// Cancel context to stop Gather
 	cancel()
@@ -176,7 +197,6 @@ func TestSyslogInputGatherUDP(t *testing.T) {
 		t.Fatal("Gather did not return after context cancellation")
 	}
 
-	metrics := acc.Collect()
 	if len(metrics) < 1 {
 		t.Fatalf("expected at least 1 metric, got %d", len(metrics))
 	}
@@ -224,7 +244,9 @@ func TestSyslogInputMultipleTCPClients(t *testing.T) {
 		conn.Close()
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	// Poll for metrics instead of fixed sleep
+	metrics := waitForMetrics(t, acc, 2)
+
 	cancel()
 
 	select {
@@ -233,7 +255,6 @@ func TestSyslogInputMultipleTCPClients(t *testing.T) {
 		t.Fatal("Gather did not return")
 	}
 
-	metrics := acc.Collect()
 	if len(metrics) < 2 {
 		t.Fatalf("expected at least 2 metrics, got %d", len(metrics))
 	}

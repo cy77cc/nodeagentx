@@ -3,9 +3,13 @@ package syslog
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/cy77cc/opsagent/internal/collector"
 )
@@ -25,8 +29,8 @@ type SyslogInput struct {
 
 	listener   net.Listener
 	udpConn    *net.UDPConn
-	ready      chan struct{} // closed when listener is ready
-	readyOnce  sync.Once
+	ready      chan struct{} // closed when listener is ready; created per Gather call
+	parseErrors int64        // atomic counter for parse failures
 }
 
 // Init parses the config map and sets defaults.
@@ -100,7 +104,7 @@ func (s *SyslogInput) gatherTCP(ctx context.Context, acc collector.Accumulator) 
 		return fmt.Errorf("syslog: listen tcp: %w", err)
 	}
 	s.listener = ln
-	s.readyOnce.Do(func() { close(s.ready) })
+	close(s.ready)
 
 	// Close listener when context is cancelled
 	go func() {
@@ -118,17 +122,23 @@ func (s *SyslogInput) gatherTCP(ctx context.Context, acc collector.Accumulator) 
 			if ctx.Err() != nil {
 				break
 			}
+			// Brief backoff to avoid busy-loop on transient errors (e.g. EMFILE/ENFILE)
+			time.Sleep(10 * time.Millisecond)
 			continue
 		}
 
 		wg.Add(1)
-		go func() {
+		go func(c net.Conn) {
 			defer wg.Done()
 			sem <- struct{}{}        // acquire
 			defer func() { <-sem }() // release
 
-			s.handleTCPConn(conn, acc)
-		}()
+			// Non-EOF scanner errors are already surfaced via handleTCPConn's
+			// return value.  We intentionally do not propagate them further
+			// because each connection runs in its own goroutine and a single
+			// bad connection must not abort the whole listener.
+			_ = s.handleTCPConn(c, acc)
+		}(conn)
 	}
 
 	wg.Wait()
@@ -136,7 +146,8 @@ func (s *SyslogInput) gatherTCP(ctx context.Context, acc collector.Accumulator) 
 }
 
 // handleTCPConn reads line-delimited syslog messages from a TCP connection.
-func (s *SyslogInput) handleTCPConn(conn net.Conn, acc collector.Accumulator) {
+// It returns scanner.Err() after the read loop completes.
+func (s *SyslogInput) handleTCPConn(conn net.Conn, acc collector.Accumulator) error {
 	defer conn.Close()
 
 	scanner := bufio.NewScanner(conn)
@@ -147,6 +158,10 @@ func (s *SyslogInput) handleTCPConn(conn net.Conn, acc collector.Accumulator) {
 		}
 		s.processMessage(line, acc)
 	}
+	if err := scanner.Err(); err != nil && !errors.Is(err, io.EOF) {
+		return err
+	}
+	return nil
 }
 
 // gatherUDP listens on a UDP socket and processes syslog datagrams.
@@ -161,7 +176,7 @@ func (s *SyslogInput) gatherUDP(ctx context.Context, acc collector.Accumulator) 
 		return fmt.Errorf("syslog: listen udp: %w", err)
 	}
 	s.udpConn = conn
-	s.readyOnce.Do(func() { close(s.ready) })
+	close(s.ready)
 
 	// Close connection when context is cancelled
 	go func() {
@@ -190,6 +205,7 @@ func (s *SyslogInput) gatherUDP(ctx context.Context, acc collector.Accumulator) 
 func (s *SyslogInput) processMessage(data []byte, acc collector.Accumulator) {
 	msg, err := Parse(data)
 	if err != nil {
+		atomic.AddInt64(&s.parseErrors, 1)
 		return
 	}
 
