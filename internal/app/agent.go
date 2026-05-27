@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/cy77cc/opsagent/internal/alerting"
 	"github.com/cy77cc/opsagent/internal/checker"
 	"github.com/cy77cc/opsagent/internal/collector"
 	"github.com/cy77cc/opsagent/internal/config"
@@ -48,6 +49,11 @@ import (
 	_ "github.com/cy77cc/opsagent/internal/checker/network"
 	_ "github.com/cy77cc/opsagent/internal/checker/service"
 	_ "github.com/cy77cc/opsagent/internal/checker/container"
+	_ "github.com/cy77cc/opsagent/internal/collector/inputs/tail"
+	_ "github.com/cy77cc/opsagent/internal/collector/inputs/journald"
+	_ "github.com/cy77cc/opsagent/internal/collector/inputs/syslog"
+	_ "github.com/cy77cc/opsagent/internal/collector/processors/logparse"
+	_ "github.com/cy77cc/opsagent/internal/collector/outputs/otlp"
 )
 
 // Version information set at build time via ldflags.
@@ -71,6 +77,7 @@ type Agent struct {
 	sandboxExec      *sandbox.Executor
 	checkerExec      *checker.Executor
 	configReloader   *config.ConfigReloader
+	alertEngine      *alerting.Engine
 	metricsReg       *MetricsRegistry
 	auditLog         *AuditLogger
 	startedAt        time.Time
@@ -240,6 +247,28 @@ func NewAgent(cfg *config.Config, log zerolog.Logger, opts ...Option) (*Agent, e
 	// Build checker executor if enabled.
 	if cfg.Checker.Enabled {
 		a.checkerExec = checker.NewExecutor(checker.DefaultRegistry, log)
+	}
+
+	// Build alerting engine if enabled.
+	if cfg.Alerting.Enabled {
+		var ruleCfgs []alerting.RuleConfig
+		for _, r := range cfg.Alerting.Rules {
+			condition := fmt.Sprintf("%s %s %v", r.Condition.Metric, r.Condition.Operator, r.Condition.Threshold)
+			ruleCfgs = append(ruleCfgs, alerting.RuleConfig{
+				Name:      r.Name,
+				Condition: condition,
+				Severity:  r.Severity,
+				For:       r.Condition.For,
+			})
+		}
+		a.alertEngine = alerting.NewEngine(alerting.EngineConfig{Rules: ruleCfgs})
+		for _, n := range cfg.Alerting.Rules {
+			for _, notify := range n.Notify {
+				if notify.Type == "webhook" {
+					a.alertEngine.AddNotifier(alerting.NewWebhookNotifier(notify.URL, notify.Headers))
+				}
+			}
+		}
 	}
 
 	// Build gateway if enabled and not injected.
@@ -604,6 +633,13 @@ func (a *Agent) handlePipelineMetrics(metrics []*collector.Metric) {
 		return
 	}
 	a.metricsReg.IncMetricsCollected()
+	// Evaluate alerting rules against the metrics.
+	if a.alertEngine != nil {
+		alerts := a.alertEngine.Evaluate(metrics)
+		for _, al := range alerts {
+			a.log.Warn().Str("alert", al.Name).Str("severity", al.Severity).Float64("value", al.CurrentValue).Msg("alert fired")
+		}
+	}
 	// Send metrics via gRPC client.
 	a.grpcClient.SendMetrics(metrics)
 	a.log.Debug().Int("count", len(metrics)).Msg("pipeline metrics sent via gRPC")
