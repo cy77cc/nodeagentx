@@ -83,6 +83,10 @@ OpsAgent 是一个运行在目标主机上的轻量级守护进程，通过 gRPC
 | HTTP Server | `internal/server/` | 本地 HTTP API（健康/指标/任务） |
 | Config Reloader | `internal/config/reload.go` | 配置热加载与原子回滚 |
 | Audit Logger | `internal/app/audit.go` | 结构化审计日志 |
+| Log Collector | `internal/logcollector/` | 日志采集、解析与 OTLP 输出 |
+| Tracing | `internal/tracing/` | 分布式追踪（OTLP 接收/导出、批处理） |
+| Dashboard | `internal/dashboard/` | 本地嵌入式 HTML 仪表盘 |
+| Alerting | `internal/alerting/` | 告警规则引擎与 Webhook 通知 |
 
 ## 2. 子系统职责
 
@@ -437,6 +441,38 @@ type AuditEvent struct {
 ```
 
 **关键文件**: `internal/app/audit.go`
+
+### 2.12 Log Collector（日志采集）
+
+**职责**: 从多种来源采集日志，经过结构化解析后通过 OTLP 协议输出到后端。
+
+Log Collector 支持三种输入源：文件 tail（按行追踪日志文件增长）、journald（读取 systemd 日志）和 syslog（监听 UDP/TCP syslog 端口）。采集到的原始日志经过 `logparse` 处理器进行正则匹配和字段提取，转换为结构化日志记录。结构化日志最终通过 OTLP gRPC/HTTP 协议导出到日志后端（如 OpenTelemetry Collector、Loki 等）。
+
+**关键文件**: `internal/logcollector/`
+
+### 2.13 Tracing（分布式追踪）
+
+**职责**: 接收、处理和导出 OpenTelemetry 追踪数据，实现分布式链路追踪。
+
+Tracing 子系统遵循 OpenTelemetry Collector 架构，由三个组件串联而成：OTLP Receiver 接收 gRPC（端口 4317）和 HTTP（端口 4318）两种协议的追踪数据；Batch Processor 对 span 进行批量聚合，通过可配置的超时和批次大小平衡延迟与吞吐；OTLP Exporter 将处理后的 trace 数据以 gRPC 协议发送到后端（如 Jaeger、Tempo）。追踪子系统默认关闭，启用后与其他子系统独立运行。
+
+**关键文件**: `internal/tracing/`
+
+### 2.14 Dashboard（本地仪表盘）
+
+**职责**: 提供嵌入式 HTML 仪表盘，实时展示 Agent 状态和日志流。
+
+Dashboard 是一个嵌入在 Agent 二进制中的轻量级 Web 界面，通过 Go 的 `embed` 包将前端资源编译进可执行文件，无需额外的静态文件部署。仪表盘通过 SSE（Server-Sent Events）实现日志的实时推送，浏览器建立 SSE 连接后即可接收 Agent 产生的结构化日志流。Dashboard 监听本地 HTTP 端口，仅用于开发调试和现场排障，不暴露到外网。
+
+**关键文件**: `internal/dashboard/`
+
+### 2.15 Alerting（智能告警）
+
+**职责**: 基于可配置规则实时评估指标，触发告警并通过 Webhook 通知外部系统。
+
+Alerting 引擎包含三个核心组件：规则管理器加载和热重载告警规则；评估引擎定期对采集到的指标执行规则表达式，判断是否满足告警条件；通知器通过 Webhook 将告警事件发送到外部系统（如企业微信、钉钉、PagerDuty）。告警状态机管理告警的生命周期（inactive → pending → firing → resolved），通过持续评估间隔和触发阈值避免告警抖动。
+
+**关键文件**: `internal/alerting/`
 
 ## 3. 数据流
 
