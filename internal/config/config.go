@@ -26,6 +26,7 @@ type Config struct {
 	Alerting      AlertingConfig      `mapstructure:"alerting"`
 	Discovery     DiscoveryConfig     `mapstructure:"discovery"`
 	Updater       UpdaterConfig       `mapstructure:"updater"`
+	WASM          WASMConfig          `mapstructure:"wasm"`
 }
 
 // AgentConfig controls agent identity and collection cadence.
@@ -270,6 +271,14 @@ type UpdaterConfig struct {
 	DownloadDir string `mapstructure:"download_dir"`
 }
 
+// WASMConfig controls the WebAssembly plugin runtime.
+type WASMConfig struct {
+	Enabled    bool   `mapstructure:"enabled"`
+	PluginsDir string `mapstructure:"plugins_dir"`
+	MaxModules int    `mapstructure:"max_modules"`
+	CacheDir   string `mapstructure:"cache_dir"`
+}
+
 // Load reads and validates configuration from a file path.
 func Load(path string) (*Config, error) {
 	v := viper.New()
@@ -337,6 +346,10 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("discovery.enabled", false)
 	v.SetDefault("discovery.interval_seconds", 300)
 	v.SetDefault("updater.enabled", false)
+	v.SetDefault("wasm.enabled", false)
+	v.SetDefault("wasm.plugins_dir", "/etc/opsagent/wasm-plugins")
+	v.SetDefault("wasm.max_modules", 10)
+	v.SetDefault("wasm.cache_dir", "/var/lib/opsagent/wasm-cache")
 
 	if err := v.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("read config: %w", err)

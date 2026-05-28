@@ -56,6 +56,9 @@ import (
 	_ "github.com/cy77cc/opsagent/internal/collector/inputs/syslog"
 	_ "github.com/cy77cc/opsagent/internal/collector/processors/logparse"
 	_ "github.com/cy77cc/opsagent/internal/collector/outputs/otlp"
+	_ "github.com/cy77cc/opsagent/internal/collector/inputs/http"
+	_ "github.com/cy77cc/opsagent/internal/collector/inputs/snmp"
+	_ "github.com/cy77cc/opsagent/internal/collector/inputs/cloudmetadata"
 )
 
 // Version information set at build time via ldflags.
