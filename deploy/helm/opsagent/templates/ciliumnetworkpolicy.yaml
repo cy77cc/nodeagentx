@@ -1,0 +1,47 @@
+{{- if and .Values.mesh.enabled (eq .Values.mesh.type "cilium") .Values.mesh.cilium.networkPolicy.enabled }}
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: {{ include "opsagent.fullname" . }}
+  labels:
+    {{- include "opsagent.labels" . | nindent 4 }}
+spec:
+  endpointSelector:
+    matchLabels:
+      {{- include "opsagent.selectorLabels" . | nindent 6 }}
+  ingress:
+    # Allow inbound HTTP traffic (health checks, metrics, API)
+    - fromEndpoints:
+        - matchLabels:
+            {{- include "opsagent.selectorLabels" . | nindent 12 }}
+      toPorts:
+        - ports:
+            - port: "{{ .Values.service.port }}"
+              protocol: TCP
+    {{- if .Values.mesh.cilium.networkPolicy.ingress }}
+    {{- toYaml .Values.mesh.cilium.networkPolicy.ingress | nindent 4 }}
+    {{- end }}
+  egress:
+    # Allow DNS resolution
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+          rules:
+            dns:
+              - matchPattern: "*"
+    # Allow gRPC to platform
+    {{- if .Values.mesh.cilium.networkPolicy.egress }}
+    {{- toYaml .Values.mesh.cilium.networkPolicy.egress | nindent 4 }}
+    {{- else }}
+    # Default: allow all egress (agent needs to reach platform, collectors, etc.)
+    - toEntities:
+        - all
+    {{- end }}
+{{- end }}

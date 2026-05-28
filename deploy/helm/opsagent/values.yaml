@@ -171,3 +171,44 @@ hostPaths:
   dev: /dev
   etc: /etc
   varLog: /var/log
+
+# PriorityClass for agent pods
+priorityClass:
+  create: false
+  value: 1000000
+  globalDefault: false
+  description: "Priority class for opsagent DaemonSet pods"
+
+# PodDisruptionBudget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  # maxUnavailable: 1
+
+# NetworkPolicy configuration
+networkPolicy:
+  enabled: false
+  # Additional ingress rules (appended to default HTTP port rule)
+  ingress: []
+  # Additional egress rules (replaces default allow-all if specified)
+  # Example:
+  #   - to:
+  #       - ipBlock:
+  #           cidr: 10.0.0.0/8
+  #     ports:
+  #       - port: 443
+  #         protocol: TCP
+  egress: []
+
+# Service mesh configuration (for CiliumNetworkPolicy)
+mesh:
+  enabled: false
+  # Type of service mesh: "cilium" (only cilium supported currently)
+  type: "cilium"
+  cilium:
+    networkPolicy:
+      enabled: false
+      # Additional ingress rules for Cilium
+      ingress: []
+      # Additional egress rules for Cilium
+      egress: []
