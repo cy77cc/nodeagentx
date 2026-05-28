@@ -24,6 +24,8 @@ type Config struct {
 	Gateway       GatewayConfig       `mapstructure:"gateway"`
 	Tracing       TracingConfig       `mapstructure:"tracing"`
 	Alerting      AlertingConfig      `mapstructure:"alerting"`
+	Discovery     DiscoveryConfig     `mapstructure:"discovery"`
+	Updater       UpdaterConfig       `mapstructure:"updater"`
 }
 
 // AgentConfig controls agent identity and collection cadence.
@@ -247,6 +249,27 @@ type AlertNotify struct {
 	Headers map[string]string `mapstructure:"headers"`
 }
 
+// DiscoveryConfig controls the service discovery subsystem.
+type DiscoveryConfig struct {
+	Enabled     bool                   `mapstructure:"enabled"`
+	IntervalSec int                    `mapstructure:"interval_seconds"`
+	Layers      []DiscoveryLayerConfig `mapstructure:"layers"`
+}
+
+// DiscoveryLayerConfig defines a single discovery layer.
+type DiscoveryLayerConfig struct {
+	Type    string `mapstructure:"type"`
+	Enabled bool   `mapstructure:"enabled"`
+}
+
+// UpdaterConfig controls the auto-update subsystem.
+type UpdaterConfig struct {
+	Enabled     bool   `mapstructure:"enabled"`
+	CurrentPath string `mapstructure:"current_path"`
+	BackupPath  string `mapstructure:"backup_path"`
+	DownloadDir string `mapstructure:"download_dir"`
+}
+
 // Load reads and validates configuration from a file path.
 func Load(path string) (*Config, error) {
 	v := viper.New()
@@ -311,6 +334,9 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("tracing.processor.max_batch_size", 512)
 	v.SetDefault("tracing.exporter.protocol", "grpc")
 	v.SetDefault("alerting.enabled", false)
+	v.SetDefault("discovery.enabled", false)
+	v.SetDefault("discovery.interval_seconds", 300)
+	v.SetDefault("updater.enabled", false)
 
 	if err := v.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("read config: %w", err)

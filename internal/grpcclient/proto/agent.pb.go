@@ -197,6 +197,8 @@ type AgentMessage struct {
 	//	*AgentMessage_ProxyRegister
 	//	*AgentMessage_ProxyResponse
 	//	*AgentMessage_ProxyMetrics
+	//	*AgentMessage_DiscoveryReport
+	//	*AgentMessage_UpdateAck
 	Payload       isAgentMessage_Payload `protobuf_oneof:"payload"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -356,6 +358,24 @@ func (x *AgentMessage) GetProxyMetrics() *ProxyMetricBatch {
 	return nil
 }
 
+func (x *AgentMessage) GetDiscoveryReport() *ServiceDiscoveryReport {
+	if x != nil {
+		if x, ok := x.Payload.(*AgentMessage_DiscoveryReport); ok {
+			return x.DiscoveryReport
+		}
+	}
+	return nil
+}
+
+func (x *AgentMessage) GetUpdateAck() *AgentUpdateAck {
+	if x != nil {
+		if x, ok := x.Payload.(*AgentMessage_UpdateAck); ok {
+			return x.UpdateAck
+		}
+	}
+	return nil
+}
+
 type isAgentMessage_Payload interface {
 	isAgentMessage_Payload()
 }
@@ -413,6 +433,14 @@ type AgentMessage_ProxyMetrics struct {
 	ProxyMetrics *ProxyMetricBatch `protobuf:"bytes,13,opt,name=proxy_metrics,json=proxyMetrics,proto3,oneof"`
 }
 
+type AgentMessage_DiscoveryReport struct {
+	DiscoveryReport *ServiceDiscoveryReport `protobuf:"bytes,14,opt,name=discovery_report,json=discoveryReport,proto3,oneof"`
+}
+
+type AgentMessage_UpdateAck struct {
+	UpdateAck *AgentUpdateAck `protobuf:"bytes,15,opt,name=update_ack,json=updateAck,proto3,oneof"`
+}
+
 func (*AgentMessage_Registration) isAgentMessage_Payload() {}
 
 func (*AgentMessage_Heartbeat) isAgentMessage_Payload() {}
@@ -439,6 +467,10 @@ func (*AgentMessage_ProxyResponse) isAgentMessage_Payload() {}
 
 func (*AgentMessage_ProxyMetrics) isAgentMessage_Payload() {}
 
+func (*AgentMessage_DiscoveryReport) isAgentMessage_Payload() {}
+
+func (*AgentMessage_UpdateAck) isAgentMessage_Payload() {}
+
 type PlatformMessage struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Payload:
@@ -452,6 +484,7 @@ type PlatformMessage struct {
 	//	*PlatformMessage_TunnelData
 	//	*PlatformMessage_TunnelClose
 	//	*PlatformMessage_ProxyCommand
+	//	*PlatformMessage_AgentUpdate
 	Payload       isPlatformMessage_Payload `protobuf_oneof:"payload"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -575,6 +608,15 @@ func (x *PlatformMessage) GetProxyCommand() *ProxyCommandRequest {
 	return nil
 }
 
+func (x *PlatformMessage) GetAgentUpdate() *AgentUpdate {
+	if x != nil {
+		if x, ok := x.Payload.(*PlatformMessage_AgentUpdate); ok {
+			return x.AgentUpdate
+		}
+	}
+	return nil
+}
+
 type isPlatformMessage_Payload interface {
 	isPlatformMessage_Payload()
 }
@@ -616,6 +658,10 @@ type PlatformMessage_ProxyCommand struct {
 	ProxyCommand *ProxyCommandRequest `protobuf:"bytes,9,opt,name=proxy_command,json=proxyCommand,proto3,oneof"`
 }
 
+type PlatformMessage_AgentUpdate struct {
+	AgentUpdate *AgentUpdate `protobuf:"bytes,10,opt,name=agent_update,json=agentUpdate,proto3,oneof"`
+}
+
 func (*PlatformMessage_ExecCommand) isPlatformMessage_Payload() {}
 
 func (*PlatformMessage_ExecScript) isPlatformMessage_Payload() {}
@@ -634,12 +680,16 @@ func (*PlatformMessage_TunnelClose) isPlatformMessage_Payload() {}
 
 func (*PlatformMessage_ProxyCommand) isPlatformMessage_Payload() {}
 
+func (*PlatformMessage_AgentUpdate) isPlatformMessage_Payload() {}
+
 type AgentRegistration struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AgentId       string                 `protobuf:"bytes,1,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
 	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
 	AgentInfo     *AgentInfo             `protobuf:"bytes,3,opt,name=agent_info,json=agentInfo,proto3" json:"agent_info,omitempty"`
 	Capabilities  []string               `protobuf:"bytes,4,rep,name=capabilities,proto3" json:"capabilities,omitempty"`
+	Labels        map[string]string      `protobuf:"bytes,5,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Groups        []string               `protobuf:"bytes,6,rep,name=groups,proto3" json:"groups,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -698,6 +748,20 @@ func (x *AgentRegistration) GetAgentInfo() *AgentInfo {
 func (x *AgentRegistration) GetCapabilities() []string {
 	if x != nil {
 		return x.Capabilities
+	}
+	return nil
+}
+
+func (x *AgentRegistration) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *AgentRegistration) GetGroups() []string {
+	if x != nil {
+		return x.Groups
 	}
 	return nil
 }
@@ -2668,11 +2732,307 @@ func (x *ProxyMetricBatch) GetMetrics() []*Metric {
 	return nil
 }
 
+type ServiceDiscoveryReport struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AgentId       string                 `protobuf:"bytes,1,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	Services      []*ServiceInfo         `protobuf:"bytes,2,rep,name=services,proto3" json:"services,omitempty"`
+	Timestamp     int64                  `protobuf:"varint,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ServiceDiscoveryReport) Reset() {
+	*x = ServiceDiscoveryReport{}
+	mi := &file_proto_agent_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ServiceDiscoveryReport) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServiceDiscoveryReport) ProtoMessage() {}
+
+func (x *ServiceDiscoveryReport) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServiceDiscoveryReport.ProtoReflect.Descriptor instead.
+func (*ServiceDiscoveryReport) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *ServiceDiscoveryReport) GetAgentId() string {
+	if x != nil {
+		return x.AgentId
+	}
+	return ""
+}
+
+func (x *ServiceDiscoveryReport) GetServices() []*ServiceInfo {
+	if x != nil {
+		return x.Services
+	}
+	return nil
+}
+
+func (x *ServiceDiscoveryReport) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
+}
+
+type ServiceInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	Pid           int32                  `protobuf:"varint,3,opt,name=pid,proto3" json:"pid,omitempty"`
+	Ports         []int32                `protobuf:"varint,4,rep,packed,name=ports,proto3" json:"ports,omitempty"`
+	Labels        map[string]string      `protobuf:"bytes,5,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Metadata      map[string]string      `protobuf:"bytes,6,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ServiceInfo) Reset() {
+	*x = ServiceInfo{}
+	mi := &file_proto_agent_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ServiceInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServiceInfo) ProtoMessage() {}
+
+func (x *ServiceInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServiceInfo.ProtoReflect.Descriptor instead.
+func (*ServiceInfo) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *ServiceInfo) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ServiceInfo) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *ServiceInfo) GetPid() int32 {
+	if x != nil {
+		return x.Pid
+	}
+	return 0
+}
+
+func (x *ServiceInfo) GetPorts() []int32 {
+	if x != nil {
+		return x.Ports
+	}
+	return nil
+}
+
+func (x *ServiceInfo) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *ServiceInfo) GetMetadata() map[string]string {
+	if x != nil {
+		return x.Metadata
+	}
+	return nil
+}
+
+type AgentUpdate struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Version       string                 `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
+	DownloadUrl   string                 `protobuf:"bytes,2,opt,name=download_url,json=downloadUrl,proto3" json:"download_url,omitempty"`
+	Sha256        string                 `protobuf:"bytes,3,opt,name=sha256,proto3" json:"sha256,omitempty"`
+	Signature     []byte                 `protobuf:"bytes,4,opt,name=signature,proto3" json:"signature,omitempty"`
+	ForceRestart  bool                   `protobuf:"varint,5,opt,name=force_restart,json=forceRestart,proto3" json:"force_restart,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AgentUpdate) Reset() {
+	*x = AgentUpdate{}
+	mi := &file_proto_agent_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AgentUpdate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AgentUpdate) ProtoMessage() {}
+
+func (x *AgentUpdate) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AgentUpdate.ProtoReflect.Descriptor instead.
+func (*AgentUpdate) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *AgentUpdate) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *AgentUpdate) GetDownloadUrl() string {
+	if x != nil {
+		return x.DownloadUrl
+	}
+	return ""
+}
+
+func (x *AgentUpdate) GetSha256() string {
+	if x != nil {
+		return x.Sha256
+	}
+	return ""
+}
+
+func (x *AgentUpdate) GetSignature() []byte {
+	if x != nil {
+		return x.Signature
+	}
+	return nil
+}
+
+func (x *AgentUpdate) GetForceRestart() bool {
+	if x != nil {
+		return x.ForceRestart
+	}
+	return false
+}
+
+type AgentUpdateAck struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AgentId       string                 `protobuf:"bytes,1,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	FromVersion   string                 `protobuf:"bytes,2,opt,name=from_version,json=fromVersion,proto3" json:"from_version,omitempty"`
+	ToVersion     string                 `protobuf:"bytes,3,opt,name=to_version,json=toVersion,proto3" json:"to_version,omitempty"`
+	Status        string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
+	Error         string                 `protobuf:"bytes,5,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AgentUpdateAck) Reset() {
+	*x = AgentUpdateAck{}
+	mi := &file_proto_agent_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AgentUpdateAck) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AgentUpdateAck) ProtoMessage() {}
+
+func (x *AgentUpdateAck) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AgentUpdateAck.ProtoReflect.Descriptor instead.
+func (*AgentUpdateAck) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *AgentUpdateAck) GetAgentId() string {
+	if x != nil {
+		return x.AgentId
+	}
+	return ""
+}
+
+func (x *AgentUpdateAck) GetFromVersion() string {
+	if x != nil {
+		return x.FromVersion
+	}
+	return ""
+}
+
+func (x *AgentUpdateAck) GetToVersion() string {
+	if x != nil {
+		return x.ToVersion
+	}
+	return ""
+}
+
+func (x *AgentUpdateAck) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *AgentUpdateAck) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
 var File_proto_agent_proto protoreflect.FileDescriptor
 
 const file_proto_agent_proto_rawDesc = "" +
 	"\n" +
-	"\x11proto/agent.proto\x12\bopsagent\"\xa8\x06\n" +
+	"\x11proto/agent.proto\x12\bopsagent\"\xb2\a\n" +
 	"\fAgentMessage\x12A\n" +
 	"\fregistration\x18\x01 \x01(\v2\x1b.opsagent.AgentRegistrationH\x00R\fregistration\x123\n" +
 	"\theartbeat\x18\x02 \x01(\v2\x13.opsagent.HeartbeatH\x00R\theartbeat\x121\n" +
@@ -2691,8 +3051,11 @@ const file_proto_agent_proto_rawDesc = "" +
 	" \x01(\v2\x15.opsagent.TunnelCloseH\x00R\vtunnelClose\x12D\n" +
 	"\x0eproxy_register\x18\v \x01(\v2\x1b.opsagent.ProxyHostRegisterH\x00R\rproxyRegister\x12G\n" +
 	"\x0eproxy_response\x18\f \x01(\v2\x1e.opsagent.ProxyCommandResponseH\x00R\rproxyResponse\x12A\n" +
-	"\rproxy_metrics\x18\r \x01(\v2\x1a.opsagent.ProxyMetricBatchH\x00R\fproxyMetricsB\t\n" +
-	"\apayload\"\xad\x04\n" +
+	"\rproxy_metrics\x18\r \x01(\v2\x1a.opsagent.ProxyMetricBatchH\x00R\fproxyMetrics\x12M\n" +
+	"\x10discovery_report\x18\x0e \x01(\v2 .opsagent.ServiceDiscoveryReportH\x00R\x0fdiscoveryReport\x129\n" +
+	"\n" +
+	"update_ack\x18\x0f \x01(\v2\x18.opsagent.AgentUpdateAckH\x00R\tupdateAckB\t\n" +
+	"\apayload\"\xe9\x04\n" +
 	"\x0fPlatformMessage\x12=\n" +
 	"\fexec_command\x18\x01 \x01(\v2\x18.opsagent.ExecuteCommandH\x00R\vexecCommand\x12:\n" +
 	"\vexec_script\x18\x02 \x01(\v2\x17.opsagent.ExecuteScriptH\x00R\n" +
@@ -2705,14 +3068,21 @@ const file_proto_agent_proto_rawDesc = "" +
 	"\vtunnel_data\x18\a \x01(\v2\x14.opsagent.TunnelDataH\x00R\n" +
 	"tunnelData\x12:\n" +
 	"\ftunnel_close\x18\b \x01(\v2\x15.opsagent.TunnelCloseH\x00R\vtunnelClose\x12D\n" +
-	"\rproxy_command\x18\t \x01(\v2\x1d.opsagent.ProxyCommandRequestH\x00R\fproxyCommandB\t\n" +
-	"\apayload\"\x9c\x01\n" +
+	"\rproxy_command\x18\t \x01(\v2\x1d.opsagent.ProxyCommandRequestH\x00R\fproxyCommand\x12:\n" +
+	"\fagent_update\x18\n" +
+	" \x01(\v2\x15.opsagent.AgentUpdateH\x00R\vagentUpdateB\t\n" +
+	"\apayload\"\xb0\x02\n" +
 	"\x11AgentRegistration\x12\x19\n" +
 	"\bagent_id\x18\x01 \x01(\tR\aagentId\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\x122\n" +
 	"\n" +
 	"agent_info\x18\x03 \x01(\v2\x13.opsagent.AgentInfoR\tagentInfo\x12\"\n" +
-	"\fcapabilities\x18\x04 \x03(\tR\fcapabilities\"\xe7\x01\n" +
+	"\fcapabilities\x18\x04 \x03(\tR\fcapabilities\x12?\n" +
+	"\x06labels\x18\x05 \x03(\v2'.opsagent.AgentRegistration.LabelsEntryR\x06labels\x12\x16\n" +
+	"\x06groups\x18\x06 \x03(\tR\x06groups\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xe7\x01\n" +
 	"\tAgentInfo\x12\x1a\n" +
 	"\bhostname\x18\x01 \x01(\tR\bhostname\x12\x0e\n" +
 	"\x02os\x18\x02 \x01(\tR\x02os\x12\x12\n" +
@@ -2886,7 +3256,37 @@ const file_proto_agent_proto_rawDesc = "" +
 	"\ttimed_out\x18\a \x01(\bR\btimedOut\"W\n" +
 	"\x10ProxyMetricBatch\x12\x17\n" +
 	"\ahost_id\x18\x01 \x01(\tR\x06hostId\x12*\n" +
-	"\ametrics\x18\x02 \x03(\v2\x10.opsagent.MetricR\ametrics*3\n" +
+	"\ametrics\x18\x02 \x03(\v2\x10.opsagent.MetricR\ametrics\"\x84\x01\n" +
+	"\x16ServiceDiscoveryReport\x12\x19\n" +
+	"\bagent_id\x18\x01 \x01(\tR\aagentId\x121\n" +
+	"\bservices\x18\x02 \x03(\v2\x15.opsagent.ServiceInfoR\bservices\x12\x1c\n" +
+	"\ttimestamp\x18\x03 \x01(\x03R\ttimestamp\"\xd1\x02\n" +
+	"\vServiceInfo\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
+	"\x04type\x18\x02 \x01(\tR\x04type\x12\x10\n" +
+	"\x03pid\x18\x03 \x01(\x05R\x03pid\x12\x14\n" +
+	"\x05ports\x18\x04 \x03(\x05R\x05ports\x129\n" +
+	"\x06labels\x18\x05 \x03(\v2!.opsagent.ServiceInfo.LabelsEntryR\x06labels\x12?\n" +
+	"\bmetadata\x18\x06 \x03(\v2#.opsagent.ServiceInfo.MetadataEntryR\bmetadata\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a;\n" +
+	"\rMetadataEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xa5\x01\n" +
+	"\vAgentUpdate\x12\x18\n" +
+	"\aversion\x18\x01 \x01(\tR\aversion\x12!\n" +
+	"\fdownload_url\x18\x02 \x01(\tR\vdownloadUrl\x12\x16\n" +
+	"\x06sha256\x18\x03 \x01(\tR\x06sha256\x12\x1c\n" +
+	"\tsignature\x18\x04 \x01(\fR\tsignature\x12#\n" +
+	"\rforce_restart\x18\x05 \x01(\bR\fforceRestart\"\x9b\x01\n" +
+	"\x0eAgentUpdateAck\x12\x19\n" +
+	"\bagent_id\x18\x01 \x01(\tR\aagentId\x12!\n" +
+	"\ffrom_version\x18\x02 \x01(\tR\vfromVersion\x12\x1d\n" +
+	"\n" +
+	"to_version\x18\x03 \x01(\tR\ttoVersion\x12\x16\n" +
+	"\x06status\x18\x04 \x01(\tR\x06status\x12\x14\n" +
+	"\x05error\x18\x05 \x01(\tR\x05error*3\n" +
 	"\n" +
 	"MetricType\x12\t\n" +
 	"\x05GAUGE\x10\x00\x12\v\n" +
@@ -2920,43 +3320,50 @@ func file_proto_agent_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_agent_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_proto_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
+var file_proto_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 39)
 var file_proto_agent_proto_goTypes = []any{
-	(MetricType)(0),              // 0: opsagent.MetricType
-	(CheckSeverity)(0),           // 1: opsagent.CheckSeverity
-	(CheckStatus)(0),             // 2: opsagent.CheckStatus
-	(*AgentMessage)(nil),         // 3: opsagent.AgentMessage
-	(*PlatformMessage)(nil),      // 4: opsagent.PlatformMessage
-	(*AgentRegistration)(nil),    // 5: opsagent.AgentRegistration
-	(*AgentInfo)(nil),            // 6: opsagent.AgentInfo
-	(*Heartbeat)(nil),            // 7: opsagent.Heartbeat
-	(*MetricBatch)(nil),          // 8: opsagent.MetricBatch
-	(*Metric)(nil),               // 9: opsagent.Metric
-	(*Field)(nil),                // 10: opsagent.Field
-	(*ExecuteCommand)(nil),       // 11: opsagent.ExecuteCommand
-	(*ExecuteScript)(nil),        // 12: opsagent.ExecuteScript
-	(*SandboxConfig)(nil),        // 13: opsagent.SandboxConfig
-	(*ExecOutput)(nil),           // 14: opsagent.ExecOutput
-	(*ExecResult)(nil),           // 15: opsagent.ExecResult
-	(*ExecStats)(nil),            // 16: opsagent.ExecStats
-	(*CancelJob)(nil),            // 17: opsagent.CancelJob
-	(*ConfigUpdate)(nil),         // 18: opsagent.ConfigUpdate
-	(*Ack)(nil),                  // 19: opsagent.Ack
-	(*HealthCheckRequest)(nil),   // 20: opsagent.HealthCheckRequest
-	(*CheckItem)(nil),            // 21: opsagent.CheckItem
-	(*HealthCheckResult)(nil),    // 22: opsagent.HealthCheckResult
-	(*CheckResult)(nil),          // 23: opsagent.CheckResult
-	(*CheckSummary)(nil),         // 24: opsagent.CheckSummary
-	(*TunnelOpen)(nil),           // 25: opsagent.TunnelOpen
-	(*TunnelData)(nil),           // 26: opsagent.TunnelData
-	(*TunnelClose)(nil),          // 27: opsagent.TunnelClose
-	(*ProxyHostRegister)(nil),    // 28: opsagent.ProxyHostRegister
-	(*ProxyCommandRequest)(nil),  // 29: opsagent.ProxyCommandRequest
-	(*ProxyCommandResponse)(nil), // 30: opsagent.ProxyCommandResponse
-	(*ProxyMetricBatch)(nil),     // 31: opsagent.ProxyMetricBatch
-	nil,                          // 32: opsagent.Metric.TagsEntry
-	nil,                          // 33: opsagent.ExecuteCommand.EnvEntry
-	nil,                          // 34: opsagent.ExecuteScript.EnvEntry
+	(MetricType)(0),                // 0: opsagent.MetricType
+	(CheckSeverity)(0),             // 1: opsagent.CheckSeverity
+	(CheckStatus)(0),               // 2: opsagent.CheckStatus
+	(*AgentMessage)(nil),           // 3: opsagent.AgentMessage
+	(*PlatformMessage)(nil),        // 4: opsagent.PlatformMessage
+	(*AgentRegistration)(nil),      // 5: opsagent.AgentRegistration
+	(*AgentInfo)(nil),              // 6: opsagent.AgentInfo
+	(*Heartbeat)(nil),              // 7: opsagent.Heartbeat
+	(*MetricBatch)(nil),            // 8: opsagent.MetricBatch
+	(*Metric)(nil),                 // 9: opsagent.Metric
+	(*Field)(nil),                  // 10: opsagent.Field
+	(*ExecuteCommand)(nil),         // 11: opsagent.ExecuteCommand
+	(*ExecuteScript)(nil),          // 12: opsagent.ExecuteScript
+	(*SandboxConfig)(nil),          // 13: opsagent.SandboxConfig
+	(*ExecOutput)(nil),             // 14: opsagent.ExecOutput
+	(*ExecResult)(nil),             // 15: opsagent.ExecResult
+	(*ExecStats)(nil),              // 16: opsagent.ExecStats
+	(*CancelJob)(nil),              // 17: opsagent.CancelJob
+	(*ConfigUpdate)(nil),           // 18: opsagent.ConfigUpdate
+	(*Ack)(nil),                    // 19: opsagent.Ack
+	(*HealthCheckRequest)(nil),     // 20: opsagent.HealthCheckRequest
+	(*CheckItem)(nil),              // 21: opsagent.CheckItem
+	(*HealthCheckResult)(nil),      // 22: opsagent.HealthCheckResult
+	(*CheckResult)(nil),            // 23: opsagent.CheckResult
+	(*CheckSummary)(nil),           // 24: opsagent.CheckSummary
+	(*TunnelOpen)(nil),             // 25: opsagent.TunnelOpen
+	(*TunnelData)(nil),             // 26: opsagent.TunnelData
+	(*TunnelClose)(nil),            // 27: opsagent.TunnelClose
+	(*ProxyHostRegister)(nil),      // 28: opsagent.ProxyHostRegister
+	(*ProxyCommandRequest)(nil),    // 29: opsagent.ProxyCommandRequest
+	(*ProxyCommandResponse)(nil),   // 30: opsagent.ProxyCommandResponse
+	(*ProxyMetricBatch)(nil),       // 31: opsagent.ProxyMetricBatch
+	(*ServiceDiscoveryReport)(nil), // 32: opsagent.ServiceDiscoveryReport
+	(*ServiceInfo)(nil),            // 33: opsagent.ServiceInfo
+	(*AgentUpdate)(nil),            // 34: opsagent.AgentUpdate
+	(*AgentUpdateAck)(nil),         // 35: opsagent.AgentUpdateAck
+	nil,                            // 36: opsagent.AgentRegistration.LabelsEntry
+	nil,                            // 37: opsagent.Metric.TagsEntry
+	nil,                            // 38: opsagent.ExecuteCommand.EnvEntry
+	nil,                            // 39: opsagent.ExecuteScript.EnvEntry
+	nil,                            // 40: opsagent.ServiceInfo.LabelsEntry
+	nil,                            // 41: opsagent.ServiceInfo.MetadataEntry
 }
 var file_proto_agent_proto_depIdxs = []int32{
 	5,  // 0: opsagent.AgentMessage.registration:type_name -> opsagent.AgentRegistration
@@ -2972,40 +3379,47 @@ var file_proto_agent_proto_depIdxs = []int32{
 	28, // 10: opsagent.AgentMessage.proxy_register:type_name -> opsagent.ProxyHostRegister
 	30, // 11: opsagent.AgentMessage.proxy_response:type_name -> opsagent.ProxyCommandResponse
 	31, // 12: opsagent.AgentMessage.proxy_metrics:type_name -> opsagent.ProxyMetricBatch
-	11, // 13: opsagent.PlatformMessage.exec_command:type_name -> opsagent.ExecuteCommand
-	12, // 14: opsagent.PlatformMessage.exec_script:type_name -> opsagent.ExecuteScript
-	17, // 15: opsagent.PlatformMessage.cancel_job:type_name -> opsagent.CancelJob
-	18, // 16: opsagent.PlatformMessage.config_update:type_name -> opsagent.ConfigUpdate
-	19, // 17: opsagent.PlatformMessage.ack:type_name -> opsagent.Ack
-	20, // 18: opsagent.PlatformMessage.health_check:type_name -> opsagent.HealthCheckRequest
-	26, // 19: opsagent.PlatformMessage.tunnel_data:type_name -> opsagent.TunnelData
-	27, // 20: opsagent.PlatformMessage.tunnel_close:type_name -> opsagent.TunnelClose
-	29, // 21: opsagent.PlatformMessage.proxy_command:type_name -> opsagent.ProxyCommandRequest
-	6,  // 22: opsagent.AgentRegistration.agent_info:type_name -> opsagent.AgentInfo
-	6,  // 23: opsagent.Heartbeat.agent_info:type_name -> opsagent.AgentInfo
-	9,  // 24: opsagent.MetricBatch.metrics:type_name -> opsagent.Metric
-	32, // 25: opsagent.Metric.tags:type_name -> opsagent.Metric.TagsEntry
-	10, // 26: opsagent.Metric.fields:type_name -> opsagent.Field
-	0,  // 27: opsagent.Metric.type:type_name -> opsagent.MetricType
-	33, // 28: opsagent.ExecuteCommand.env:type_name -> opsagent.ExecuteCommand.EnvEntry
-	13, // 29: opsagent.ExecuteCommand.sandbox:type_name -> opsagent.SandboxConfig
-	34, // 30: opsagent.ExecuteScript.env:type_name -> opsagent.ExecuteScript.EnvEntry
-	13, // 31: opsagent.ExecuteScript.sandbox:type_name -> opsagent.SandboxConfig
-	16, // 32: opsagent.ExecResult.stats:type_name -> opsagent.ExecStats
-	21, // 33: opsagent.HealthCheckRequest.items:type_name -> opsagent.CheckItem
-	1,  // 34: opsagent.CheckItem.severity:type_name -> opsagent.CheckSeverity
-	23, // 35: opsagent.HealthCheckResult.results:type_name -> opsagent.CheckResult
-	24, // 36: opsagent.HealthCheckResult.summary:type_name -> opsagent.CheckSummary
-	2,  // 37: opsagent.CheckResult.status:type_name -> opsagent.CheckStatus
-	1,  // 38: opsagent.CheckResult.severity:type_name -> opsagent.CheckSeverity
-	9,  // 39: opsagent.ProxyMetricBatch.metrics:type_name -> opsagent.Metric
-	3,  // 40: opsagent.AgentService.Connect:input_type -> opsagent.AgentMessage
-	4,  // 41: opsagent.AgentService.Connect:output_type -> opsagent.PlatformMessage
-	41, // [41:42] is the sub-list for method output_type
-	40, // [40:41] is the sub-list for method input_type
-	40, // [40:40] is the sub-list for extension type_name
-	40, // [40:40] is the sub-list for extension extendee
-	0,  // [0:40] is the sub-list for field type_name
+	32, // 13: opsagent.AgentMessage.discovery_report:type_name -> opsagent.ServiceDiscoveryReport
+	35, // 14: opsagent.AgentMessage.update_ack:type_name -> opsagent.AgentUpdateAck
+	11, // 15: opsagent.PlatformMessage.exec_command:type_name -> opsagent.ExecuteCommand
+	12, // 16: opsagent.PlatformMessage.exec_script:type_name -> opsagent.ExecuteScript
+	17, // 17: opsagent.PlatformMessage.cancel_job:type_name -> opsagent.CancelJob
+	18, // 18: opsagent.PlatformMessage.config_update:type_name -> opsagent.ConfigUpdate
+	19, // 19: opsagent.PlatformMessage.ack:type_name -> opsagent.Ack
+	20, // 20: opsagent.PlatformMessage.health_check:type_name -> opsagent.HealthCheckRequest
+	26, // 21: opsagent.PlatformMessage.tunnel_data:type_name -> opsagent.TunnelData
+	27, // 22: opsagent.PlatformMessage.tunnel_close:type_name -> opsagent.TunnelClose
+	29, // 23: opsagent.PlatformMessage.proxy_command:type_name -> opsagent.ProxyCommandRequest
+	34, // 24: opsagent.PlatformMessage.agent_update:type_name -> opsagent.AgentUpdate
+	6,  // 25: opsagent.AgentRegistration.agent_info:type_name -> opsagent.AgentInfo
+	36, // 26: opsagent.AgentRegistration.labels:type_name -> opsagent.AgentRegistration.LabelsEntry
+	6,  // 27: opsagent.Heartbeat.agent_info:type_name -> opsagent.AgentInfo
+	9,  // 28: opsagent.MetricBatch.metrics:type_name -> opsagent.Metric
+	37, // 29: opsagent.Metric.tags:type_name -> opsagent.Metric.TagsEntry
+	10, // 30: opsagent.Metric.fields:type_name -> opsagent.Field
+	0,  // 31: opsagent.Metric.type:type_name -> opsagent.MetricType
+	38, // 32: opsagent.ExecuteCommand.env:type_name -> opsagent.ExecuteCommand.EnvEntry
+	13, // 33: opsagent.ExecuteCommand.sandbox:type_name -> opsagent.SandboxConfig
+	39, // 34: opsagent.ExecuteScript.env:type_name -> opsagent.ExecuteScript.EnvEntry
+	13, // 35: opsagent.ExecuteScript.sandbox:type_name -> opsagent.SandboxConfig
+	16, // 36: opsagent.ExecResult.stats:type_name -> opsagent.ExecStats
+	21, // 37: opsagent.HealthCheckRequest.items:type_name -> opsagent.CheckItem
+	1,  // 38: opsagent.CheckItem.severity:type_name -> opsagent.CheckSeverity
+	23, // 39: opsagent.HealthCheckResult.results:type_name -> opsagent.CheckResult
+	24, // 40: opsagent.HealthCheckResult.summary:type_name -> opsagent.CheckSummary
+	2,  // 41: opsagent.CheckResult.status:type_name -> opsagent.CheckStatus
+	1,  // 42: opsagent.CheckResult.severity:type_name -> opsagent.CheckSeverity
+	9,  // 43: opsagent.ProxyMetricBatch.metrics:type_name -> opsagent.Metric
+	33, // 44: opsagent.ServiceDiscoveryReport.services:type_name -> opsagent.ServiceInfo
+	40, // 45: opsagent.ServiceInfo.labels:type_name -> opsagent.ServiceInfo.LabelsEntry
+	41, // 46: opsagent.ServiceInfo.metadata:type_name -> opsagent.ServiceInfo.MetadataEntry
+	3,  // 47: opsagent.AgentService.Connect:input_type -> opsagent.AgentMessage
+	4,  // 48: opsagent.AgentService.Connect:output_type -> opsagent.PlatformMessage
+	48, // [48:49] is the sub-list for method output_type
+	47, // [47:48] is the sub-list for method input_type
+	47, // [47:47] is the sub-list for extension type_name
+	47, // [47:47] is the sub-list for extension extendee
+	0,  // [0:47] is the sub-list for field type_name
 }
 
 func init() { file_proto_agent_proto_init() }
@@ -3027,6 +3441,8 @@ func file_proto_agent_proto_init() {
 		(*AgentMessage_ProxyRegister)(nil),
 		(*AgentMessage_ProxyResponse)(nil),
 		(*AgentMessage_ProxyMetrics)(nil),
+		(*AgentMessage_DiscoveryReport)(nil),
+		(*AgentMessage_UpdateAck)(nil),
 	}
 	file_proto_agent_proto_msgTypes[1].OneofWrappers = []any{
 		(*PlatformMessage_ExecCommand)(nil),
@@ -3038,6 +3454,7 @@ func file_proto_agent_proto_init() {
 		(*PlatformMessage_TunnelData)(nil),
 		(*PlatformMessage_TunnelClose)(nil),
 		(*PlatformMessage_ProxyCommand)(nil),
+		(*PlatformMessage_AgentUpdate)(nil),
 	}
 	file_proto_agent_proto_msgTypes[7].OneofWrappers = []any{
 		(*Field_DoubleValue)(nil),
@@ -3051,7 +3468,7 @@ func file_proto_agent_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_agent_proto_rawDesc), len(file_proto_agent_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   32,
+			NumMessages:   39,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

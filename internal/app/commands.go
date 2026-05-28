@@ -12,8 +12,10 @@ import (
 	"github.com/cy77cc/opsagent/internal/config"
 	"github.com/cy77cc/opsagent/internal/logger"
 	"github.com/cy77cc/opsagent/internal/pluginruntime"
+	"github.com/cy77cc/opsagent/internal/templates"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 // NewRootCommand creates the root cobra command with run, version, validate,
@@ -117,6 +119,35 @@ func NewRootCommand() *cobra.Command {
 	// plugins subcommand
 	pluginsCmd := newPluginsCommand()
 	rootCmd.AddCommand(pluginsCmd)
+
+	// templates subcommand
+	templatesCmd := &cobra.Command{Use: "templates", Short: "Manage config templates"}
+	templatesCmd.AddCommand(
+		&cobra.Command{Use: "list", Short: "List available templates", RunE: func(cmd *cobra.Command, args []string) error {
+			l, err := templates.NewLoader()
+			if err != nil {
+				return fmt.Errorf("loading templates: %w", err)
+			}
+			for _, name := range l.List() {
+				fmt.Println(name)
+			}
+			return nil
+		}},
+		&cobra.Command{Use: "show", Short: "Show template details", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
+			l, err := templates.NewLoader()
+			if err != nil {
+				return fmt.Errorf("loading templates: %w", err)
+			}
+			tmpl, err := l.Get(args[0])
+			if err != nil {
+				return err
+			}
+			data, _ := yaml.Marshal(tmpl)
+			fmt.Println(string(data))
+			return nil
+		}},
+	)
+	rootCmd.AddCommand(templatesCmd)
 
 	return rootCmd
 }
