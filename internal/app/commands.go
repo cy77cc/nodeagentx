@@ -11,6 +11,7 @@ import (
 	"github.com/cy77cc/opsagent/internal/collector"
 	"github.com/cy77cc/opsagent/internal/config"
 	"github.com/cy77cc/opsagent/internal/logger"
+	"github.com/cy77cc/opsagent/internal/marketplace"
 	"github.com/cy77cc/opsagent/internal/pluginruntime"
 	"github.com/cy77cc/opsagent/internal/templates"
 	"github.com/rs/zerolog"
@@ -149,6 +150,10 @@ func NewRootCommand() *cobra.Command {
 	)
 	rootCmd.AddCommand(templatesCmd)
 
+	// plugin marketplace subcommand
+	pluginCmd := newPluginMarketplaceCommand()
+	rootCmd.AddCommand(pluginCmd)
+
 	return rootCmd
 }
 
@@ -251,5 +256,103 @@ func newPluginsCommand() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&configPath, "config", "", "Path to config file (enables custom plugin listing)")
+	return cmd
+}
+
+// newPluginMarketplaceCommand creates the "plugin" parent command with
+// search, list, install, and remove subcommands that interact with the
+// marketplace registry and installer.
+func newPluginMarketplaceCommand() *cobra.Command {
+	var registryURL string
+	var pluginsDir string
+
+	cmd := &cobra.Command{
+		Use:   "plugin",
+		Short: "Manage plugins from the marketplace",
+	}
+
+	// plugin search <query>
+	searchCmd := &cobra.Command{
+		Use:   "search [query]",
+		Short: "Search for plugins in the marketplace",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			reg := marketplace.NewRegistry(registryURL, nil)
+			results, err := reg.Search(args[0])
+			if err != nil {
+				return fmt.Errorf("search failed: %w", err)
+			}
+			if len(results) == 0 {
+				fmt.Println("No plugins found.")
+				return nil
+			}
+			for _, p := range results {
+				fmt.Printf("%-20s %-10s %s\n", p.Name, p.Version, p.Description)
+			}
+			return nil
+		},
+	}
+
+	// plugin list
+	listCmd := &cobra.Command{
+		Use:   "list",
+		Short: "List installed plugins",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			inst := marketplace.NewInstaller(pluginsDir, nil)
+			plugins, err := inst.List()
+			if err != nil {
+				return fmt.Errorf("list plugins: %w", err)
+			}
+			if len(plugins) == 0 {
+				fmt.Println("No plugins installed.")
+				return nil
+			}
+			for _, p := range plugins {
+				fmt.Printf("%-20s %-10s (installed: %s)\n", p.Name, p.Version, p.InstalledAt)
+			}
+			return nil
+		},
+	}
+
+	// plugin install <name>
+	installCmd := &cobra.Command{
+		Use:   "install [name]",
+		Short: "Install a plugin from the marketplace",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			reg := marketplace.NewRegistry(registryURL, nil)
+			entry, err := reg.Get(args[0])
+			if err != nil {
+				return fmt.Errorf("lookup plugin: %w", err)
+			}
+			inst := marketplace.NewInstaller(pluginsDir, nil)
+			if err := inst.Install(*entry); err != nil {
+				return fmt.Errorf("install plugin: %w", err)
+			}
+			fmt.Printf("Plugin %s %s installed successfully.\n", entry.Name, entry.Version)
+			return nil
+		},
+	}
+
+	// plugin remove <name>
+	removeCmd := &cobra.Command{
+		Use:   "remove [name]",
+		Short: "Remove an installed plugin",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			inst := marketplace.NewInstaller(pluginsDir, nil)
+			if err := inst.Remove(args[0]); err != nil {
+				return fmt.Errorf("remove plugin: %w", err)
+			}
+			fmt.Printf("Plugin %s removed.\n", args[0])
+			return nil
+		},
+	}
+
+	cmd.AddCommand(searchCmd, listCmd, installCmd, removeCmd)
+
+	cmd.PersistentFlags().StringVar(&registryURL, "registry-url", "https://registry.opsagent.dev/index.json", "Plugin registry index URL")
+	cmd.PersistentFlags().StringVar(&pluginsDir, "plugins-dir", "./plugins", "Local plugins directory")
+
 	return cmd
 }
