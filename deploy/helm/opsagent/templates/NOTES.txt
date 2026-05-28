@@ -1,0 +1,22 @@
+Thank you for installing {{ .Chart.Name }}!
+
+Your release is named: {{ .Release.Name }}
+
+To verify the deployment status:
+
+  kubectl get pods -l "app.kubernetes.io/name={{ include "opsagent.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -w
+
+To view agent logs:
+
+  kubectl logs -l "app.kubernetes.io/name={{ include "opsagent.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -f
+
+To check the health endpoint:
+
+  kubectl port-forward svc/{{ include "opsagent.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+  curl http://localhost:{{ .Values.service.port }}/healthz
+
+To verify readiness:
+
+  curl http://localhost:{{ .Values.service.port }}/readyz
+
+For more information, visit: {{ .Chart.Home }}
