@@ -87,6 +87,9 @@ OpsAgent 是一个运行在目标主机上的轻量级守护进程，通过 gRPC
 | Tracing | `internal/tracing/` | 分布式追踪（OTLP 接收/导出、批处理） |
 | Dashboard | `internal/dashboard/` | 本地嵌入式 HTML 仪表盘 |
 | Alerting | `internal/alerting/` | 告警规则引擎与 Webhook 通知 |
+| Discovery | `internal/discovery/` | 服务自动发现（systemd/proc/容器/云元数据） |
+| Templates | `internal/templates/` | 配置模板引擎与变量替换 |
+| Updater | `internal/updater/` | 自动更新（A/B 二进制交换、Ed25519 签名验证） |
 
 ## 2. 子系统职责
 
@@ -474,6 +477,152 @@ Alerting 引擎包含三个核心组件：规则管理器加载和热重载告�
 
 **关键文件**: `internal/alerting/`
 
+### 2.16 Discovery（服务自动发现）
+
+**职责**: 多层扫描主机上运行的服务，自动发现并以统一的 `Service` 结构输出。
+
+Discovery 采用分层架构，每层负责一个发现来源。所有层实现统一的 `DiscoveryLayer` 接口，由 `DiscoveryService` 编排执行。发现结果按 `type:name` 键去重，避免同一服务被多层重复报告。
+
+**发现层**:
+
+| 层 | 实现 | 发现方式 |
+|------|------|----------|
+| systemd | `SystemdLayer` | 调用 `systemctl list-units --type=service --state=running`，获取运行中服务的名称和 PID |
+| proc | `ProcLayer` | 扫描 `/proc` 中所有 LISTEN 状态的网络连接，按 PID 聚合，提取进程名、端口和命令行 |
+| container | `ContainerLayer` | 通过 Docker Unix Socket 调用 `/containers/json` API，发现运行中的容器、端口映射和标签 |
+| metadata | `MetadataLayer` | 请求 EC2 元数据服务（`169.254.169.254`），获取实例 ID、类型、区域和内网 IP |
+
+**关键接口**:
+
+```go
+// Service 表示一个被发现的服务
+type Service struct {
+    Name         string            `json:"name"`
+    Type         string            `json:"type"`
+    PID          int               `json:"pid,omitempty"`
+    Ports        []int             `json:"ports,omitempty"`
+    Labels       map[string]string `json:"labels,omitempty"`
+    Metadata     map[string]any    `json:"metadata,omitempty"`
+    DiscoveredAt time.Time         `json:"discovered_at"`
+}
+
+// DiscoveryLayer 所有发现层必须实现的接口
+type DiscoveryLayer interface {
+    Name() string
+    Discover(ctx context.Context) ([]Service, error)
+}
+```
+
+**工作流程**:
+
+1. `DiscoveryService.Run()` 启动后立即执行一次全量发现
+2. 之后按配置的 `interval_seconds` 间隔周期性重新扫描
+3. 每次扫描遍历所有已启用的层，调用 `Discover()` 收集服务
+4. 结果按 `type:name` 去重后缓存，通过 `LastResults()` 获取最新快照
+5. 单层发现失败不影响其他层，仅记录错误日志
+
+**关键文件**: `internal/discovery/discovery.go`, `internal/discovery/systemd.go`, `internal/discovery/proc.go`, `internal/discovery/container.go`, `internal/discovery/metadata.go`
+
+### 2.17 Templates（配置模板引擎）
+
+**职责**: 提供预定义的监控配置模板，通过变量替换生成 Collector 输入插件配置。
+
+Templates 子系统将监控配置抽象为可复用的 YAML 模板，通过 Go 的 `embed.FS` 将模板文件编译进二进制。每个模板定义变量（带描述、默认值和类型），运行时通过 `Loader.Apply()` 进行变量替换，生成最终的 Collector 输入配置。
+
+**模板结构**:
+
+```yaml
+name: "nginx"
+description: "Nginx web server monitoring"
+version: "1.0.0"
+variables:
+  stub_status_url:
+    description: "Nginx stub_status endpoint URL"
+    default: "http://127.0.0.1:80/nginx_status"
+    type: "string"
+collector:
+  inputs:
+    - type: http
+      config:
+        urls: ["{{.stub_status_url}}"]
+```
+
+**关键接口**:
+
+```go
+// Loader 从嵌入式文件系统加载和管理模板
+type Loader struct { ... }
+
+func NewLoader() (*Loader, error)          // 从 TemplateFS 加载所有 YAML 模板
+func (l *Loader) List() []string           // 列出所有已加载模板名称
+func (l *Loader) Get(name string) (*Template, error)  // 按名称获取模板
+func (l *Loader) Apply(tmpl *Template, vars map[string]string) (*ApplyResult, error)  // 渲染模板
+```
+
+**变量替换机制**:
+
+1. 加载模板时解析所有 YAML 文件，注册到内存映射
+2. `Apply()` 调用时，先用模板定义的默认值填充变量映射
+3. 用户提供的变量覆盖默认值
+4. 递归遍历配置树，对所有字符串值执行 Go `text/template` 渲染
+5. 非字符串类型（整数、布尔值、列表）原样保留
+6. 渲染结果为 `ApplyResult`，包含最终的输入插件配置列表
+
+**嵌入机制**: 使用 `//go:embed templates/*.yaml` 指令将模板目录编译进二进制的 `TemplateFS` 变量，部署时无需额外的模板文件。
+
+**关键文件**: `internal/templates/embed.go`, `internal/templates/loader.go`, `internal/templates/templates/`
+
+### 2.18 Updater（自动更新器）
+
+**职责**: 安全地下载、验证和应用 Agent 二进制更新，支持回滚。
+
+Updater 实现 A/B 二进制交换策略：将新版本下载到临时文件，经过 SHA256 校验和 Ed25519 签名双重验证后，通过原子 `rename` 操作替换当前二进制，同时保留旧版本作为备份。更新失败时可一键回滚到备份版本。
+
+**更新流程**:
+
+```
+  下载新二进制 → SHA256 校验 → Ed25519 签名验证 → 写入临时文件 → 原子替换
+                                                              ↓
+                                                    当前二进制 → 备份路径
+                                                    临时文件  → 当前路径
+```
+
+**关键接口**:
+
+```go
+// UpdateRequest 更新请求
+type UpdateRequest struct {
+    Version     string
+    DownloadURL string
+    SHA256      string
+    Signature   []byte
+}
+
+// Updater 处理下载、验证和应用二进制更新
+type Updater struct { ... }
+
+func New(currentPath, backupPath, downloadDir string, pub ed25519.PublicKey, logger zerolog.Logger) *Updater
+func (u *Updater) Apply(req UpdateRequest) error   // 执行完整更新流程
+func (u *Updater) Rollback() error                  // 从备份恢复
+```
+
+**安全机制**:
+
+- **SHA256 校验**: 下载完成后计算哈希值，与预期值比对，防止传输损坏
+- **Ed25519 签名验证**: 使用预置的公钥验证二进制签名，确保来源可信、未被篡改
+- **大小限制**: 下载内容最大 500MB，超限立即中止
+- **超时控制**: HTTP 下载超时 5 分钟
+
+**A/B 交换策略**:
+
+1. 将新二进制写入 `download_dir` 下的临时文件，设置可执行权限
+2. 将当前二进制 `rename` 到 `backup_path`（原子操作）
+3. 将临时文件 `rename` 到 `current_path`（原子操作）
+4. 如果步骤 3 失败，自动将备份 `rename` 回 `current_path` 恢复
+5. `Rollback()` 可在运行时手动触发，将备份二进制恢复到当前位置
+
+**关键文件**: `internal/updater/updater.go`
+
 ## 3. 数据流
 
 ### 3.1 指标采集流
@@ -640,7 +789,42 @@ Alerting 引擎包含三个核心组件：规则管理器加载和热重载告�
 - **插件化**: 通过注册表模式（`DefaultRegistry`）和 `init()` 自注册，新插件只需实现接口并注册即可使用
 - **关注点分离**: 每个阶段有明确的职责边界，便于独立测试和维护
 
-### 4.5 其他设计决策
+### 4.5 为什么选择多层服务发现
+
+**选择**: 采用 systemd、/proc、容器、云元数据四层发现架构，各层实现统一接口。
+
+**理由**:
+
+- **覆盖全面**: systemd 层发现托管服务，proc 层发现非托管进程，容器层发现 Docker 容器，元数据层发现云实例信息，互补而非重叠
+- **可扩展**: 新发现源只需实现 `DiscoveryLayer` 接口即可接入，不影响现有层
+- **容错隔离**: 单层发现失败（如无 Docker 运行时、非云环境）不影响其他层，通过错误日志而非崩溃处理
+- **去重机制**: 按 `type:name` 键自动去重，同一服务被多层发现时只保留首次出现的结果
+- **零依赖部署**: systemd 层调用 `systemctl`，proc 层读取 `/proc`，容器层通过 Docker Socket，均无需额外依赖
+
+### 4.6 为什么选择 embed.FS 管理配置模板
+
+**选择**: 使用 Go 的 `//go:embed` 指令将 YAML 模板编译进二进制，运行时通过 `text/template` 进行变量替换。
+
+**理由**:
+
+- **零外部依赖**: 模板随二进制分发，无需额外的文件系统路径或远程模板仓库
+- **类型安全**: 模板变量定义包含类型、描述和默认值，加载时即可验证
+- **递归渲染**: 变量替换递归遍历整个配置树，支持嵌套结构中的模板表达式
+- **渐进覆盖**: 用户只需提供需要自定义的变量，其余使用默认值，降低配置门槛
+
+### 4.7 为什么选择 A/B 二进制交换更新
+
+**选择**: 通过下载→验证→原子替换的流程实现二进制更新，保留旧版本作为回滚备份。
+
+**理由**:
+
+- **原子安全**: 使用 `os.Rename` 进行原子替换，避免更新过程中出现二进制损坏的中间状态
+- **双重验证**: SHA256 防止传输损坏，Ed25519 签名防止恶意篡改，两层校验确保二进制完整性
+- **快速回滚**: 备份二进制始终保留，`Rollback()` 只需一次 `rename` 操作，秒级恢复
+- **自愈能力**: 替换失败时自动回滚到备份版本，不会导致 Agent 无法启动
+- **无需外部工具**: 纯 Go 标准库实现（`crypto/ed25519`、`os.Rename`），不依赖系统包管理器
+
+### 4.8 其他设计决策
 
 **接口隔离**: 所有子系统通过接口（定义在 `internal/app/interfaces.go`）与 Agent 核心交互，支持测试时注入 mock 实现。编译时通过类型断言检查接口满足性。
 

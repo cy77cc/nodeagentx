@@ -166,3 +166,22 @@ tracing:
 alerting:
   enabled: false
   rules: []
+
+discovery:
+  enabled: false
+  interval_seconds: 300
+  layers:
+    - type: "systemd"
+      enabled: true
+    - type: "proc"
+      enabled: true
+    - type: "container"
+      enabled: true
+    - type: "metadata"
+      enabled: false
+
+updater:
+  enabled: false
+  current_path: "/usr/local/bin/opsagent"
+  backup_path: "/usr/local/bin/opsagent.bak"
+  download_dir: "/tmp/opsagent/update"
