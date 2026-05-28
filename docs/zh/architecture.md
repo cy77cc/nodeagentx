@@ -90,6 +90,8 @@ OpsAgent 是一个运行在目标主机上的轻量级守护进程，通过 gRPC
 | Discovery | `internal/discovery/` | 服务自动发现（systemd/proc/容器/云元数据） |
 | Templates | `internal/templates/` | 配置模板引擎与变量替换 |
 | Updater | `internal/updater/` | 自动更新（A/B 二进制交换、Ed25519 签名验证） |
+| WASM Plugin Runtime | `internal/wasm/` | WebAssembly 模块加载、编译和安全执行 |
+| Plugin Marketplace | `internal/marketplace/` | 插件远程注册、搜索、下载和安装管理 |
 
 ## 2. 子系统职责
 
@@ -138,10 +140,20 @@ type Output interface {
 
 **已注册插件**:
 
-- Input: `cpu`, `memory`, `disk`, `net`, `process`, `load`, `diskio`, `temp`, `gpu`, `connections`
+- Input: `cpu`, `memory`, `disk`, `net`, `process`, `load`, `diskio`, `temp`, `gpu`, `connections`, `http`, `snmp`, `cloud_metadata`
 - Processor: `regex`, `delta`, `tagger`
 - Aggregator: `avg`, `sum`, `minmax`, `percentile`
 - Output: `http`, `prometheus`, `promrw`
+
+**新增 Input 插件**:
+
+| 插件 | 包 | 采集内容 |
+|------|------|----------|
+| http | `collector/inputs/http` | 轮询 HTTP 端点，采集状态码、响应时间、内容长度等指标 |
+| snmp | `collector/inputs/snmp` | 查询 SNMP 代理，采集网络设备指标（支持 SNMPv1/v2c/v3） |
+| cloud_metadata | `collector/inputs/cloudmetadata` | 从云实例元数据服务（EC2 169.254.169.254）获取实例 ID、类型、区域和内网 IP |
+
+HTTP 输入插件支持配置多个 URL、HTTP 方法和超时时间，适合监控 Web 服务健康状态和 API 端点。SNMP 输入插件基于 `gosnmp` 库实现，支持配置代理地址、社区字符串、OID 列表和超时，适合采集网络设备（路由器、交换机、UPS）的运行指标。Cloud Metadata 输入插件通过 IMDS（Instance Metadata Service）获取当前云实例的元数据信息，支持自定义元数据 URL 和超时。
 
 **关键文件**: `internal/collector/scheduler.go`, `internal/collector/registry.go`, `internal/collector/inputs/`, `internal/collector/processors/`, `internal/collector/aggregators/`, `internal/collector/outputs/`
 
@@ -622,6 +634,141 @@ func (u *Updater) Rollback() error                  // 从备份恢复
 5. `Rollback()` 可在运行时手动触发，将备份二进制恢复到当前位置
 
 **关键文件**: `internal/updater/updater.go`
+
+### 2.19 WASM Plugin Runtime（WebAssembly 插件运行时）
+
+**职责**: 加载、编译和执行 WebAssembly 模块，提供安全隔离的插件执行环境。
+
+WASM Plugin Runtime 基于 [wazero](https://github.com/tetratelabs/wazero)（纯 Go 实现的 WebAssembly 运行时），无需 CGO 或外部依赖即可运行 WASM 模块。运行时管理 WASM 模块的完整生命周期：从磁盘加载二进制和清单文件、编译为机器码、实例化模块并执行。
+
+**清单格式**:
+
+```yaml
+name: "my-plugin"
+version: "1.0.0"
+runtime: "wasm"
+binary_path: "/etc/opsagent/wasm-plugins/my-plugin.wasm"
+task_types:
+  - "custom-task"
+limits:
+  max_memory_pages: 256    # 256 * 64 KiB = 16 MiB
+  max_table_size: 1024
+  max_cpu_seconds: 30
+sandbox:
+  enabled: true
+  network_access: false
+  allowed_paths: []
+```
+
+**安全机制**:
+
+- **内存限制**: 通过 `max_memory_pages` 限制模块可用内存（默认 16 MiB），防止内存耗尽
+- **CPU 限制**: 通过 `max_cpu_seconds` 限制执行时间，防止无限循环
+- **沙箱模式**: 支持网络访问控制和文件路径白名单
+- **模块隔离**: 每个模块在独立的 wazero 实例中运行，崩溃不影响其他模块
+- **无系统调用**: WASM 模块运行在纯用户态沙箱中，无法直接访问宿主系统调用
+
+**关键接口**:
+
+```go
+// WASMRuntime 管理 WASM 模块的编译、实例化和生命周期
+type WASMRuntime struct { ... }
+
+func NewRuntime(ctx context.Context, cfg RuntimeConfig, logger zerolog.Logger) (*WASMRuntime, error)
+func (r *WASMRuntime) LoadModule(ctx context.Context, manifestPath string) (*WASMModule, error)
+func (r *WASMRuntime) ListModules() []string
+func (r *WASMRuntime) Close(ctx context.Context) error
+
+// WASMModule 封装已编译的 WASM 模块
+type WASMModule struct {
+    Name     string
+    Manifest *Manifest
+    // ...
+}
+
+func (m *WASMModule) Execute(ctx context.Context, input []byte) ([]byte, error)
+func (m *WASMModule) Close(ctx context.Context) error
+```
+
+**模块加载流程**:
+
+1. 读取清单文件（YAML），验证必填字段（name、version、binary_path、task_types）
+2. 应用默认值（内存 16 MiB、CPU 30 秒、沙箱启用）
+3. 读取 WASM 二进制文件
+4. 调用 `wazero.Runtime.CompileModule()` 编译为机器码
+5. 调用 `InstantiateModule()` 创建模块实例
+6. 注册到内部模块映射表
+
+**配置示例**（`configs/config.yaml`）:
+
+```yaml
+wasm:
+  enabled: false
+  plugins_dir: "/etc/opsagent/wasm-plugins"
+  max_modules: 10
+  cache_dir: "/var/lib/opsagent/wasm-cache"
+```
+
+**关键文件**: `internal/wasm/runtime.go`, `internal/wasm/module.go`, `internal/wasm/manifest.go`
+
+### 2.20 Plugin Marketplace（插件市场）
+
+**职责**: 提供插件的远程注册、搜索、下载和安装管理。
+
+Plugin Marketplace 子系统包含两个核心组件：`Registry` 负责从远程索引获取可用插件列表并提供搜索功能；`Installer` 负责下载、校验和管理插件的本地安装。
+
+**Registry（插件注册表）**:
+
+Registry 从远程 URL 获取 JSON 格式的插件索引（`RegistryIndex`），索引包含所有可用插件的元数据（名称、版本、描述、作者、标签、下载地址和校验和）。支持按名称和描述进行模糊搜索，索引首次获取后缓存到内存。
+
+```go
+// PluginEntry 表示注册表中的单个插件
+type PluginEntry struct {
+    Name        string   `json:"name"`
+    Version     string   `json:"version"`
+    Description string   `json:"description"`
+    Author      string   `json:"author"`
+    Homepage    string   `json:"homepage"`
+    Tags        []string `json:"tags"`
+    DownloadURL string   `json:"download_url"`
+    Checksum    string   `json:"checksum"`
+}
+
+type Registry struct { ... }
+
+func NewRegistry(indexURL string, client *http.Client) *Registry
+func (r *Registry) Search(query string) ([]PluginEntry, error)
+func (r *Registry) Get(name string) (*PluginEntry, error)
+```
+
+**Installer（插件安装器）**:
+
+Installer 处理插件的下载、校验和生命周期管理。安装过程包括：创建插件目录、下载归档文件、SHA256 校验和验证、写入二进制和元数据文件。支持安装、卸载和列出已安装插件。
+
+```go
+type Installer struct { ... }
+
+func NewInstaller(pluginsDir string, client *http.Client) *Installer
+func (i *Installer) Install(entry PluginEntry) error
+func (i *Installer) Remove(name string) error
+func (i *Installer) List() ([]InstalledPlugin, error)
+```
+
+**安装流程**:
+
+1. 创建 `{pluginsDir}/{pluginName}/` 目录
+2. 通过 HTTP GET 下载插件归档
+3. 计算 SHA256 哈希值并与索引中的校验和比对
+4. 写入插件二进制文件（设置可执行权限）
+5. 生成 `installed.yaml` 元数据文件（记录名称、版本、安装时间）
+
+**安全机制**:
+
+- **SHA256 校验**: 下载完成后验证校验和，防止传输损坏或恶意篡改
+- **目录隔离**: 每个插件安装在独立目录中，避免文件冲突
+- **元数据追踪**: 记录安装时间，支持版本管理和审计
+
+**关键文件**: `internal/marketplace/registry.go`, `internal/marketplace/installer.go`
 
 ## 3. 数据流
 

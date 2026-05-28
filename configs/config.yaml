@@ -180,6 +180,12 @@ discovery:
     - type: "metadata"
       enabled: false
 
+wasm:
+  enabled: false
+  plugins_dir: "/etc/opsagent/wasm-plugins"
+  max_modules: 10
+  cache_dir: "/var/lib/opsagent/wasm-cache"
+
 updater:
   enabled: false
   current_path: "/usr/local/bin/opsagent"
