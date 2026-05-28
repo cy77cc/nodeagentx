@@ -1,0 +1,117 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "opsagent.fullname" . }}
+  labels:
+    {{- include "opsagent.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "opsagent.selectorLabels" . | nindent 6 }}
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "opsagent.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "opsagent.serviceAccountName" . }}
+      priorityClassName: system-node-critical
+      hostPID: true
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: {{ include "opsagent.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - run
+            - --config=/etc/opsagent/config.yaml
+          env:
+            - name: HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: LOG_LEVEL
+              value: "info"
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/opsagent
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp/opsagent
+            {{- if and .Values.config.grpc.mtls.cert_file .Values.config.grpc.mtls.key_file }}
+            - name: tls
+              mountPath: /etc/opsagent/tls
+              readOnly: true
+            {{- end }}
+            - name: proc
+              mountPath: /host/proc
+              readOnly: true
+            - name: sys
+              mountPath: /host/sys
+              readOnly: true
+            - name: dev
+              mountPath: /host/dev
+              readOnly: true
+            - name: var-log
+              mountPath: /host/var/log
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "opsagent.configName" . }}
+        - name: tmp
+          emptyDir: {}
+        {{- if and .Values.config.grpc.mtls.cert_file .Values.config.grpc.mtls.key_file }}
+        - name: tls
+          secret:
+            secretName: {{ include "opsagent.fullname" . }}-tls
+        {{- end }}
+        - name: proc
+          hostPath:
+            path: {{ .Values.hostPaths.proc }}
+        - name: sys
+          hostPath:
+            path: {{ .Values.hostPaths.sys }}
+        - name: dev
+          hostPath:
+            path: {{ .Values.hostPaths.dev }}
+        - name: var-log
+          hostPath:
+            path: {{ .Values.hostPaths.varLog }}
