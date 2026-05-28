@@ -12,6 +12,7 @@ import (
 	"github.com/cy77cc/opsagent/internal/checker"
 	"github.com/cy77cc/opsagent/internal/collector"
 	"github.com/cy77cc/opsagent/internal/config"
+	"github.com/cy77cc/opsagent/internal/discovery"
 	"github.com/cy77cc/opsagent/internal/executor"
 	"github.com/cy77cc/opsagent/internal/gateway"
 	"github.com/cy77cc/opsagent/internal/grpcclient"
@@ -21,6 +22,7 @@ import (
 	"github.com/cy77cc/opsagent/internal/sandbox"
 	"github.com/cy77cc/opsagent/internal/server"
 	"github.com/cy77cc/opsagent/internal/task"
+	"github.com/cy77cc/opsagent/internal/updater"
 	"github.com/rs/zerolog"
 
 	// Blank imports to trigger init() plugin registration.
@@ -78,6 +80,8 @@ type Agent struct {
 	checkerExec      *checker.Executor
 	configReloader   *config.ConfigReloader
 	alertEngine      *alerting.Engine
+	discoverySvc     *discovery.DiscoveryService
+	updater          *updater.Updater
 	metricsReg       *MetricsRegistry
 	auditLog         *AuditLogger
 	startedAt        time.Time
@@ -336,6 +340,42 @@ func NewAgent(cfg *config.Config, log zerolog.Logger, opts ...Option) (*Agent, e
 		a.registerGRPCHandlers(grpcRecv)
 	}
 
+	// Build discovery service if enabled.
+	if cfg.Discovery.Enabled {
+		var layers []discovery.DiscoveryLayer
+		for _, lcfg := range cfg.Discovery.Layers {
+			if !lcfg.Enabled {
+				continue
+			}
+			switch lcfg.Type {
+			case "systemd":
+				layers = append(layers, &discovery.SystemdLayer{})
+			case "proc":
+				layers = append(layers, discovery.NewProcLayer())
+			case "container":
+				layers = append(layers, &discovery.ContainerLayer{})
+			case "metadata":
+				layers = append(layers, discovery.NewMetadataLayer())
+			}
+		}
+		a.discoverySvc = discovery.NewDiscoveryService(discovery.Config{
+			Interval: time.Duration(cfg.Discovery.IntervalSec) * time.Second,
+			Layers:   layers,
+			Logger:   log,
+		})
+	}
+
+	// Build updater if enabled.
+	if cfg.Updater.Enabled {
+		a.updater = updater.New(
+			cfg.Updater.CurrentPath,
+			cfg.Updater.BackupPath,
+			cfg.Updater.DownloadDir,
+			nil, // public key to be configured when key management is added
+			log,
+		)
+	}
+
 	// Build config reloader if not injected.
 	if a.configReloader == nil {
 		var reloaders []config.Reloader
@@ -459,6 +499,11 @@ func (a *Agent) startSubsystems(ctx context.Context) (<-chan []*collector.Metric
 			EventType: "gateway.started", Component: "gateway",
 			Action: "start", Status: "success",
 		})
+	}
+
+	if a.discoverySvc != nil {
+		go a.discoverySvc.Run(ctx)
+		a.log.Info().Msg("discovery service started")
 	}
 
 	errCh := make(chan error, 1)
@@ -640,6 +685,13 @@ func (a *Agent) handlePipelineMetrics(metrics []*collector.Metric) {
 			a.log.Warn().Str("alert", al.Name).Str("severity", al.Severity).Float64("value", al.CurrentValue).Msg("alert fired")
 		}
 	}
+	// Include discovery results in metrics report.
+	if a.discoverySvc != nil {
+		services := a.discoverySvc.LastResults()
+		// TODO: include in heartbeat/proto message
+		_ = services
+	}
+
 	// Send metrics via gRPC client.
 	a.grpcClient.SendMetrics(metrics)
 	a.log.Debug().Int("count", len(metrics)).Msg("pipeline metrics sent via gRPC")
