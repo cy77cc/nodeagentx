@@ -1,4 +1,4 @@
-{{- if and .Values.mesh.enabled (eq .Values.mesh.type "cilium") .Values.mesh.cilium.networkPolicy.enabled }}
+{{- if and .Values.mesh.enabled (eq .Values.mesh.type "cilium") }}
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:

@@ -51,6 +51,10 @@ tolerations:
 
 affinity: {}
 
+# Logging configuration
+logging:
+  level: info
+
 # OpsAgent configuration
 config:
   agent:
