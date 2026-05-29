@@ -28,17 +28,17 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/metrics/latest", s.handleLatestMetrics)
 	mux.HandleFunc("/api/v1/exec", s.handleExec)
 	mux.HandleFunc("/api/v1/tasks", s.handleTask)
+	mux.HandleFunc("/api/v1/health/detailed", s.handleDetailedHealth)
+	mux.HandleFunc("/api/v1/config", s.handleGetConfig)
+	mux.HandleFunc("/api/v1/logs", s.handleLogsSSE)
+	mux.HandleFunc("/ui/", s.handleUI)
 	if s.options.Prometheus.Enabled {
 		mux.HandleFunc(s.options.Prometheus.Path, s.handlePrometheusMetrics)
 	}
 }
 
-func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeJSON(w, http.StatusMethodNotAllowed, apiResponse{Success: false, Error: "method not allowed"})
-		return
-	}
-
+// buildHealthData computes overall status and subsystem details.
+func (s *Server) buildHealthData() (string, map[string]any) {
 	subsystems := make(map[string]any)
 	overallStatus := "healthy"
 
@@ -75,8 +75,18 @@ func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	return overallStatus, subsystems
+}
+
+func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, apiResponse{Success: false, Error: "method not allowed"})
+		return
+	}
+
+	status, subsystems := s.buildHealthData()
 	data := map[string]any{
-		"status":     overallStatus,
+		"status":     status,
 		"subsystems": subsystems,
 	}
 

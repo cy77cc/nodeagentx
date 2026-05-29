@@ -77,6 +77,11 @@ func (m *Metric) AddTag(key, value string) {
 	m.tags[key] = value
 }
 
+// AddField adds or updates a field on the metric.
+func (m *Metric) AddField(key string, value interface{}) {
+	m.fields[key] = value
+}
+
 // ToProto converts the Metric to its protobuf representation.
 func (m *Metric) ToProto() *pb.Metric {
 	pbType := pb.MetricType(m.metricType)

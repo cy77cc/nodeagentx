@@ -150,3 +150,44 @@ gateway:
   #      user: "root"
   #      key_file: "/etc/opsagent/keys/id_rsa"
   #      port: 22
+
+tracing:
+  enabled: false
+  receiver:
+    grpc_addr: "0.0.0.0:4317"
+    http_addr: "0.0.0.0:4318"
+  processor:
+    batch_timeout_ms: 5000
+    max_batch_size: 512
+  exporter:
+    endpoint: "platform.example.com:4317"
+    protocol: "grpc"
+
+alerting:
+  enabled: false
+  rules: []
+
+discovery:
+  enabled: false
+  interval_seconds: 300
+  layers:
+    - type: "systemd"
+      enabled: true
+    - type: "proc"
+      enabled: true
+    - type: "container"
+      enabled: true
+    - type: "metadata"
+      enabled: false
+
+wasm:
+  enabled: false
+  plugins_dir: "/etc/opsagent/wasm-plugins"
+  max_modules: 10
+  cache_dir: "/var/lib/opsagent/wasm-cache"
+
+updater:
+  enabled: false
+  current_path: "/usr/local/bin/opsagent"
+  backup_path: "/usr/local/bin/opsagent.bak"
+  download_dir: "/tmp/opsagent/update"

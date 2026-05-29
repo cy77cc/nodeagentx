@@ -59,6 +59,20 @@ func TestMetricAddTag(t *testing.T) {
 	}
 }
 
+func TestMetricAddField(t *testing.T) {
+	m := NewMetric("test", map[string]string{}, map[string]interface{}{"existing": "value"}, Gauge, time.Time{})
+	m.AddField("new_field", 42)
+	m.AddField("existing", "updated")
+
+	fields := m.Fields()
+	if fields["new_field"] != 42 {
+		t.Errorf("new_field = %v, want 42", fields["new_field"])
+	}
+	if fields["existing"] != "updated" {
+		t.Errorf("existing = %v, want updated", fields["existing"])
+	}
+}
+
 func TestMetricToProto(t *testing.T) {
 	ts := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	m := NewMetric("cpu.usage",

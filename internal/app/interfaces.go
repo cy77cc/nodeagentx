@@ -85,6 +85,12 @@ type Gateway interface {
 	HealthStatus() health.Status
 }
 
+// TracingReceiver abstracts the tracing subsystem lifecycle.
+type TracingReceiver interface {
+	Start(ctx context.Context) error
+	Stop(ctx context.Context) error
+}
+
 // Compile-time interface satisfaction checks.
 var (
 	_ GRPCClient     = (*grpcclient.Client)(nil)

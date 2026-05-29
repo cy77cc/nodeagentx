@@ -1,0 +1,218 @@
+# Default values for opsagent
+# This is a YAML-formatted file.
+
+# Number of replicas (not used for DaemonSet, but kept for reference)
+replicaCount: 1
+
+image:
+  repository: ghcr.io/cy77cc/opsagent
+  pullPolicy: IfNotPresent
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: false
+  runAsUser: 0
+
+securityContext:
+  privileged: true
+  capabilities:
+    add:
+      - SYS_ADMIN
+      - NET_ADMIN
+      - SYS_PTRACE
+
+service:
+  type: ClusterIP
+  port: 18080
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+nodeSelector: {}
+
+tolerations:
+  - operator: Exists
+
+affinity: {}
+
+# Logging configuration
+logging:
+  level: info
+
+# OpsAgent configuration
+config:
+  agent:
+    id: ""
+    name: ""
+    interval_seconds: 10
+    shutdown_timeout_seconds: 30
+
+  server:
+    listen_addr: "0.0.0.0:18080"
+
+  executor:
+    timeout_seconds: 10
+    max_output_bytes: 65536
+    allowed_commands:
+      - uptime
+      - df
+      - free
+      - hostname
+
+  reporter:
+    mode: "stdout"
+    endpoint: ""
+    timeout_seconds: 5
+    retry_count: 3
+    retry_interval_ms: 500
+
+  auth:
+    enabled: false
+    bearer_token: ""
+
+  prometheus:
+    enabled: true
+    path: "/metrics"
+    protect_with_auth: false
+
+  grpc:
+    server_addr: "platform.example.com:443"
+    enroll_token: ""
+    mtls:
+      cert_file: ""
+      key_file: ""
+      ca_file: ""
+    heartbeat_interval_seconds: 15
+    reconnect_initial_backoff_ms: 1000
+    reconnect_max_backoff_ms: 30000
+
+  collector:
+    inputs:
+      - type: cpu
+        config:
+          per_cpu: false
+      - type: memory
+        config: {}
+      - type: disk
+        config: {}
+      - type: net
+        config: {}
+      - type: load
+        config: {}
+    processors: []
+    aggregators: []
+    outputs: []
+
+  sandbox:
+    enabled: false
+    nsjail_path: "/usr/bin/nsjail"
+    base_workdir: "/tmp/opsagent/sandbox"
+    default_timeout_seconds: 30
+    max_concurrent_tasks: 4
+    cgroup_base_path: "/sys/fs/cgroup/opsagent"
+    audit_log_path: "/var/log/opsagent/audit.log"
+    policy:
+      allowed_commands:
+        - echo
+        - ls
+        - cat
+        - grep
+        - wc
+      blocked_commands:
+        - rm
+        - mkfs
+        - dd
+      allowed_interpreters:
+        - bash
+        - python3
+      script_max_bytes: 65536
+      shell_injection_check: true
+
+  plugin:
+    enabled: false
+    runtime_path: ""
+    socket_path: "/tmp/opsagent/plugin.sock"
+
+# Liveness and readiness probes
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Host paths required for agent operation
+hostPaths:
+  proc: /proc
+  sys: /sys
+  dev: /dev
+  etc: /etc
+  varLog: /var/log
+
+# PriorityClass for agent pods
+priorityClass:
+  create: false
+  value: 1000000
+  globalDefault: false
+  description: "Priority class for opsagent DaemonSet pods"
+
+# PodDisruptionBudget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  # maxUnavailable: 1
+
+# NetworkPolicy configuration
+networkPolicy:
+  enabled: false
+  # Additional ingress rules (appended to default HTTP port rule)
+  ingress: []
+  # Additional egress rules (replaces default allow-all if specified)
+  # Example:
+  #   - to:
+  #       - ipBlock:
+  #           cidr: 10.0.0.0/8
+  #     ports:
+  #       - port: 443
+  #         protocol: TCP
+  egress: []
+
+# Service mesh configuration (for CiliumNetworkPolicy)
+mesh:
+  enabled: false
+  # Type of service mesh: "cilium" (only cilium supported currently)
+  type: "cilium"
+  cilium:
+    networkPolicy:
+      enabled: false
+      # Additional ingress rules for Cilium
+      ingress: []
+      # Additional egress rules for Cilium
+      egress: []

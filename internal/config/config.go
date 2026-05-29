@@ -22,6 +22,11 @@ type Config struct {
 	PluginGateway PluginGatewayConfig `mapstructure:"plugin_gateway"`
 	Checker       CheckerConfig       `mapstructure:"checker"`
 	Gateway       GatewayConfig       `mapstructure:"gateway"`
+	Tracing       TracingConfig       `mapstructure:"tracing"`
+	Alerting      AlertingConfig      `mapstructure:"alerting"`
+	Discovery     DiscoveryConfig     `mapstructure:"discovery"`
+	Updater       UpdaterConfig       `mapstructure:"updater"`
+	WASM          WASMConfig          `mapstructure:"wasm"`
 }
 
 // AgentConfig controls agent identity and collection cadence.
@@ -190,6 +195,90 @@ type GatewaySSHConfig struct {
 	Port     int    `mapstructure:"port"`
 }
 
+// TracingConfig controls distributed tracing subsystem.
+type TracingConfig struct {
+	Enabled   bool             `mapstructure:"enabled"`
+	Receiver  TracingReceiver  `mapstructure:"receiver"`
+	Processor TracingProcessor `mapstructure:"processor"`
+	Exporter  TracingExporter  `mapstructure:"exporter"`
+}
+
+// TracingReceiver configures the trace data receiver.
+type TracingReceiver struct {
+	GRPCAddr string `mapstructure:"grpc_addr"`
+	HTTPAddr string `mapstructure:"http_addr"`
+}
+
+// TracingProcessor configures trace batch processing.
+type TracingProcessor struct {
+	BatchTimeoutMs int `mapstructure:"batch_timeout_ms"`
+	MaxBatchSize   int `mapstructure:"max_batch_size"`
+}
+
+// TracingExporter configures where traces are sent.
+type TracingExporter struct {
+	Endpoint string `mapstructure:"endpoint"`
+	Protocol string `mapstructure:"protocol"`
+}
+
+// AlertingConfig controls the alerting subsystem.
+type AlertingConfig struct {
+	Enabled bool        `mapstructure:"enabled"`
+	Rules   []AlertRule `mapstructure:"rules"`
+}
+
+// AlertRule defines a single alerting rule.
+type AlertRule struct {
+	Name      string         `mapstructure:"name"`
+	Condition AlertCondition `mapstructure:"condition"`
+	Severity  string         `mapstructure:"severity"`
+	Notify    []AlertNotify  `mapstructure:"notify"`
+}
+
+// AlertCondition defines when an alert fires.
+type AlertCondition struct {
+	Metric    string  `mapstructure:"metric"`
+	Operator  string  `mapstructure:"operator"`
+	Threshold float64 `mapstructure:"threshold"`
+	For       string  `mapstructure:"for"`
+}
+
+// AlertNotify defines how alert notifications are sent.
+type AlertNotify struct {
+	Type    string            `mapstructure:"type"`
+	URL     string            `mapstructure:"url"`
+	Headers map[string]string `mapstructure:"headers"`
+}
+
+// DiscoveryConfig controls the service discovery subsystem.
+type DiscoveryConfig struct {
+	Enabled     bool                   `mapstructure:"enabled"`
+	IntervalSec int                    `mapstructure:"interval_seconds"`
+	Layers      []DiscoveryLayerConfig `mapstructure:"layers"`
+}
+
+// DiscoveryLayerConfig defines a single discovery layer.
+type DiscoveryLayerConfig struct {
+	Type    string `mapstructure:"type"`
+	Enabled bool   `mapstructure:"enabled"`
+}
+
+// UpdaterConfig controls the auto-update subsystem.
+type UpdaterConfig struct {
+	Enabled     bool   `mapstructure:"enabled"`
+	CurrentPath string `mapstructure:"current_path"`
+	BackupPath  string `mapstructure:"backup_path"`
+	DownloadDir string `mapstructure:"download_dir"`
+}
+
+// WASMConfig controls the WebAssembly plugin runtime.
+type WASMConfig struct {
+	Enabled    bool   `mapstructure:"enabled"`
+	PluginsDir string `mapstructure:"plugins_dir"`
+	MaxModules int    `mapstructure:"max_modules"`
+	CacheDir   string `mapstructure:"cache_dir"`
+}
+
 // Load reads and validates configuration from a file path.
 func Load(path string) (*Config, error) {
 	v := viper.New()
@@ -247,6 +336,20 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("gateway.max_tunnels", 100)
 	v.SetDefault("gateway.tunnel_timeout_seconds", 30)
 	v.SetDefault("gateway.idle_timeout_seconds", 300)
+	v.SetDefault("tracing.enabled", false)
+	v.SetDefault("tracing.receiver.grpc_addr", "0.0.0.0:4317")
+	v.SetDefault("tracing.receiver.http_addr", "0.0.0.0:4318")
+	v.SetDefault("tracing.processor.batch_timeout_ms", 5000)
+	v.SetDefault("tracing.processor.max_batch_size", 512)
+	v.SetDefault("tracing.exporter.protocol", "grpc")
+	v.SetDefault("alerting.enabled", false)
+	v.SetDefault("discovery.enabled", false)
+	v.SetDefault("discovery.interval_seconds", 300)
+	v.SetDefault("updater.enabled", false)
+	v.SetDefault("wasm.enabled", false)
+	v.SetDefault("wasm.plugins_dir", "/etc/opsagent/wasm-plugins")
+	v.SetDefault("wasm.max_modules", 10)
+	v.SetDefault("wasm.cache_dir", "/var/lib/opsagent/wasm-cache")
 
 	if err := v.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("read config: %w", err)
@@ -458,6 +561,29 @@ func (c *Config) Validate() error {
 				if h.SSH.Port <= 0 {
 					return fmt.Errorf("gateway.hosts[%d].ssh.port must be > 0 when mode=%s", i, h.Mode)
 				}
+			}
+		}
+	}
+
+	// Tracing validation (only when enabled).
+	if c.Tracing.Enabled {
+		if c.Tracing.Exporter.Endpoint == "" {
+			return fmt.Errorf("tracing.exporter.endpoint is required when tracing is enabled")
+		}
+	}
+
+	// Alerting validation (only when enabled).
+	if c.Alerting.Enabled {
+		for i, rule := range c.Alerting.Rules {
+			if rule.Name == "" {
+				return fmt.Errorf("alerting.rules[%d].name is required", i)
+			}
+			if rule.Condition.Metric == "" {
+				return fmt.Errorf("alerting.rules[%d].condition.metric is required", i)
+			}
+			validOps := map[string]bool{">": true, "<": true, ">=": true, "<=": true, "==": true, "!=": true}
+			if !validOps[rule.Condition.Operator] {
+				return fmt.Errorf("alerting.rules[%d].condition.operator must be one of: >, <, >=, <=, ==, !=", i)
 			}
 		}
 	}

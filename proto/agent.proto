@@ -22,6 +22,8 @@ message AgentMessage {
     ProxyHostRegister proxy_register = 11;
     ProxyCommandResponse proxy_response = 12;
     ProxyMetricBatch proxy_metrics = 13;
+    ServiceDiscoveryReport discovery_report = 14;
+    AgentUpdateAck update_ack = 15;
   }
 }
 
@@ -37,6 +39,7 @@ message PlatformMessage {
     TunnelData tunnel_data = 7;
     TunnelClose tunnel_close = 8;
     ProxyCommandRequest proxy_command = 9;
+    AgentUpdate agent_update = 10;
   }
 }
 
@@ -45,6 +48,8 @@ message AgentRegistration {
   string token = 2;
   AgentInfo agent_info = 3;
   repeated string capabilities = 4;
+  map<string, string> labels = 5;
+  repeated string groups = 6;
 }
 
 message AgentInfo {
@@ -272,4 +277,37 @@ message ProxyCommandResponse {
 message ProxyMetricBatch {
   string host_id = 1;
   repeated Metric metrics = 2;
+}
+
+// --- Service Discovery & Update Messages ---
+
+message ServiceDiscoveryReport {
+  string agent_id = 1;
+  repeated ServiceInfo services = 2;
+  int64 timestamp = 3;
+}
+
+message ServiceInfo {
+  string name = 1;
+  string type = 2;
+  int32 pid = 3;
+  repeated int32 ports = 4;
+  map<string, string> labels = 5;
+  map<string, string> metadata = 6;
+}
+
+message AgentUpdate {
+  string version = 1;
+  string download_url = 2;
+  string sha256 = 3;
+  bytes signature = 4;
+  bool force_restart = 5;
+}
+
+message AgentUpdateAck {
+  string agent_id = 1;
+  string from_version = 2;
+  string to_version = 3;
+  string status = 4;
+  string error = 5;
 }

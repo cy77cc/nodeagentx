@@ -83,6 +83,15 @@ OpsAgent 是一个运行在目标主机上的轻量级守护进程，通过 gRPC
 | HTTP Server | `internal/server/` | 本地 HTTP API（健康/指标/任务） |
 | Config Reloader | `internal/config/reload.go` | 配置热加载与原子回滚 |
 | Audit Logger | `internal/app/audit.go` | 结构化审计日志 |
+| Log Collector | `internal/logcollector/` | 日志采集、解析与 OTLP 输出 |
+| Tracing | `internal/tracing/` | 分布式追踪（OTLP 接收/导出、批处理） |
+| Dashboard | `internal/dashboard/` | 本地嵌入式 HTML 仪表盘 |
+| Alerting | `internal/alerting/` | 告警规则引擎与 Webhook 通知 |
+| Discovery | `internal/discovery/` | 服务自动发现（systemd/proc/容器/云元数据） |
+| Templates | `internal/templates/` | 配置模板引擎与变量替换 |
+| Updater | `internal/updater/` | 自动更新（A/B 二进制交换、Ed25519 签名验证） |
+| WASM Plugin Runtime | `internal/wasm/` | WebAssembly 模块加载、编译和安全执行 |
+| Plugin Marketplace | `internal/marketplace/` | 插件远程注册、搜索、下载和安装管理 |
 
 ## 2. 子系统职责
 
@@ -131,10 +140,20 @@ type Output interface {
 
 **已注册插件**:
 
-- Input: `cpu`, `memory`, `disk`, `net`, `process`, `load`, `diskio`, `temp`, `gpu`, `connections`
+- Input: `cpu`, `memory`, `disk`, `net`, `process`, `load`, `diskio`, `temp`, `gpu`, `connections`, `http`, `snmp`, `cloud_metadata`
 - Processor: `regex`, `delta`, `tagger`
 - Aggregator: `avg`, `sum`, `minmax`, `percentile`
 - Output: `http`, `prometheus`, `promrw`
+
+**新增 Input 插件**:
+
+| 插件 | 包 | 采集内容 |
+|------|------|----------|
+| http | `collector/inputs/http` | 轮询 HTTP 端点，采集状态码、响应时间、内容长度等指标 |
+| snmp | `collector/inputs/snmp` | 查询 SNMP 代理，采集网络设备指标（支持 SNMPv1/v2c/v3） |
+| cloud_metadata | `collector/inputs/cloudmetadata` | 从云实例元数据服务（EC2 169.254.169.254）获取实例 ID、类型、区域和内网 IP |
+
+HTTP 输入插件支持配置多个 URL、HTTP 方法和超时时间，适合监控 Web 服务健康状态和 API 端点。SNMP 输入插件基于 `gosnmp` 库实现，支持配置代理地址、社区字符串、OID 列表和超时，适合采集网络设备（路由器、交换机、UPS）的运行指标。Cloud Metadata 输入插件通过 IMDS（Instance Metadata Service）获取当前云实例的元数据信息，支持自定义元数据 URL 和超时。
 
 **关键文件**: `internal/collector/scheduler.go`, `internal/collector/registry.go`, `internal/collector/inputs/`, `internal/collector/processors/`, `internal/collector/aggregators/`, `internal/collector/outputs/`
 
@@ -438,6 +457,319 @@ type AuditEvent struct {
 
 **关键文件**: `internal/app/audit.go`
 
+### 2.12 Log Collector（日志采集）
+
+**职责**: 从多种来源采集日志，经过结构化解析后通过 OTLP 协议输出到后端。
+
+Log Collector 支持三种输入源：文件 tail（按行追踪日志文件增长）、journald（读取 systemd 日志）和 syslog（监听 UDP/TCP syslog 端口）。采集到的原始日志经过 `logparse` 处理器进行正则匹配和字段提取，转换为结构化日志记录。结构化日志最终通过 OTLP gRPC/HTTP 协议导出到日志后端（如 OpenTelemetry Collector、Loki 等）。
+
+**关键文件**: `internal/logcollector/`
+
+### 2.13 Tracing（分布式追踪）
+
+**职责**: 接收、处理和导出 OpenTelemetry 追踪数据，实现分布式链路追踪。
+
+Tracing 子系统遵循 OpenTelemetry Collector 架构，由三个组件串联而成：OTLP Receiver 接收 gRPC（端口 4317）和 HTTP（端口 4318）两种协议的追踪数据；Batch Processor 对 span 进行批量聚合，通过可配置的超时和批次大小平衡延迟与吞吐；OTLP Exporter 将处理后的 trace 数据以 gRPC 协议发送到后端（如 Jaeger、Tempo）。追踪子系统默认关闭，启用后与其他子系统独立运行。
+
+**关键文件**: `internal/tracing/`
+
+### 2.14 Dashboard（本地仪表盘）
+
+**职责**: 提供嵌入式 HTML 仪表盘，实时展示 Agent 状态和日志流。
+
+Dashboard 是一个嵌入在 Agent 二进制中的轻量级 Web 界面，通过 Go 的 `embed` 包将前端资源编译进可执行文件，无需额外的静态文件部署。仪表盘通过 SSE（Server-Sent Events）实现日志的实时推送，浏览器建立 SSE 连接后即可接收 Agent 产生的结构化日志流。Dashboard 监听本地 HTTP 端口，仅用于开发调试和现场排障，不暴露到外网。
+
+**关键文件**: `internal/dashboard/`
+
+### 2.15 Alerting（智能告警）
+
+**职责**: 基于可配置规则实时评估指标，触发告警并通过 Webhook 通知外部系统。
+
+Alerting 引擎包含三个核心组件：规则管理器加载和热重载告警规则；评估引擎定期对采集到的指标执行规则表达式，判断是否满足告警条件；通知器通过 Webhook 将告警事件发送到外部系统（如企业微信、钉钉、PagerDuty）。告警状态机管理告警的生命周期（inactive → pending → firing → resolved），通过持续评估间隔和触发阈值避免告警抖动。
+
+**关键文件**: `internal/alerting/`
+
+### 2.16 Discovery（服务自动发现）
+
+**职责**: 多层扫描主机上运行的服务，自动发现并以统一的 `Service` 结构输出。
+
+Discovery 采用分层架构，每层负责一个发现来源。所有层实现统一的 `DiscoveryLayer` 接口，由 `DiscoveryService` 编排执行。发现结果按 `type:name` 键去重，避免同一服务被多层重复报告。
+
+**发现层**:
+
+| 层 | 实现 | 发现方式 |
+|------|------|----------|
+| systemd | `SystemdLayer` | 调用 `systemctl list-units --type=service --state=running`，获取运行中服务的名称和 PID |
+| proc | `ProcLayer` | 扫描 `/proc` 中所有 LISTEN 状态的网络连接，按 PID 聚合，提取进程名、端口和命令行 |
+| container | `ContainerLayer` | 通过 Docker Unix Socket 调用 `/containers/json` API，发现运行中的容器、端口映射和标签 |
+| metadata | `MetadataLayer` | 请求 EC2 元数据服务（`169.254.169.254`），获取实例 ID、类型、区域和内网 IP |
+
+**关键接口**:
+
+```go
+// Service 表示一个被发现的服务
+type Service struct {
+    Name         string            `json:"name"`
+    Type         string            `json:"type"`
+    PID          int               `json:"pid,omitempty"`
+    Ports        []int             `json:"ports,omitempty"`
+    Labels       map[string]string `json:"labels,omitempty"`
+    Metadata     map[string]any    `json:"metadata,omitempty"`
+    DiscoveredAt time.Time         `json:"discovered_at"`
+}
+
+// DiscoveryLayer 所有发现层必须实现的接口
+type DiscoveryLayer interface {
+    Name() string
+    Discover(ctx context.Context) ([]Service, error)
+}
+```
+
+**工作流程**:
+
+1. `DiscoveryService.Run()` 启动后立即执行一次全量发现
+2. 之后按配置的 `interval_seconds` 间隔周期性重新扫描
+3. 每次扫描遍历所有已启用的层，调用 `Discover()` 收集服务
+4. 结果按 `type:name` 去重后缓存，通过 `LastResults()` 获取最新快照
+5. 单层发现失败不影响其他层，仅记录错误日志
+
+**关键文件**: `internal/discovery/discovery.go`, `internal/discovery/systemd.go`, `internal/discovery/proc.go`, `internal/discovery/container.go`, `internal/discovery/metadata.go`
+
+### 2.17 Templates（配置模板引擎）
+
+**职责**: 提供预定义的监控配置模板，通过变量替换生成 Collector 输入插件配置。
+
+Templates 子系统将监控配置抽象为可复用的 YAML 模板，通过 Go 的 `embed.FS` 将模板文件编译进二进制。每个模板定义变量（带描述、默认值和类型），运行时通过 `Loader.Apply()` 进行变量替换，生成最终的 Collector 输入配置。
+
+**模板结构**:
+
+```yaml
+name: "nginx"
+description: "Nginx web server monitoring"
+version: "1.0.0"
+variables:
+  stub_status_url:
+    description: "Nginx stub_status endpoint URL"
+    default: "http://127.0.0.1:80/nginx_status"
+    type: "string"
+collector:
+  inputs:
+    - type: http
+      config:
+        urls: ["{{.stub_status_url}}"]
+```
+
+**关键接口**:
+
+```go
+// Loader 从嵌入式文件系统加载和管理模板
+type Loader struct { ... }
+
+func NewLoader() (*Loader, error)          // 从 TemplateFS 加载所有 YAML 模板
+func (l *Loader) List() []string           // 列出所有已加载模板名称
+func (l *Loader) Get(name string) (*Template, error)  // 按名称获取模板
+func (l *Loader) Apply(tmpl *Template, vars map[string]string) (*ApplyResult, error)  // 渲染模板
+```
+
+**变量替换机制**:
+
+1. 加载模板时解析所有 YAML 文件，注册到内存映射
+2. `Apply()` 调用时，先用模板定义的默认值填充变量映射
+3. 用户提供的变量覆盖默认值
+4. 递归遍历配置树，对所有字符串值执行 Go `text/template` 渲染
+5. 非字符串类型（整数、布尔值、列表）原样保留
+6. 渲染结果为 `ApplyResult`，包含最终的输入插件配置列表
+
+**嵌入机制**: 使用 `//go:embed templates/*.yaml` 指令将模板目录编译进二进制的 `TemplateFS` 变量，部署时无需额外的模板文件。
+
+**关键文件**: `internal/templates/embed.go`, `internal/templates/loader.go`, `internal/templates/templates/`
+
+### 2.18 Updater（自动更新器）
+
+**职责**: 安全地下载、验证和应用 Agent 二进制更新，支持回滚。
+
+Updater 实现 A/B 二进制交换策略：将新版本下载到临时文件，经过 SHA256 校验和 Ed25519 签名双重验证后，通过原子 `rename` 操作替换当前二进制，同时保留旧版本作为备份。更新失败时可一键回滚到备份版本。
+
+**更新流程**:
+
+```
+  下载新二进制 → SHA256 校验 → Ed25519 签名验证 → 写入临时文件 → 原子替换
+                                                              ↓
+                                                    当前二进制 → 备份路径
+                                                    临时文件  → 当前路径
+```
+
+**关键接口**:
+
+```go
+// UpdateRequest 更新请求
+type UpdateRequest struct {
+    Version     string
+    DownloadURL string
+    SHA256      string
+    Signature   []byte
+}
+
+// Updater 处理下载、验证和应用二进制更新
+type Updater struct { ... }
+
+func New(currentPath, backupPath, downloadDir string, pub ed25519.PublicKey, logger zerolog.Logger) *Updater
+func (u *Updater) Apply(req UpdateRequest) error   // 执行完整更新流程
+func (u *Updater) Rollback() error                  // 从备份恢复
+```
+
+**安全机制**:
+
+- **SHA256 校验**: 下载完成后计算哈希值，与预期值比对，防止传输损坏
+- **Ed25519 签名验证**: 使用预置的公钥验证二进制签名，确保来源可信、未被篡改
+- **大小限制**: 下载内容最大 500MB，超限立即中止
+- **超时控制**: HTTP 下载超时 5 分钟
+
+**A/B 交换策略**:
+
+1. 将新二进制写入 `download_dir` 下的临时文件，设置可执行权限
+2. 将当前二进制 `rename` 到 `backup_path`（原子操作）
+3. 将临时文件 `rename` 到 `current_path`（原子操作）
+4. 如果步骤 3 失败，自动将备份 `rename` 回 `current_path` 恢复
+5. `Rollback()` 可在运行时手动触发，将备份二进制恢复到当前位置
+
+**关键文件**: `internal/updater/updater.go`
+
+### 2.19 WASM Plugin Runtime（WebAssembly 插件运行时）
+
+**职责**: 加载、编译和执行 WebAssembly 模块，提供安全隔离的插件执行环境。
+
+WASM Plugin Runtime 基于 [wazero](https://github.com/tetratelabs/wazero)（纯 Go 实现的 WebAssembly 运行时），无需 CGO 或外部依赖即可运行 WASM 模块。运行时管理 WASM 模块的完整生命周期：从磁盘加载二进制和清单文件、编译为机器码、实例化模块并执行。
+
+**清单格式**:
+
+```yaml
+name: "my-plugin"
+version: "1.0.0"
+runtime: "wasm"
+binary_path: "/etc/opsagent/wasm-plugins/my-plugin.wasm"
+task_types:
+  - "custom-task"
+limits:
+  max_memory_pages: 256    # 256 * 64 KiB = 16 MiB
+  max_table_size: 1024
+  max_cpu_seconds: 30
+sandbox:
+  enabled: true
+  network_access: false
+  allowed_paths: []
+```
+
+**安全机制**:
+
+- **内存限制**: 通过 `max_memory_pages` 限制模块可用内存（默认 16 MiB），防止内存耗尽
+- **CPU 限制**: 通过 `max_cpu_seconds` 限制执行时间，防止无限循环
+- **沙箱模式**: 支持网络访问控制和文件路径白名单
+- **模块隔离**: 每个模块在独立的 wazero 实例中运行，崩溃不影响其他模块
+- **无系统调用**: WASM 模块运行在纯用户态沙箱中，无法直接访问宿主系统调用
+
+**关键接口**:
+
+```go
+// WASMRuntime 管理 WASM 模块的编译、实例化和生命周期
+type WASMRuntime struct { ... }
+
+func NewRuntime(ctx context.Context, cfg RuntimeConfig, logger zerolog.Logger) (*WASMRuntime, error)
+func (r *WASMRuntime) LoadModule(ctx context.Context, manifestPath string) (*WASMModule, error)
+func (r *WASMRuntime) ListModules() []string
+func (r *WASMRuntime) Close(ctx context.Context) error
+
+// WASMModule 封装已编译的 WASM 模块
+type WASMModule struct {
+    Name     string
+    Manifest *Manifest
+    // ...
+}
+
+func (m *WASMModule) Execute(ctx context.Context, input []byte) ([]byte, error)
+func (m *WASMModule) Close(ctx context.Context) error
+```
+
+**模块加载流程**:
+
+1. 读取清单文件（YAML），验证必填字段（name、version、binary_path、task_types）
+2. 应用默认值（内存 16 MiB、CPU 30 秒、沙箱启用）
+3. 读取 WASM 二进制文件
+4. 调用 `wazero.Runtime.CompileModule()` 编译为机器码
+5. 调用 `InstantiateModule()` 创建模块实例
+6. 注册到内部模块映射表
+
+**配置示例**（`configs/config.yaml`）:
+
+```yaml
+wasm:
+  enabled: false
+  plugins_dir: "/etc/opsagent/wasm-plugins"
+  max_modules: 10
+  cache_dir: "/var/lib/opsagent/wasm-cache"
+```
+
+**关键文件**: `internal/wasm/runtime.go`, `internal/wasm/module.go`, `internal/wasm/manifest.go`
+
+### 2.20 Plugin Marketplace（插件市场）
+
+**职责**: 提供插件的远程注册、搜索、下载和安装管理。
+
+Plugin Marketplace 子系统包含两个核心组件：`Registry` 负责从远程索引获取可用插件列表并提供搜索功能；`Installer` 负责下载、校验和管理插件的本地安装。
+
+**Registry（插件注册表）**:
+
+Registry 从远程 URL 获取 JSON 格式的插件索引（`RegistryIndex`），索引包含所有可用插件的元数据（名称、版本、描述、作者、标签、下载地址和校验和）。支持按名称和描述进行模糊搜索，索引首次获取后缓存到内存。
+
+```go
+// PluginEntry 表示注册表中的单个插件
+type PluginEntry struct {
+    Name        string   `json:"name"`
+    Version     string   `json:"version"`
+    Description string   `json:"description"`
+    Author      string   `json:"author"`
+    Homepage    string   `json:"homepage"`
+    Tags        []string `json:"tags"`
+    DownloadURL string   `json:"download_url"`
+    Checksum    string   `json:"checksum"`
+}
+
+type Registry struct { ... }
+
+func NewRegistry(indexURL string, client *http.Client) *Registry
+func (r *Registry) Search(query string) ([]PluginEntry, error)
+func (r *Registry) Get(name string) (*PluginEntry, error)
+```
+
+**Installer（插件安装器）**:
+
+Installer 处理插件的下载、校验和生命周期管理。安装过程包括：创建插件目录、下载归档文件、SHA256 校验和验证、写入二进制和元数据文件。支持安装、卸载和列出已安装插件。
+
+```go
+type Installer struct { ... }
+
+func NewInstaller(pluginsDir string, client *http.Client) *Installer
+func (i *Installer) Install(entry PluginEntry) error
+func (i *Installer) Remove(name string) error
+func (i *Installer) List() ([]InstalledPlugin, error)
+```
+
+**安装流程**:
+
+1. 创建 `{pluginsDir}/{pluginName}/` 目录
+2. 通过 HTTP GET 下载插件归档
+3. 计算 SHA256 哈希值并与索引中的校验和比对
+4. 写入插件二进制文件（设置可执行权限）
+5. 生成 `installed.yaml` 元数据文件（记录名称、版本、安装时间）
+
+**安全机制**:
+
+- **SHA256 校验**: 下载完成后验证校验和，防止传输损坏或恶意篡改
+- **目录隔离**: 每个插件安装在独立目录中，避免文件冲突
+- **元数据追踪**: 记录安装时间，支持版本管理和审计
+
+**关键文件**: `internal/marketplace/registry.go`, `internal/marketplace/installer.go`
+
 ## 3. 数据流
 
 ### 3.1 指标采集流
@@ -604,7 +936,42 @@ type AuditEvent struct {
 - **插件化**: 通过注册表模式（`DefaultRegistry`）和 `init()` 自注册，新插件只需实现接口并注册即可使用
 - **关注点分离**: 每个阶段有明确的职责边界，便于独立测试和维护
 
-### 4.5 其他设计决策
+### 4.5 为什么选择多层服务发现
+
+**选择**: 采用 systemd、/proc、容器、云元数据四层发现架构，各层实现统一接口。
+
+**理由**:
+
+- **覆盖全面**: systemd 层发现托管服务，proc 层发现非托管进程，容器层发现 Docker 容器，元数据层发现云实例信息，互补而非重叠
+- **可扩展**: 新发现源只需实现 `DiscoveryLayer` 接口即可接入，不影响现有层
+- **容错隔离**: 单层发现失败（如无 Docker 运行时、非云环境）不影响其他层，通过错误日志而非崩溃处理
+- **去重机制**: 按 `type:name` 键自动去重，同一服务被多层发现时只保留首次出现的结果
+- **零依赖部署**: systemd 层调用 `systemctl`，proc 层读取 `/proc`，容器层通过 Docker Socket，均无需额外依赖
+
+### 4.6 为什么选择 embed.FS 管理配置模板
+
+**选择**: 使用 Go 的 `//go:embed` 指令将 YAML 模板编译进二进制，运行时通过 `text/template` 进行变量替换。
+
+**理由**:
+
+- **零外部依赖**: 模板随二进制分发，无需额外的文件系统路径或远程模板仓库
+- **类型安全**: 模板变量定义包含类型、描述和默认值，加载时即可验证
+- **递归渲染**: 变量替换递归遍历整个配置树，支持嵌套结构中的模板表达式
+- **渐进覆盖**: 用户只需提供需要自定义的变量，其余使用默认值，降低配置门槛
+
+### 4.7 为什么选择 A/B 二进制交换更新
+
+**选择**: 通过下载→验证→原子替换的流程实现二进制更新，保留旧版本作为回滚备份。
+
+**理由**:
+
+- **原子安全**: 使用 `os.Rename` 进行原子替换，避免更新过程中出现二进制损坏的中间状态
+- **双重验证**: SHA256 防止传输损坏，Ed25519 签名防止恶意篡改，两层校验确保二进制完整性
+- **快速回滚**: 备份二进制始终保留，`Rollback()` 只需一次 `rename` 操作，秒级恢复
+- **自愈能力**: 替换失败时自动回滚到备份版本，不会导致 Agent 无法启动
+- **无需外部工具**: 纯 Go 标准库实现（`crypto/ed25519`、`os.Rename`），不依赖系统包管理器
+
+### 4.8 其他设计决策
 
 **接口隔离**: 所有子系统通过接口（定义在 `internal/app/interfaces.go`）与 Agent 核心交互，支持测试时注入 mock 实现。编译时通过类型断言检查接口满足性。
 

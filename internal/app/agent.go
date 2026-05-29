@@ -8,9 +8,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/cy77cc/opsagent/internal/alerting"
 	"github.com/cy77cc/opsagent/internal/checker"
 	"github.com/cy77cc/opsagent/internal/collector"
 	"github.com/cy77cc/opsagent/internal/config"
+	"github.com/cy77cc/opsagent/internal/discovery"
 	"github.com/cy77cc/opsagent/internal/executor"
 	"github.com/cy77cc/opsagent/internal/gateway"
 	"github.com/cy77cc/opsagent/internal/grpcclient"
@@ -20,6 +22,7 @@ import (
 	"github.com/cy77cc/opsagent/internal/sandbox"
 	"github.com/cy77cc/opsagent/internal/server"
 	"github.com/cy77cc/opsagent/internal/task"
+	"github.com/cy77cc/opsagent/internal/updater"
 	"github.com/rs/zerolog"
 
 	// Blank imports to trigger init() plugin registration.
@@ -48,6 +51,14 @@ import (
 	_ "github.com/cy77cc/opsagent/internal/checker/network"
 	_ "github.com/cy77cc/opsagent/internal/checker/service"
 	_ "github.com/cy77cc/opsagent/internal/checker/container"
+	_ "github.com/cy77cc/opsagent/internal/collector/inputs/tail"
+	_ "github.com/cy77cc/opsagent/internal/collector/inputs/journald"
+	_ "github.com/cy77cc/opsagent/internal/collector/inputs/syslog"
+	_ "github.com/cy77cc/opsagent/internal/collector/processors/logparse"
+	_ "github.com/cy77cc/opsagent/internal/collector/outputs/otlp"
+	_ "github.com/cy77cc/opsagent/internal/collector/inputs/http"
+	_ "github.com/cy77cc/opsagent/internal/collector/inputs/snmp"
+	_ "github.com/cy77cc/opsagent/internal/collector/inputs/cloudmetadata"
 )
 
 // Version information set at build time via ldflags.
@@ -71,6 +82,9 @@ type Agent struct {
 	sandboxExec      *sandbox.Executor
 	checkerExec      *checker.Executor
 	configReloader   *config.ConfigReloader
+	alertEngine      *alerting.Engine
+	discoverySvc     *discovery.DiscoveryService
+	updater          *updater.Updater
 	metricsReg       *MetricsRegistry
 	auditLog         *AuditLogger
 	startedAt        time.Time
@@ -242,6 +256,28 @@ func NewAgent(cfg *config.Config, log zerolog.Logger, opts ...Option) (*Agent, e
 		a.checkerExec = checker.NewExecutor(checker.DefaultRegistry, log)
 	}
 
+	// Build alerting engine if enabled.
+	if cfg.Alerting.Enabled {
+		var ruleCfgs []alerting.RuleConfig
+		for _, r := range cfg.Alerting.Rules {
+			condition := fmt.Sprintf("%s %s %v", r.Condition.Metric, r.Condition.Operator, r.Condition.Threshold)
+			ruleCfgs = append(ruleCfgs, alerting.RuleConfig{
+				Name:      r.Name,
+				Condition: condition,
+				Severity:  r.Severity,
+				For:       r.Condition.For,
+			})
+		}
+		a.alertEngine = alerting.NewEngine(alerting.EngineConfig{Rules: ruleCfgs})
+		for _, n := range cfg.Alerting.Rules {
+			for _, notify := range n.Notify {
+				if notify.Type == "webhook" {
+					a.alertEngine.AddNotifier(alerting.NewWebhookNotifier(notify.URL, notify.Headers))
+				}
+			}
+		}
+	}
+
 	// Build gateway if enabled and not injected.
 	if a.gateway == nil && cfg.Gateway.Enabled {
 		gwCfg := gateway.Config{
@@ -305,6 +341,42 @@ func NewAgent(cfg *config.Config, log zerolog.Logger, opts ...Option) (*Agent, e
 	a.registerTaskHandlers(dispatcher)
 	if grpcRecv != nil {
 		a.registerGRPCHandlers(grpcRecv)
+	}
+
+	// Build discovery service if enabled.
+	if cfg.Discovery.Enabled {
+		var layers []discovery.DiscoveryLayer
+		for _, lcfg := range cfg.Discovery.Layers {
+			if !lcfg.Enabled {
+				continue
+			}
+			switch lcfg.Type {
+			case "systemd":
+				layers = append(layers, &discovery.SystemdLayer{})
+			case "proc":
+				layers = append(layers, discovery.NewProcLayer())
+			case "container":
+				layers = append(layers, &discovery.ContainerLayer{})
+			case "metadata":
+				layers = append(layers, discovery.NewMetadataLayer())
+			}
+		}
+		a.discoverySvc = discovery.NewDiscoveryService(discovery.Config{
+			Interval: time.Duration(cfg.Discovery.IntervalSec) * time.Second,
+			Layers:   layers,
+			Logger:   log,
+		})
+	}
+
+	// Build updater if enabled.
+	if cfg.Updater.Enabled {
+		a.updater = updater.New(
+			cfg.Updater.CurrentPath,
+			cfg.Updater.BackupPath,
+			cfg.Updater.DownloadDir,
+			nil, // public key to be configured when key management is added
+			log,
+		)
 	}
 
 	// Build config reloader if not injected.
@@ -430,6 +502,11 @@ func (a *Agent) startSubsystems(ctx context.Context) (<-chan []*collector.Metric
 			EventType: "gateway.started", Component: "gateway",
 			Action: "start", Status: "success",
 		})
+	}
+
+	if a.discoverySvc != nil {
+		go a.discoverySvc.Run(ctx)
+		a.log.Info().Msg("discovery service started")
 	}
 
 	errCh := make(chan error, 1)
@@ -604,6 +681,20 @@ func (a *Agent) handlePipelineMetrics(metrics []*collector.Metric) {
 		return
 	}
 	a.metricsReg.IncMetricsCollected()
+	// Evaluate alerting rules against the metrics.
+	if a.alertEngine != nil {
+		alerts := a.alertEngine.Evaluate(metrics)
+		for _, al := range alerts {
+			a.log.Warn().Str("alert", al.Name).Str("severity", al.Severity).Float64("value", al.CurrentValue).Msg("alert fired")
+		}
+	}
+	// Include discovery results in metrics report.
+	if a.discoverySvc != nil {
+		services := a.discoverySvc.LastResults()
+		// TODO: include in heartbeat/proto message
+		_ = services
+	}
+
 	// Send metrics via gRPC client.
 	a.grpcClient.SendMetrics(metrics)
 	a.log.Debug().Int("count", len(metrics)).Msg("pipeline metrics sent via gRPC")

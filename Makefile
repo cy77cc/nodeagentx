@@ -4,7 +4,8 @@ VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 
 .PHONY: tidy test test-race test-cover build build-all run lint vet proto proto-gen \
        rust-build sandbox-check integration integration-sandbox security ci \
-       package package-amd64 package-arm64 clean bench e2e
+       package package-amd64 package-arm64 clean bench e2e \
+       helm-lint helm-template helm-install openapi-validate
 
 ## ── Go ────────────────────────────────────────────────────────────────────────
 
@@ -107,3 +108,19 @@ clean:
 
 ci: tidy vet test-race security
 	@echo "CI pipeline completed successfully"
+
+## ── Helm ───────────────────────────────────────────────────────────────────────
+
+helm-lint:
+	helm lint deploy/helm/opsagent/
+
+helm-template:
+	helm template opsagent deploy/helm/opsagent/ --dry-run
+
+helm-install:
+	helm install opsagent deploy/helm/opsagent/ --namespace opsagent --create-namespace
+
+## ── OpenAPI ────────────────────────────────────────────────────────────────────
+
+openapi-validate:
+	npx @redocly/cli lint api/openapi.yaml

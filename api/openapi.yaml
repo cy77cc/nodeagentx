@@ -1,0 +1,487 @@
+openapi: 3.1.0
+info:
+  title: OpsAgent HTTP API
+  description: >
+    OpsAgent is an AI-agent-driven operations and maintenance agent that
+    provides health checks, command execution, task dispatch, metrics
+    collection, and plugin management over HTTP.
+  version: 1.0.0
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://127.0.0.1:18080
+    description: Local development server
+
+tags:
+  - name: health
+    description: Health and readiness probes
+  - name: metrics
+    description: Prometheus and collected metrics
+  - name: exec
+    description: Remote command execution
+  - name: tasks
+    description: Task dispatch
+  - name: config
+    description: Runtime configuration
+  - name: plugins
+    description: Plugin registry
+  - name: logs
+    description: Real-time log streaming
+
+security:
+  - bearerAuth: []
+
+paths:
+  /healthz:
+    get:
+      tags: [health]
+      summary: Health check
+      description: >
+        Returns overall health status and subsystem details. When
+        authentication is enabled and a valid Bearer token is provided,
+        the response also includes version, git commit, and uptime.
+      operationId: getHealthz
+      security: []
+      responses:
+        "200":
+          description: Service is healthy, degraded, or unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
+  /readyz:
+    get:
+      tags: [health]
+      summary: Readiness probe
+      description: >
+        Returns 200 when the collector has produced at least one metric
+        snapshot; 503 otherwise.
+      operationId: getReadyz
+      security: []
+      responses:
+        "200":
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "503":
+          description: Service is not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
+  /metrics:
+    get:
+      tags: [metrics]
+      summary: Prometheus metrics
+      description: >
+        Exposes collected metrics in Prometheus exposition format.
+        This endpoint is only registered when the Prometheus exporter
+        is enabled in configuration.
+      operationId: getPrometheusMetrics
+      security: []
+      responses:
+        "200":
+          description: Prometheus metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /api/v1/exec:
+    post:
+      tags: [exec]
+      summary: Execute a command
+      description: >
+        Executes a whitelisted command with optional arguments under a
+        configurable timeout. Request body is limited to 1 MB.
+      operationId: postExec
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExecRequest"
+      responses:
+        "200":
+          description: Command executed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/ExecResult"
+        "400":
+          description: Invalid request body or command execution failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
+  /api/v1/tasks:
+    post:
+      tags: [tasks]
+      summary: Submit a task
+      description: >
+        Dispatches a task to the registered handler. The optional
+        `timeout_seconds` payload field is capped at 300 seconds;
+        the default is 15 seconds. Request body is limited to 1 MB.
+      operationId: postTask
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskRequest"
+      responses:
+        "200":
+          description: Task dispatched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    description: Task handler result
+        "400":
+          description: Invalid request body or task dispatch failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
+  /api/v1/config:
+    get:
+      tags: [config]
+      summary: Get runtime configuration
+      description: >
+        Returns the current runtime configuration including auth and
+        Prometheus settings. Secrets (e.g. bearer token) are not exposed.
+      operationId: getConfig
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/ConfigResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
+  /api/v1/plugins:
+    get:
+      tags: [plugins]
+      summary: List registered plugins
+      description: >
+        Returns the list of currently registered plugins and their
+        metadata. Requires authentication.
+      operationId: listPlugins
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Plugin list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        version:
+                          type: string
+                        status:
+                          type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
+  /api/v1/health/detailed:
+    get:
+      tags: [health]
+      summary: Detailed health status
+      description: >
+        Always returns version, git commit, uptime, overall status, and
+        per-subsystem health details. Unlike /healthz, this endpoint
+        does not require authentication to expose version info.
+      operationId: getDetailedHealth
+      security: []
+      responses:
+        "200":
+          description: Detailed health information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DetailedHealthResponse"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
+  /api/v1/logs:
+    get:
+      tags: [logs]
+      summary: Stream logs via SSE
+      description: >
+        Opens a Server-Sent Events stream for real-time log delivery.
+        Sends keep-alive comments every 5 seconds.
+      operationId: streamLogs
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        Optional Bearer token authentication. When auth is enabled,
+        requests to protected endpoints must include an
+        `Authorization: Bearer <token>` header.
+
+  responses:
+    MethodNotAllowed:
+      description: HTTP method not allowed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiResponse"
+          example:
+            success: false
+            error: "method not allowed"
+
+    Unauthorized:
+      description: Missing or invalid authentication token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiResponse"
+          example:
+            success: false
+            error: "unauthorized"
+
+  schemas:
+    ApiResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          description: Whether the request succeeded
+        data:
+          description: Response payload (present on success)
+        error:
+          type: string
+          description: Human-readable error message (present on failure)
+
+    HealthResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          required: [status, subsystems]
+          properties:
+            status:
+              type: string
+              enum: [healthy, degraded, unhealthy]
+              description: >
+                Aggregated health: healthy when all subsystems are up,
+                degraded when non-core subsystems are down, unhealthy
+                when core subsystems are down.
+            subsystems:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [running, connected, stopped, error, disconnected, unavailable]
+                  details:
+                    type: object
+                    additionalProperties: true
+            version:
+              type: string
+              description: Only present when auth is enabled and request is authenticated
+            git_commit:
+              type: string
+              description: Only present when auth is enabled and request is authenticated
+            uptime_seconds:
+              type: integer
+              description: Only present when auth is enabled and request is authenticated
+
+    ExecRequest:
+      type: object
+      required: [command]
+      properties:
+        command:
+          type: string
+          description: Name of the whitelisted command to execute
+          example: "df"
+        args:
+          type: array
+          items:
+            type: string
+          description: Command arguments (each max 4096 bytes, no null bytes)
+          example: ["-h"]
+        timeout_seconds:
+          type: integer
+          minimum: 1
+          default: 10
+          description: Per-command timeout in seconds
+          example: 30
+
+    ExecResult:
+      type: object
+      properties:
+        exit_code:
+          type: integer
+          description: Process exit code (-1 on timeout)
+          example: 0
+        stdout:
+          type: string
+          description: Standard output (truncated at 64 KB)
+        stderr:
+          type: string
+          description: Standard error (truncated at 64 KB)
+        duration_ms:
+          type: integer
+          format: int64
+          description: Execution duration in milliseconds
+          example: 120
+
+    TaskRequest:
+      type: object
+      required: [type]
+      properties:
+        task_id:
+          type: string
+          description: Optional client-supplied task identifier
+          example: "task-001"
+        type:
+          type: string
+          description: >
+            Registered task type, e.g. collect_metrics, exec_command,
+            health_check, plugin_log_parse, plugin_text_process,
+            plugin_ebpf_collect, plugin_fs_scan, plugin_conn_analyze,
+            plugin_local_probe, sandbox_exec.
+          example: "collect_metrics"
+        payload:
+          type: object
+          additionalProperties: true
+          description: >
+            Task-specific payload. May include `timeout_seconds`
+            (integer, capped at 300) to override the default 15 s
+            dispatch timeout.
+          example:
+            timeout_seconds: 60
+
+    ConfigResponse:
+      type: object
+      properties:
+        auth:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+        prometheus:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            path:
+              type: string
+              example: "/metrics"
+            protect_with_auth:
+              type: boolean
+
+    DetailedHealthResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          required: [status, subsystems, version, git_commit, uptime_seconds]
+          properties:
+            status:
+              type: string
+              enum: [healthy, degraded, unhealthy]
+            subsystems:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  details:
+                    type: object
+                    additionalProperties: true
+            version:
+              type: string
+              example: "1.0.0"
+            git_commit:
+              type: string
+              example: "abc1234"
+            uptime_seconds:
+              type: integer
+              example: 3600
