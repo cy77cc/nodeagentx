@@ -191,3 +191,61 @@ updater:
   current_path: "/usr/local/bin/opsagent"
   backup_path: "/usr/local/bin/opsagent.bak"
   download_dir: "/tmp/opsagent/update"
+
+# Federation (multi-cluster management)
+federation:
+  enabled: false
+
+  # Hub mode configuration
+  hub:
+    listen_addr: ":9443"
+    region: "us-east"
+    max_leaves: 500
+    leaf_heartbeat_timeout_seconds: 60
+    metrics_aggregation_interval_seconds: 30
+
+    security:
+      mtls:
+        enabled: false
+        cert_file: ""
+        key_file: ""
+        ca_file: ""
+      psk: ""
+
+    groups: []
+    #  - name: "prod-web"
+    #    match:
+    #      env: "production"
+    #      role: "web-server"
+
+    config_levels:
+      global: {}
+      regions: {}
+      groups: {}
+      agents: {}
+
+    canary:
+      strategy: "percentage"
+      stages:
+        - percentage: 10
+          wait_seconds: 60
+          auto_rollback: true
+        - percentage: 100
+
+    operations:
+      max_concurrent: 50
+      default_timeout_seconds: 300
+      retry_policy:
+        max_retries: 3
+        backoff_seconds: 10
+
+  # Leaf mode configuration
+  leaf:
+    hub_addr: ""
+    reconnect_interval_seconds: 5
+    report_interval_seconds: 30
+    fallback:
+      enabled: false
+      mode: "standalone"
+      platform_addr: ""
+      check_interval_seconds: 30
