@@ -714,6 +714,9 @@ func (c *Config) Validate() error {
 			if c.Federation.Hub.LeafHeartbeatTimeoutSeconds <= 0 {
 				return fmt.Errorf("federation.hub.leaf_heartbeat_timeout_seconds must be > 0 when agent.mode=hub")
 			}
+			if c.Federation.Hub.MetricsAggregationIntervalSec <= 0 {
+				return fmt.Errorf("federation.hub.metrics_aggregation_interval_seconds must be > 0 when agent.mode=hub")
+			}
 			for i, stage := range c.Federation.Hub.Canary.Stages {
 				if stage.Percentage <= 0 || stage.Percentage > 100 {
 					return fmt.Errorf("federation.hub.canary.stages[%d].percentage must be 1-100", i)
@@ -722,9 +725,19 @@ func (c *Config) Validate() error {
 					return fmt.Errorf("federation.hub.canary.stages must be sorted by percentage ascending")
 				}
 			}
+			switch c.Federation.Hub.Canary.Strategy {
+			case "", "percentage":
+			default:
+				return fmt.Errorf("federation.hub.canary.strategy must be one of: percentage")
+			}
 		case AgentModeLeaf:
 			if strings.TrimSpace(c.Federation.Leaf.HubAddr) == "" {
 				return fmt.Errorf("federation.leaf.hub_addr is required when agent.mode=leaf")
+			}
+			switch c.Federation.Leaf.Fallback.Mode {
+			case "", "standalone":
+			default:
+				return fmt.Errorf("federation.leaf.fallback.mode must be one of: standalone")
 			}
 		}
 	}

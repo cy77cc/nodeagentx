@@ -8,10 +8,14 @@ import (
 )
 
 func TestFederationConfig_Validation_HubMode_RequiresListenAddr(t *testing.T) {
-	cfg := defaultValidConfig()
+	cfg := validBaseConfig()
 	cfg.Agent.Mode = "hub"
 	cfg.Federation.Enabled = true
 	cfg.Federation.Hub.ListenAddr = ""
+	cfg.Federation.Hub.Region = "us-east"
+	cfg.Federation.Hub.MaxLeaves = 500
+	cfg.Federation.Hub.LeafHeartbeatTimeoutSeconds = 60
+	cfg.Federation.Hub.MetricsAggregationIntervalSec = 30
 
 	err := cfg.Validate()
 	require.Error(t, err)
@@ -19,11 +23,14 @@ func TestFederationConfig_Validation_HubMode_RequiresListenAddr(t *testing.T) {
 }
 
 func TestFederationConfig_Validation_HubMode_RequiresRegion(t *testing.T) {
-	cfg := defaultValidConfig()
+	cfg := validBaseConfig()
 	cfg.Agent.Mode = "hub"
 	cfg.Federation.Enabled = true
 	cfg.Federation.Hub.ListenAddr = ":9443"
 	cfg.Federation.Hub.Region = ""
+	cfg.Federation.Hub.MaxLeaves = 500
+	cfg.Federation.Hub.LeafHeartbeatTimeoutSeconds = 60
+	cfg.Federation.Hub.MetricsAggregationIntervalSec = 30
 
 	err := cfg.Validate()
 	require.Error(t, err)
@@ -31,7 +38,7 @@ func TestFederationConfig_Validation_HubMode_RequiresRegion(t *testing.T) {
 }
 
 func TestFederationConfig_Validation_LeafMode_RequiresHubAddr(t *testing.T) {
-	cfg := defaultValidConfig()
+	cfg := validBaseConfig()
 	cfg.Agent.Mode = "leaf"
 	cfg.Federation.Enabled = true
 	cfg.Federation.Leaf.HubAddr = ""
@@ -42,12 +49,14 @@ func TestFederationConfig_Validation_LeafMode_RequiresHubAddr(t *testing.T) {
 }
 
 func TestFederationConfig_Validation_HubMode_MaxLeavesPositive(t *testing.T) {
-	cfg := defaultValidConfig()
+	cfg := validBaseConfig()
 	cfg.Agent.Mode = "hub"
 	cfg.Federation.Enabled = true
 	cfg.Federation.Hub.ListenAddr = ":9443"
 	cfg.Federation.Hub.Region = "us-east"
 	cfg.Federation.Hub.MaxLeaves = 0
+	cfg.Federation.Hub.LeafHeartbeatTimeoutSeconds = 60
+	cfg.Federation.Hub.MetricsAggregationIntervalSec = 30
 
 	err := cfg.Validate()
 	require.Error(t, err)
@@ -55,20 +64,21 @@ func TestFederationConfig_Validation_HubMode_MaxLeavesPositive(t *testing.T) {
 }
 
 func TestFederationConfig_Validation_HubMode_ValidConfig(t *testing.T) {
-	cfg := defaultValidConfig()
+	cfg := validBaseConfig()
 	cfg.Agent.Mode = "hub"
 	cfg.Federation.Enabled = true
 	cfg.Federation.Hub.ListenAddr = ":9443"
 	cfg.Federation.Hub.Region = "us-east"
 	cfg.Federation.Hub.MaxLeaves = 500
 	cfg.Federation.Hub.LeafHeartbeatTimeoutSeconds = 60
+	cfg.Federation.Hub.MetricsAggregationIntervalSec = 30
 
 	err := cfg.Validate()
 	assert.NoError(t, err)
 }
 
 func TestFederationConfig_Validation_LeafMode_ValidConfig(t *testing.T) {
-	cfg := defaultValidConfig()
+	cfg := validBaseConfig()
 	cfg.Agent.Mode = "leaf"
 	cfg.Federation.Enabled = true
 	cfg.Federation.Leaf.HubAddr = "hub.example.com:9443"
@@ -78,7 +88,7 @@ func TestFederationConfig_Validation_LeafMode_ValidConfig(t *testing.T) {
 }
 
 func TestFederationConfig_Validation_DisabledFederation_SkipsChecks(t *testing.T) {
-	cfg := defaultValidConfig()
+	cfg := validBaseConfig()
 	cfg.Agent.Mode = "hub"
 	cfg.Federation.Enabled = false
 
@@ -87,7 +97,7 @@ func TestFederationConfig_Validation_DisabledFederation_SkipsChecks(t *testing.T
 }
 
 func TestFederationConfig_Validation_StandaloneMode_SkipsChecks(t *testing.T) {
-	cfg := defaultValidConfig()
+	cfg := validBaseConfig()
 	cfg.Agent.Mode = "standalone"
 	cfg.Federation.Enabled = true
 
@@ -96,13 +106,14 @@ func TestFederationConfig_Validation_StandaloneMode_SkipsChecks(t *testing.T) {
 }
 
 func TestFederationConfig_Validation_HubCanaryStages(t *testing.T) {
-	cfg := defaultValidConfig()
+	cfg := validBaseConfig()
 	cfg.Agent.Mode = "hub"
 	cfg.Federation.Enabled = true
 	cfg.Federation.Hub.ListenAddr = ":9443"
 	cfg.Federation.Hub.Region = "us-east"
 	cfg.Federation.Hub.MaxLeaves = 100
 	cfg.Federation.Hub.LeafHeartbeatTimeoutSeconds = 60
+	cfg.Federation.Hub.MetricsAggregationIntervalSec = 30
 	cfg.Federation.Hub.Canary.Stages = []CanaryStageConfig{
 		{Percentage: 150, WaitSeconds: 60, AutoRollback: true},
 	}
@@ -113,13 +124,14 @@ func TestFederationConfig_Validation_HubCanaryStages(t *testing.T) {
 }
 
 func TestFederationConfig_Validation_HubCanaryStages_NotSorted(t *testing.T) {
-	cfg := defaultValidConfig()
+	cfg := validBaseConfig()
 	cfg.Agent.Mode = "hub"
 	cfg.Federation.Enabled = true
 	cfg.Federation.Hub.ListenAddr = ":9443"
 	cfg.Federation.Hub.Region = "us-east"
 	cfg.Federation.Hub.MaxLeaves = 100
 	cfg.Federation.Hub.LeafHeartbeatTimeoutSeconds = 60
+	cfg.Federation.Hub.MetricsAggregationIntervalSec = 30
 	cfg.Federation.Hub.Canary.Stages = []CanaryStageConfig{
 		{Percentage: 50, WaitSeconds: 60},
 		{Percentage: 10, WaitSeconds: 60},
@@ -130,19 +142,28 @@ func TestFederationConfig_Validation_HubCanaryStages_NotSorted(t *testing.T) {
 	assert.Contains(t, err.Error(), "sorted")
 }
 
-func defaultValidConfig() *Config {
-	return &Config{
-		Agent: AgentConfig{
-			ID:                     "test-agent",
-			Name:                   "test",
-			IntervalSeconds:        10,
-			ShutdownTimeoutSeconds: 30,
-		},
-		Server:     ServerConfig{ListenAddr: "127.0.0.1:18080"},
-		Executor:   ExecutorConfig{TimeoutSeconds: 10, AllowedCommands: []string{"echo"}, MaxOutputBytes: 65536},
-		Reporter:   ReporterConfig{Mode: "stdout", TimeoutSeconds: 5, RetryCount: 3, RetryIntervalMS: 500},
-		Auth:       AuthConfig{Enabled: false},
-		Prometheus: PrometheusConfig{Enabled: true, Path: "/metrics"},
-		GRPC:       GRPCConfig{ServerAddr: "localhost:443", HeartbeatIntervalSeconds: 15, ReconnectInitialBackoffMS: 1000, ReconnectMaxBackoffMS: 30000},
-	}
+func TestFederationConfig_Validation_HubMode_MetricsAggregationIntervalPositive(t *testing.T) {
+	cfg := validBaseConfig()
+	cfg.Agent.Mode = "hub"
+	cfg.Federation.Enabled = true
+	cfg.Federation.Hub.ListenAddr = ":9443"
+	cfg.Federation.Hub.Region = "us-east"
+	cfg.Federation.Hub.MaxLeaves = 500
+	cfg.Federation.Hub.LeafHeartbeatTimeoutSeconds = 60
+	cfg.Federation.Hub.MetricsAggregationIntervalSec = 0
+
+	err := cfg.Validate()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "metrics_aggregation_interval_seconds")
+}
+
+func TestFederationConfig_Validation_LeafMode_HubAddrWhitespace(t *testing.T) {
+	cfg := validBaseConfig()
+	cfg.Agent.Mode = "leaf"
+	cfg.Federation.Enabled = true
+	cfg.Federation.Leaf.HubAddr = "   "
+
+	err := cfg.Validate()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "federation.leaf.hub_addr")
 }
