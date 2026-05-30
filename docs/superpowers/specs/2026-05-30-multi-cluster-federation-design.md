@@ -57,7 +57,7 @@ OpsAgent 当前以 standalone 模式运行，每个 Agent 直连中心平台 (Op
 
 ### 2.2 Agent Modes
 
-OpsAgent supports three operating modes configured via `agent.mode`:
+OpsAgent supports three operating modes. The mode is determined by `agent.mode` in config. When `agent.mode` is unset or `"standalone"`, the agent behaves exactly as before (backward compatible).
 
 | Mode | Role | Connection | Use Case |
 |------|------|------------|----------|
@@ -65,12 +65,18 @@ OpsAgent supports three operating modes configured via `agent.mode`:
 | `leaf` | Regional leaf node, connects to Hub | Leaf → Hub → Platform | Managed business hosts |
 | `hub` | Regional aggregation node | Platform ↔ Hub ↔ Leaf | Regional gateway |
 
+**Mode determination logic**:
+1. If `agent.mode` is unset or `"standalone"` → standalone mode (no federation)
+2. If `agent.mode` is `"hub"` → Hub mode, uses `federation.hub.*` config
+3. If `agent.mode` is `"leaf"` → Leaf mode, uses `federation.leaf.*` config
+
 **Key Design Decisions**:
 
 - Hub and Leaf use the same binary, switched via `agent.mode` configuration
 - `standalone` mode behavior is completely unchanged, ensuring backward compatibility
 - Hub does not collect metrics directly (unless standalone capabilities are also configured), only aggregates and forwards
 - Hub has dual roles: `GRPCClient` (to Platform) and `HubServer` (to Leaf agents)
+- `federation.enabled` is a separate toggle that must be `true` for hub/leaf modes to activate; if `false` regardless of `agent.mode`, the agent runs in standalone mode
 
 ### 2.3 Module Structure
 
@@ -501,7 +507,7 @@ message HeartbeatResponse {
 
 message MetricReport {
   string agent_id = 1;
-  repeated Metric metrics = 2;
+  repeated Metric metrics = 2;   // Reuses existing Metric message from collector.proto
   int64 timestamp = 3;
 }
 
@@ -633,6 +639,8 @@ Leaf connects to Hub → Connection fails / heartbeat timeout
   → When Hub recovers → Reconnect and re-register
 ```
 
+**Note**: Fallback `mode: "standalone"` means the Leaf temporarily behaves like a standalone agent (direct platform connection), but `agent.mode` remains `"leaf"`. When the Hub recovers, the Leaf automatically switches back to federation mode.
+
 ### 7.3 Config Distribution Fault Tolerance
 
 - Hub pushes config and waits for Leaf acknowledgment; timeout marks as `config_mismatch`
@@ -728,9 +736,13 @@ Hub `/healthz` response includes federation subsystem:
 ## 10. Configuration Reference
 
 ```yaml
+# configs/config.yaml - mode selection (top-level, existing section)
+agent:
+  mode: "standalone"    # standalone | hub | leaf
+
 # configs/config.yaml - federation section
 federation:
-  enabled: false
+  enabled: false        # Must be true for hub/leaf modes to activate
 
   # Hub mode configuration
   hub:
