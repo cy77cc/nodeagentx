@@ -2,6 +2,8 @@ syntax = "proto3";
 package opsagent;
 option go_package = "github.com/cy77cc/opsagent/internal/grpcclient/proto";
 
+import "federation.proto";
+
 service AgentService {
   rpc Connect(stream AgentMessage) returns (stream PlatformMessage);
 }
@@ -40,6 +42,7 @@ message PlatformMessage {
     TunnelClose tunnel_close = 8;
     ProxyCommandRequest proxy_command = 9;
     AgentUpdate agent_update = 10;
+    opsagent.federation.FederationReport federation_report = 11;
   }
 }
 

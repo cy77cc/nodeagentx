@@ -58,7 +58,10 @@ vet:
 proto: proto-gen
 
 proto-gen:
-	protoc --go_out=internal/grpcclient --go_opt=paths=source_relative \
+	protoc --go_out=internal/federation --go_opt=paths=source_relative \
+		--go-grpc_out=internal/federation --go-grpc_opt=paths=source_relative \
+		proto/federation.proto
+	protoc -I . -I proto --go_out=internal/grpcclient --go_opt=paths=source_relative \
 		--go-grpc_out=internal/grpcclient --go-grpc_opt=paths=source_relative \
 		proto/agent.proto
 

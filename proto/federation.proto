@@ -1,0 +1,163 @@
+syntax = "proto3";
+package opsagent.federation;
+option go_package = "github.com/cy77cc/opsagent/internal/federation/proto";
+
+service FederationService {
+  rpc Register(FedAgentRegistration) returns (FedRegisterResponse);
+  rpc Heartbeat(FedHeartbeatRequest) returns (FedHeartbeatResponse);
+  rpc ReportMetrics(FedMetricReport) returns (FedMetricAck);
+  rpc StreamConfigUpdates(FedConfigStreamRequest) returns (stream FedConfigUpdate);
+  rpc StreamCommands(FedCommandStreamRequest) returns (stream FedCommandRequest);
+  rpc ReportCommandResult(FedCommandResult) returns (FedCommandResultAck);
+  rpc ReportHealth(FedHealthReport) returns (FedHealthAck);
+}
+
+enum AgentMode {
+  MODE_STANDALONE = 0;
+  MODE_HUB = 1;
+  MODE_LEAF = 2;
+}
+
+message FedAgentRegistration {
+  string agent_id = 1;
+  string hostname = 2;
+  string ip = 3;
+  string version = 4;
+  map<string, string> labels = 10;
+  map<string, string> auto_labels = 11;
+  repeated string capabilities = 12;
+  AgentMode mode = 13;
+  string region = 14;
+}
+
+message FedRegisterResponse {
+  bool accepted = 1;
+  string assigned_region = 2;
+  repeated string assigned_groups = 3;
+  string config_version = 4;
+  bytes initial_config = 5;
+  string rejection_reason = 6;
+}
+
+message FedHeartbeatRequest {
+  string agent_id = 1;
+  int64 timestamp = 2;
+  map<string, string> labels = 3;
+}
+
+message FedHeartbeatResponse {
+  bool ok = 1;
+  string config_version = 2;
+  bool config_update_available = 3;
+}
+
+message FedMetricReport {
+  string agent_id = 1;
+  repeated FedMetric metrics = 2;
+  int64 timestamp = 3;
+}
+
+message FedMetric {
+  string name = 1;
+  map<string, string> tags = 2;
+  repeated FedField fields = 3;
+  int64 timestamp_ms = 4;
+}
+
+message FedField {
+  string key = 1;
+  oneof value {
+    double double_value = 2;
+    int64 int_value = 3;
+    string string_value = 4;
+    bool bool_value = 5;
+  }
+}
+
+message FedMetricAck {
+  bool accepted = 1;
+  int64 received_count = 2;
+}
+
+message FedConfigStreamRequest {
+  string agent_id = 1;
+  string current_version = 2;
+}
+
+message FedConfigUpdate {
+  string config_version = 1;
+  bytes config_yaml = 2;
+  int64 timestamp = 3;
+  string source = 4;
+}
+
+message FedCommandStreamRequest {
+  string agent_id = 1;
+}
+
+message FedCommandRequest {
+  string command_id = 1;
+  string type = 2;
+  bytes payload = 3;
+  int32 timeout_seconds = 4;
+}
+
+message FedCommandResult {
+  string command_id = 1;
+  string agent_id = 2;
+  int32 exit_code = 3;
+  bytes stdout = 4;
+  bytes stderr = 5;
+  int64 duration_ms = 6;
+  bool timed_out = 7;
+}
+
+message FedCommandResultAck {
+  bool accepted = 1;
+}
+
+message FedHealthReport {
+  string agent_id = 1;
+  string status = 2;
+  map<string, string> subsystem_status = 3;
+  int64 timestamp = 4;
+}
+
+message FedHealthAck {
+  bool ok = 1;
+}
+
+message FederationReport {
+  string hub_id = 1;
+  string region = 2;
+  repeated LeafInfo leaves = 3;
+  repeated GroupInfo groups = 4;
+  repeated OperationStatus operations = 5;
+}
+
+message LeafInfo {
+  string agent_id = 1;
+  map<string, string> labels = 2;
+  repeated string groups = 3;
+  string status = 4;
+  int64 last_seen = 5;
+  string config_version = 6;
+}
+
+message GroupInfo {
+  string name = 1;
+  int32 member_count = 2;
+  int32 online_count = 3;
+  map<string, string> match_criteria = 4;
+}
+
+message OperationStatus {
+  string operation_id = 1;
+  string type = 2;
+  string target_group = 3;
+  string status = 4;
+  int32 total = 5;
+  int32 success = 6;
+  int32 failed = 7;
+  int32 pending = 8;
+}
