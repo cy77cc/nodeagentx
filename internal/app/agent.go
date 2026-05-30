@@ -14,6 +14,7 @@ import (
 	"github.com/cy77cc/opsagent/internal/config"
 	"github.com/cy77cc/opsagent/internal/discovery"
 	"github.com/cy77cc/opsagent/internal/executor"
+	"github.com/cy77cc/opsagent/internal/federation"
 	"github.com/cy77cc/opsagent/internal/gateway"
 	"github.com/cy77cc/opsagent/internal/grpcclient"
 	pb "github.com/cy77cc/opsagent/internal/grpcclient/proto"
@@ -85,6 +86,8 @@ type Agent struct {
 	alertEngine      *alerting.Engine
 	discoverySvc     *discovery.DiscoveryService
 	updater          *updater.Updater
+	federationHub    *federation.Hub
+	federationLeaf   *federation.LeafClient
 	metricsReg       *MetricsRegistry
 	auditLog         *AuditLogger
 	startedAt        time.Time
@@ -393,6 +396,33 @@ func NewAgent(cfg *config.Config, log zerolog.Logger, opts ...Option) (*Agent, e
 		a.configReloader = config.NewConfigReloader(cfg, log, reloaders...)
 	}
 
+	// Initialize federation based on agent mode.
+	if cfg.Federation.Enabled {
+		switch cfg.Agent.Mode {
+		case config.AgentModeHub:
+			hub := federation.NewHub(federation.HubConfig{
+				ListenAddr:   cfg.Federation.Hub.ListenAddr,
+				Region:       cfg.Federation.Hub.Region,
+				MaxLeaves:    cfg.Federation.Hub.MaxLeaves,
+				Groups:       convertGroupRules(cfg.Federation.Hub.Groups),
+				ConfigLevels: convertConfigLevels(cfg.Federation.Hub.ConfigLevels),
+				Logger:       logger.With().Str("component", "federation-hub").Logger(),
+			})
+			a.federationHub = hub
+		case config.AgentModeLeaf:
+			leaf := federation.NewLeafClient(federation.LeafClientConfig{
+				AgentID:           cfg.Agent.ID,
+				HubAddr:           cfg.Federation.Leaf.HubAddr,
+				Labels:            nil, // Will be populated from config
+				AutoLabels:        federation.CollectAutoLabels(),
+				ReconnectSec:      cfg.Federation.Leaf.ReconnectIntervalSec,
+				ReportIntervalSec: cfg.Federation.Leaf.ReportIntervalSec,
+				Logger:            logger.With().Str("component", "federation-leaf").Logger(),
+			})
+			a.federationLeaf = leaf
+		}
+	}
+
 	return a, nil
 }
 
@@ -465,6 +495,25 @@ func buildScheduler(cfg *config.Config, log zerolog.Logger) (*collector.Schedule
 	return collector.NewScheduler(scheduledInputs, processors, aggregators, outputs, log), nil
 }
 
+// convertGroupRules converts config group rules to federation group rules.
+func convertGroupRules(rules []config.GroupRuleConfig) []federation.GroupRule {
+	result := make([]federation.GroupRule, len(rules))
+	for i, r := range rules {
+		result[i] = federation.GroupRule{Name: r.Name, Match: r.Match}
+	}
+	return result
+}
+
+// convertConfigLevels converts config config levels to federation config levels.
+func convertConfigLevels(levels config.ConfigLevelsConfig) federation.ConfigLevels {
+	return federation.ConfigLevels{
+		Global:  levels.Global,
+		Regions: levels.Regions,
+		Groups:  levels.Groups,
+		Agents:  levels.Agents,
+	}
+}
+
 // startSubsystems initialises and starts all agent subsystems. It returns the
 // collector pipeline channel and an error channel for the HTTP server.
 func (a *Agent) startSubsystems(ctx context.Context) (<-chan []*collector.Metric, chan error, error) {
@@ -507,6 +556,16 @@ func (a *Agent) startSubsystems(ctx context.Context) (<-chan []*collector.Metric
 	if a.discoverySvc != nil {
 		go a.discoverySvc.Run(ctx)
 		a.log.Info().Msg("discovery service started")
+	}
+
+	// Start federation subsystems.
+	if a.federationHub != nil {
+		go a.federationHub.Start(ctx)
+		a.log.Info().Msg("federation hub started")
+	}
+	if a.federationLeaf != nil {
+		go a.federationLeaf.Start(ctx)
+		a.log.Info().Msg("federation leaf started")
 	}
 
 	errCh := make(chan error, 1)
@@ -612,6 +671,14 @@ func (a *Agent) shutdown(ctx context.Context) {
 		if err := a.gateway.Stop(stopCtx); err != nil {
 			a.log.Error().Err(err).Msg("failed to stop gateway")
 		}
+	}
+
+	// 5d. Stop federation subsystems.
+	if a.federationHub != nil {
+		a.federationHub.Stop()
+	}
+	if a.federationLeaf != nil {
+		a.federationLeaf.Stop()
 	}
 
 	// 6. Shutdown HTTP server.
