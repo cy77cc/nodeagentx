@@ -11,7 +11,7 @@ Additional subsystems: Gateway (TCP tunnel + SSH proxy jump host), Checker (5 ca
 
 | Capability | Description |
 |------|------|
-| Metrics Collection Pipeline | 20 built-in plugins (10 Input + 3 Processor + 4 Aggregator + 3 Output), label injection, aggregation, multi-output |
+| Metrics Collection Pipeline | 28 built-in plugins (13 Input + 4 Processor + 4 Aggregator + 4 Output), label injection, aggregation, multi-output |
 | Remote Command Execution | Whitelist policy, timeout control, output truncation |
 | Sandbox Execution | nsjail PID/NET/MNT namespace isolation, cgroup v2 memory/CPU/PID limits |
 | gRPC Bidirectional Stream | Agent initiates connection to platform, supports registration, heartbeat, metrics reporting, command/script dispatch |
@@ -27,6 +27,17 @@ Additional subsystems: Gateway (TCP tunnel + SSH proxy jump host), Checker (5 ca
 | CLI Subcommands | run, version, validate, plugins |
 | Gateway/Jump Host | TCP tunnel relay + SSH proxy, supports NAT traversal for internal host access |
 | System Health Check | 5 categories, 18 checks: kernel, filesystem, network, service, container |
+| Log Collection | tail/journald/syslog multi-source log collection, Grok pattern parsing |
+| Distributed Tracing | OTLP receiver/exporter, batch processing, Jaeger/Tempo integration |
+| Embedded Dashboard | HTML dashboard with SSE real-time log streaming |
+| Smart Alerting | Configurable rules, Webhook notifications, state machine (pending/firing/resolved) |
+| Service Auto-Discovery | systemd/proc/Docker/cloud metadata multi-layer discovery |
+| Config Templates | Embedded YAML templates with variable substitution |
+| Auto-Update | A/B binary swap with SHA256 + Ed25519 signature verification |
+| WASM Plugin Runtime | WebAssembly sandboxed execution (wazero) |
+| Plugin Marketplace | Remote registry, search, download, install with SHA256 verification |
+| Helm Deployment | Complete Helm chart for Kubernetes DaemonSet (RBAC, PDB, NetworkPolicy) |
+| OpenAPI Spec | OpenAPI 3.1.0 specification for all HTTP endpoints |
 
 ## Architecture
 
@@ -67,6 +78,22 @@ Additional subsystems: Gateway (TCP tunnel + SSH proxy jump host), Checker (5 ca
 |  |              |  | Service/     |                     |
 |  |              |  | Container    |                     |
 |  +-------------+  +--------------+                     |
+|  +-------------+  +--------------+  +--------------+  |
+|  |  Discovery   |  |  Alerting    |  |  Tracing     |  |
+|  | systemd/proc |  | Rule Engine  |  | OTLP Recv    |  |
+|  | /container/  |  | Webhook      |  | Batch Proc   |  |
+|  | metadata     |  | Notify       |  | OTLP Export  |  |
+|  +-------------+  +--------------+  +--------------+  |
+|  +-------------+  +--------------+  +--------------+  |
+|  |  Templates   |  |  Updater     |  | WASM Runtime |  |
+|  | YAML embed   |  | A/B binary   |  | wazero       |  |
+|  | Var subst    |  | Ed25519      |  | Sandbox      |  |
+|  +-------------+  +--------------+  +--------------+  |
+|  +-------------+  +--------------+                     |
+|  | Marketplace  |  |  Dashboard   |                     |
+|  | Registry     |  | Embedded     |                     |
+|  | Install      |  | HTML/SSE     |                     |
+|  +-------------+  +--------------+                     |
 |  +-------------------------------------------------+  |
 |  |              HTTP Server (:18080)                |  |
 |  |  /healthz /readyz /api/v1/exec /api/v1/tasks    |  |
@@ -91,6 +118,9 @@ Additional subsystems: Gateway (TCP tunnel + SSH proxy jump host), Checker (5 ca
 | Load | `load` | System load average (1/5/15 min) | -- |
 | GPU | `gpu` | NVIDIA GPU metrics (nvidia-smi) | `bin_path` |
 | Temperature | `temp` | Temperature sensors | -- |
+| HTTP Polling | `http` | HTTP endpoint polling | `urls`, `method`, `timeout` |
+| SNMP | `snmp` | SNMP network device metrics | `agents`, `community`, `oids` |
+| Cloud Metadata | `cloud_metadata` | Cloud instance metadata (EC2 IMDS) | `metadata_url`, `timeout` |
 
 ### Processor Plugins (Processing)
 
@@ -99,6 +129,7 @@ Additional subsystems: Gateway (TCP tunnel + SSH proxy jump host), Checker (5 ca
 | Tagger | `tagger` | Static/conditional label injection | `tags`, `rules` |
 | Regex Replace | `regex` | Label value regex transformation | `tags[].key`, `pattern`, `replacement` |
 | Delta/Rate | `delta` | Cumulative counter delta or rate calculation | `fields`, `output` (delta/rate), `max_stale_seconds` |
+| Log Parse | `logparse` | Grok pattern log parsing | `patterns`, `field` |
 
 ### Aggregator Plugins (Aggregation)
 
@@ -116,6 +147,7 @@ Additional subsystems: Gateway (TCP tunnel + SSH proxy jump host), Checker (5 ca
 | HTTP | `http` | JSON POST + retry | `url`, `timeout`, `retry_count` |
 | Prometheus | `prometheus` | Text format exposition | `path`, `addr` |
 | Prometheus Remote Write | `prometheus_remote_write` | Remote write | `url`, `timeout` |
+| OTLP | `otlp` | OpenTelemetry protocol export | `endpoint`, `protocol` |
 
 ## Quick Start
 
@@ -311,6 +343,10 @@ curl http://127.0.0.1:18080/api/v1/metrics/latest
 | `make ci` | CI pipeline (tidy + vet + test-race + security) |
 | `make bench` | Collector pipeline benchmark (benchmem, count=3) |
 | `make e2e` | End-to-end integration test (e2e build tag, 120s timeout) |
+| `make helm-lint` | Helm chart lint |
+| `make helm-template` | Helm template dry-run |
+| `make helm-install` | Helm install to Kubernetes |
+| `make openapi-validate` | OpenAPI spec validation |
 
 ## Packaging & Installation
 
@@ -399,10 +435,10 @@ OpsAgent/
 +-- internal/
 |   +-- app/                      # Agent lifecycle orchestration, audit logging, CLI subcommands
 |   +-- collector/                # Collection pipeline
-|   |   +-- inputs/               #   cpu, memory, disk, diskio, net, process, connections, load, gpu, temp
-|   |   +-- processors/           #   tagger, regex, delta
+|   |   +-- inputs/               #   cpu, memory, disk, diskio, net, process, connections, load, gpu, temp, http, snmp, cloudmetadata
+|   |   +-- processors/           #   tagger, regex, delta, logparse
 |   |   +-- aggregators/          #   avg, sum, minmax, percentile
-|   |   +-- outputs/              #   http, prometheus, promrw
+|   |   +-- outputs/              #   http, prometheus, promrw, otlp
 |   +-- config/                   # Configuration loading and validation
 |   +-- executor/                 # Local command execution
 |   +-- gateway/                  # Gateway/Jump host subsystem
@@ -424,8 +460,17 @@ OpsAgent/
 |   +-- sandbox/                  # nsjail sandbox execution engine
 |   +-- server/                   # HTTP API + Prometheus export
 |   +-- task/                     # Task model and dispatch
+|   +-- alerting/                 # Alert rule engine and Webhook notifications
+|   +-- discovery/                # Service auto-discovery (systemd/proc/container/metadata)
+|   +-- templates/                # Config template engine (embed.FS)
+|   +-- updater/                  # Auto-updater (A/B binary swap, Ed25519)
+|   +-- wasm/                     # WASM plugin runtime (wazero)
+|   +-- marketplace/              # Plugin marketplace (registry + installer)
+|   +-- tracing/                  # Distributed tracing (OTLP)
 +-- proto/                        # gRPC proto definitions
 +-- rust-runtime/                 # Rust plugin runtime
++-- api/openapi.yaml              # OpenAPI 3.1.0 specification
++-- deploy/helm/opsagent/         # Helm chart for Kubernetes deployment
 +-- configs/config.yaml           # Default configuration
 +-- scripts/
 |   +-- package.sh                # Cross-compile packaging script (amd64/arm64)
@@ -469,3 +514,4 @@ OpsAgent/
 | [Operations Deployment Guide](docs/zh/operations-guide.md) | Deployment, monitoring, and troubleshooting |
 | [Gateway Tunnel Guide](docs/zh/gateway-tunnel-guide.md) | Gateway configuration, tunnel management, SSH proxy |
 | [CHANGELOG](docs/zh/changelog.md) | Version change history |
+| [Helm Chart](deploy/helm/opsagent/README.md) | Kubernetes DaemonSet deployment guide |

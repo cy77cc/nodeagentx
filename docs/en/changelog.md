@@ -4,6 +4,41 @@ This document records the version change history of the OpsAgent project, listed
 
 ---
 
+## 2026-05-29 -- Observability, Automation, Platform Integration & Plugin Ecosystem
+
+This update delivers four major feature modules across 42 commits: observability enhancement, ops automation, platform integration, and plugin ecosystem.
+
+### Observability Enhancement
+
+- Added `tail`, `journald`, `syslog` input plugins for multi-source log collection
+- Added `logparse` processor with Grok pattern matching and structured field extraction
+- Added OTLP output plugin for exporting metrics/logs to OpenTelemetry backends
+- Added distributed tracing subsystem (OTLP receiver, batch processor, OTLP exporter)
+- Added embedded HTML dashboard with SSE real-time log streaming
+- Added alerting engine with configurable rules, Webhook notifications, and state machine (inactive→pending→firing→resolved)
+
+### Ops Automation
+
+- Added multi-layer service auto-discovery subsystem (systemd, /proc, Docker containers, cloud metadata)
+- Added configuration template engine with embedded YAML templates and variable substitution
+- Added auto-updater with A/B binary swap, SHA256 checksum, and Ed25519 signature verification
+
+### Platform Integration
+
+- Added complete Helm chart for Kubernetes DaemonSet deployment (RBAC, PriorityClass, PDB, NetworkPolicy, CiliumNetworkPolicy)
+- Added OpenAPI 3.1.0 specification covering all HTTP endpoints
+- Added ServiceDiscoveryReport, AgentUpdate, AgentUpdateAck message types to proto
+
+### Plugin Ecosystem
+
+- Added HTTP input plugin for polling HTTP endpoints (status code, response time, content length)
+- Added SNMP input plugin for querying SNMP agents and collecting network device metrics (SNMPv1/v2c/v3)
+- Added cloud metadata input plugin for fetching instance info from EC2 IMDS
+- Added WASM plugin runtime based on wazero for secure WebAssembly sandboxed execution
+- Added plugin marketplace with remote registry, search, download, and install management
+
+---
+
 ## 2026-05-01 -- Security Hardening Sprint
 
 This update implements comprehensive security hardening across multiple OpsAgent subsystems, covering authentication and authorization, input validation, sandbox isolation, network communication, and more.

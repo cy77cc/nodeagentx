@@ -11,7 +11,7 @@ OpsAgent 是面向 OpsPilot 控制面的主机侧执行与指标采集 Agent，�
 
 | 能力 | 说明 |
 |------|------|
-| 指标采集管线 | 20 个内置插件（10 Input + 3 Processor + 4 Aggregator + 3 Output），标签注入，聚合，多路输出 |
+| 指标采集管线 | 28 个内置插件（13 Input + 4 Processor + 4 Aggregator + 4 Output），标签注入，聚合，多路输出 |
 | 远程命令执行 | 白名单策略、超时控制、输出截断 |
 | 沙箱执行 | nsjail PID/NET/MNT 命名空间隔离，cgroup v2 内存/CPU/PID 限制 |
 | gRPC 双向流 | Agent 主动连接平台，支持注册、心跳、指标上报、命令/脚本下发 |
@@ -27,6 +27,17 @@ OpsAgent 是面向 OpsPilot 控制面的主机侧执行与指标采集 Agent，�
 | CLI 子命令 | run, version, validate, plugins |
 | 网关/跳板机 | TCP 隧道中继 + SSH 代理，支持 NAT 穿透的内部主机访问 |
 | 系统健康检查 | 5 类 18 项检查：内核、文件系统、网络、服务、容器 |
+| 日志采集 | tail/journald/syslog 多源日志采集，Grok 模式解析 |
+| 分布式追踪 | OTLP 接收/导出，批处理，Jaeger/Tempo 集成 |
+| 嵌入式仪表盘 | HTML 仪表盘，SSE 实时日志流 |
+| 智能告警 | 可配置规则，Webhook 通知，状态机（pending/firing/resolved） |
+| 服务自动发现 | systemd/proc/Docker/云元数据多层发现 |
+| 配置模板 | 嵌入式 YAML 模板，变量替换 |
+| 自动更新 | A/B 二进制交换，SHA256 + Ed25519 签名验证 |
+| WASM 插件运行时 | WebAssembly 沙箱执行（wazero） |
+| 插件市场 | 远程注册表，搜索、下载、安装，SHA256 校验 |
+| Helm 部署 | 完整 Helm chart，Kubernetes DaemonSet（RBAC、PDB、NetworkPolicy） |
+| OpenAPI 规范 | OpenAPI 3.1.0 规范，覆盖所有 HTTP 端点 |
 
 ## 架构
 
@@ -61,6 +72,21 @@ OpsAgent 是面向 OpsPilot 控制面的主机侧执行与指标采集 Agent，�
 │  │ SSH 代理     │  │ 内核/FS/网络  │                     │
 │  │ NAT 穿透     │  │ /服务/容器    │                     │
 │  └─────────────┘  └──────────────┘                     │
+│  ┌─────────────┐  ┌──────────────┐  ┌──────────────┐  │
+│  │  Discovery   │  │  Alerting    │  │  Tracing     │  │
+│  │ systemd/proc │  │ 规则引擎     │  │ OTLP 接收    │  │
+│  │ /容器/元数据  │  │ Webhook 通知 │  │ 批处理       │  │
+│  └─────────────┘  └──────────────┘  │ OTLP 导出    │  │
+│  ┌─────────────┐  ┌──────────────┐  └──────────────┘  │
+│  │  Templates   │  │  Updater     │  ┌──────────────┐  │
+│  │ YAML embed   │  │ A/B 二进制   │  │ WASM Runtime │  │
+│  │ 变量替换     │  │ Ed25519 验证 │  │ wazero 沙箱  │  │
+│  └─────────────┘  └──────────────┘  └──────────────┘  │
+│  ┌─────────────┐  ┌──────────────┐                     │
+│  │ Marketplace  │  │  Dashboard   │                     │
+│  │ 注册表/安装  │  │ 嵌入式 HTML  │                     │
+│  │ SHA256 校验  │  │ SSE 日志流   │                     │
+│  └─────────────┘  └──────────────┘                     │
 │  ┌─────────────────────────────────────────────────┐  │
 │  │              HTTP Server (:18080)                │  │
 │  │  /healthz /readyz /api/v1/exec /api/v1/tasks    │  │
@@ -85,6 +111,9 @@ OpsAgent 是面向 OpsPilot 控制面的主机侧执行与指标采集 Agent，�
 | 负载 | `load` | 系统负载均值 (1/5/15 min) | — |
 | GPU | `gpu` | NVIDIA GPU 指标 (nvidia-smi) | `bin_path` |
 | 温度 | `temp` | 温度传感器 | — |
+| HTTP 轮询 | `http` | HTTP 端点轮询 | `urls`, `method`, `timeout` |
+| SNMP | `snmp` | SNMP 网络设备指标 | `agents`, `community`, `oids` |
+| 云元数据 | `cloud_metadata` | 云实例元数据（EC2 IMDS） | `metadata_url`, `timeout` |
 
 ### Processor 插件（处理）
 
@@ -93,6 +122,7 @@ OpsAgent 是面向 OpsPilot 控制面的主机侧执行与指标采集 Agent，�
 | 标签器 | `tagger` | 静态/条件标签注入 | `tags`, `rules` |
 | 正则替换 | `regex` | 标签值正则变换 | `tags[].key`, `pattern`, `replacement` |
 | 差值/速率 | `delta` | 累计计数器差值或速率计算 | `fields`, `output` (delta/rate), `max_stale_seconds` |
+| 日志解析 | `logparse` | Grok 模式日志解析 | `patterns`, `field` |
 
 ### Aggregator 插件（聚合）
 
@@ -110,6 +140,7 @@ OpsAgent 是面向 OpsPilot 控制面的主机侧执行与指标采集 Agent，�
 | HTTP | `http` | JSON POST + 重试 | `url`, `timeout`, `retry_count` |
 | Prometheus | `prometheus` | 文本格式暴露 | `path`, `addr` |
 | Prometheus Remote Write | `prometheus_remote_write` | 远程写入 | `url`, `timeout` |
+| OTLP | `otlp` | OpenTelemetry 协议导出 | `endpoint`, `protocol` |
 
 ## 快速启动
 
@@ -305,6 +336,10 @@ curl http://127.0.0.1:18080/api/v1/metrics/latest
 | `make ci` | CI 流水线（tidy + vet + test-race + security） |
 | `make bench` | 采集管线基准测试 (benchmem, count=3) |
 | `make e2e` | 端到端集成测试 (e2e build tag, 120s timeout) |
+| `make helm-lint` | Helm chart 检查 |
+| `make helm-template` | Helm 模板预览 |
+| `make helm-install` | Helm 安装到 Kubernetes |
+| `make openapi-validate` | OpenAPI 规范验证 |
 
 ## 打包与安装
 
@@ -393,10 +428,10 @@ OpsAgent/
 ├── internal/
 │   ├── app/                      # Agent 生命周期编排、审计日志、CLI 子命令
 │   ├── collector/                # 采集管线
-│   │   ├── inputs/               #   cpu, memory, disk, diskio, net, process, connections, load, gpu, temp
-│   │   ├── processors/           #   tagger, regex, delta
+│   │   ├── inputs/               #   cpu, memory, disk, diskio, net, process, connections, load, gpu, temp, http, snmp, cloudmetadata
+│   │   ├── processors/           #   tagger, regex, delta, logparse
 │   │   ├── aggregators/          #   avg, sum, minmax, percentile
-│   │   └── outputs/              #   http, prometheus, promrw
+│   │   └── outputs/              #   http, prometheus, promrw, otlp
 │   ├── config/                   # 配置加载与验证
 │   ├── executor/                 # 本地命令执行
 │   ├── gateway/                  # 网关/跳板机子系统
@@ -417,9 +452,18 @@ OpsAgent/
 │   ├── reporter/                 # 上报策略 (stdout/http)
 │   ├── sandbox/                  # nsjail 沙箱执行引擎
 │   ├── server/                   # HTTP API + Prometheus 导出
-│   └── task/                     # 任务模型与分发
+│   ├── task/                     # 任务模型与分发
+│   ├── alerting/                 #   告警规则引擎与 Webhook 通知
+│   ├── discovery/                #   服务自动发现（systemd/proc/容器/元数据）
+│   ├── templates/                #   配置模板引擎（embed.FS）
+│   ├── updater/                  #   自动更新器（A/B 二进制交换）
+│   ├── wasm/                     #   WASM 插件运行时（wazero）
+│   ├── marketplace/              #   插件市场（注册表 + 安装器）
+│   └── tracing/                  #   分布式追踪（OTLP）
 ├── proto/                        # gRPC proto 定义
 ├── rust-runtime/                 # Rust 插件 runtime
+├── api/openapi.yaml              # OpenAPI 3.1.0 规范
+├── deploy/helm/opsagent/         # Helm chart for Kubernetes 部署
 ├── configs/config.yaml           # 默认配置
 ├── scripts/
 │   ├── package.sh                # 交叉编译打包脚本 (amd64/arm64)
@@ -463,3 +507,4 @@ OpsAgent/
 | [运维部署指南](docs/zh/operations-guide.md) | 部署、监控、故障排查 |
 | [网关隧道指南](docs/zh/gateway-tunnel-guide.md) | 网关配置、隧道管理、SSH 代理 |
 | [CHANGELOG](docs/zh/changelog.md) | 版本变更历史 |
+| [Helm Chart](deploy/helm/opsagent/README.md) | Kubernetes DaemonSet 部署指南 |

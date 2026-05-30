@@ -4,6 +4,41 @@
 
 ---
 
+## 2026-05-29 -- 可观测性、自动化、平台集成与插件生态
+
+本次更新通过 42 个提交实现了四大功能模块：可观测性增强、运维自动化、平台集成和插件生态系统。
+
+### 可观测性增强
+
+- 新增 `tail`、`journald`、`syslog` 输入插件，支持多源日志采集
+- 新增 `logparse` 处理器，支持 Grok 模式匹配和结构化字段提取
+- 新增 OTLP 输出插件，支持将指标/日志导出到 OpenTelemetry 后端
+- 新增分布式追踪子系统（OTLP 接收器、批处理器、OTLP 导出器）
+- 新增嵌入式 HTML 仪表盘，支持 SSE 实时日志流推送
+- 新增告警引擎，支持可配置规则、Webhook 通知和状态机管理（inactive→pending→firing→resolved）
+
+### 运维自动化
+
+- 新增多层服务自动发现子系统（systemd、/proc、Docker 容器、云元数据）
+- 新增配置模板引擎，支持嵌入式 YAML 模板和变量替换
+- 新增自动更新器，支持 A/B 二进制交换、SHA256 校验和 Ed25519 签名验证
+
+### 平台集成
+
+- 新增完整 Helm Chart，支持 Kubernetes DaemonSet 部署（RBAC、PriorityClass、PDB、NetworkPolicy、CiliumNetworkPolicy）
+- 新增 OpenAPI 3.1.0 规范，覆盖所有 HTTP 端点
+- Proto 新增 ServiceDiscoveryReport、AgentUpdate、AgentUpdateAck 消息类型
+
+### 插件生态系统
+
+- 新增 HTTP 输入插件，轮询 HTTP 端点采集状态码、响应时间等指标
+- 新增 SNMP 输入插件，查询 SNMP 代理采集网络设备指标（支持 SNMPv1/v2c/v3）
+- 新增云元数据输入插件，从 EC2 IMDS 获取实例 ID、类型、区域等信息
+- 新增 WASM 插件运行时，基于 wazero 实现 WebAssembly 模块的安全沙箱执行
+- 新增插件市场，提供远程插件注册表、搜索、下载和安装管理
+
+---
+
 ## 2026-05-25 -- 安全加固冲刺
 
 本次更新进一步强化了 Gateway 子系统和其他组件的安全措施。

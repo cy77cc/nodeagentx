@@ -19,7 +19,10 @@ This document is the complete reference for the OpsAgent YAML configuration file
 11. [plugin_gateway -- Custom Plugin Gateway](#11-plugin_gateway)
 12. [checker -- System Health Checks](#12-checker)
 13. [gateway -- Tunnel/Proxy Gateway](#13-gateway)
-14. [Complete Configuration Example](#complete-configuration-example)
+14. [discovery -- Service Auto-Discovery](#14-discovery)
+15. [updater -- Auto-Update](#15-updater)
+16. [wasm -- WASM Plugin Runtime](#16-wasm)
+17. [Complete Configuration Example](#complete-configuration-example)
 
 ---
 
@@ -290,7 +293,53 @@ Defines internal network hosts behind the gateway.
 
 ---
 
-## Complete Configuration Example
+## 14. discovery
+
+Controls the service auto-discovery subsystem.
+
+| YAML Path | Type | Default | Required | Description |
+|-----------|------|---------|----------|-------------|
+| `discovery.enabled` | bool | `false` | No | Whether to enable service auto-discovery |
+| `discovery.interval_seconds` | int | `60` | Yes | Discovery scan interval in seconds, must be greater than 0 when enabled |
+| `discovery.layers` | array[DiscoveryLayerConfig] | `[]` | No | List of discovery layers to enable |
+
+### discovery.layers[]
+
+| YAML Path | Type | Default | Required | Description |
+|-----------|------|---------|----------|-------------|
+| `discovery.layers[].name` | string | -- | Yes | Layer name: `systemd`, `proc`, `container`, `metadata` |
+| `discovery.layers[].enabled` | bool | `true` | No | Whether this layer is enabled |
+
+---
+
+## 15. updater
+
+Controls the auto-update subsystem.
+
+| YAML Path | Type | Default | Required | Description |
+|-----------|------|---------|----------|-------------|
+| `updater.enabled` | bool | `false` | No | Whether to enable auto-update |
+| `updater.current_path` | string | -- | Conditionally required | Path to the current agent binary, required when enabled |
+| `updater.backup_path` | string | -- | Conditionally required | Path to store the backup binary, required when enabled |
+| `updater.download_dir` | string | -- | Conditionally required | Temporary directory for downloading updates, required when enabled |
+| `updater.public_key` | string | -- | Conditionally required | Ed25519 public key (hex-encoded) for signature verification, required when enabled |
+
+---
+
+## 16. wasm
+
+Controls the WASM plugin runtime.
+
+| YAML Path | Type | Default | Required | Description |
+|-----------|------|---------|----------|-------------|
+| `wasm.enabled` | bool | `false` | No | Whether to enable WASM plugin runtime |
+| `wasm.plugins_dir` | string | `/etc/opsagent/wasm-plugins` | Conditionally required | Directory containing WASM plugin manifests and binaries, required when enabled |
+| `wasm.max_modules` | int | `10` | Yes | Maximum number of WASM modules to load, must be greater than 0 when enabled |
+| `wasm.cache_dir` | string | `/var/lib/opsagent/wasm-cache` | No | Directory for caching compiled WASM modules |
+
+---
+
+## 17. Complete Configuration Example
 
 ```yaml
 # ============================================================
@@ -461,4 +510,33 @@ gateway:
   #       user: "root"
   #       key_file: "/etc/opsagent/keys/id_rsa"
   #       port: 22
+
+# 14. Service auto-discovery
+discovery:
+  enabled: false
+  interval_seconds: 60
+  layers:
+    - name: systemd
+      enabled: true
+    - name: proc
+      enabled: true
+    - name: container
+      enabled: true
+    - name: metadata
+      enabled: true
+
+# 15. Auto-update
+updater:
+  enabled: false
+  current_path: ""
+  backup_path: ""
+  download_dir: ""
+  public_key: ""
+
+# 16. WASM plugin runtime
+wasm:
+  enabled: false
+  plugins_dir: "/etc/opsagent/wasm-plugins"
+  max_modules: 10
+  cache_dir: "/var/lib/opsagent/wasm-cache"
 ```
