@@ -85,6 +85,22 @@ type Gateway interface {
 	HealthStatus() health.Status
 }
 
+// FederationHub manages the Hub mode — aggregating Leaf agents, distributing
+// config, and coordinating batch operations.
+type FederationHub interface {
+	Start(ctx context.Context) error
+	Stop() error
+	HealthStatus() health.Status
+}
+
+// FederationLeaf manages the Leaf mode — connecting to Hub, reporting metrics,
+// and receiving config updates.
+type FederationLeaf interface {
+	Start(ctx context.Context) error
+	Stop() error
+	HealthStatus() health.Status
+}
+
 // TracingReceiver abstracts the tracing subsystem lifecycle.
 type TracingReceiver interface {
 	Start(ctx context.Context) error
