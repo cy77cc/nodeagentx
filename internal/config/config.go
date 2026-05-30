@@ -27,12 +27,14 @@ type Config struct {
 	Discovery     DiscoveryConfig     `mapstructure:"discovery"`
 	Updater       UpdaterConfig       `mapstructure:"updater"`
 	WASM          WASMConfig          `mapstructure:"wasm"`
+	Federation    FederationConfig    `mapstructure:"federation"`
 }
 
 // AgentConfig controls agent identity and collection cadence.
 type AgentConfig struct {
 	ID                     string          `mapstructure:"id"`
 	Name                   string          `mapstructure:"name"`
+	Mode                   string          `mapstructure:"mode"` // standalone | hub | leaf
 	IntervalSeconds        int             `mapstructure:"interval_seconds"`
 	ShutdownTimeoutSeconds int             `mapstructure:"shutdown_timeout_seconds"`
 	AuditLog               AuditLogConfig  `mapstructure:"audit_log"`
@@ -279,6 +281,96 @@ type WASMConfig struct {
 	CacheDir   string `mapstructure:"cache_dir"`
 }
 
+// Agent mode constants.
+const (
+	AgentModeStandalone = "standalone"
+	AgentModeHub        = "hub"
+	AgentModeLeaf       = "leaf"
+)
+
+// FederationConfig controls multi-cluster federation.
+type FederationConfig struct {
+	Enabled bool                 `mapstructure:"enabled"`
+	Hub     FederationHubConfig  `mapstructure:"hub"`
+	Leaf    FederationLeafConfig `mapstructure:"leaf"`
+}
+
+// FederationHubConfig controls hub-mode federation settings.
+type FederationHubConfig struct {
+	ListenAddr                    string                 `mapstructure:"listen_addr"`
+	Region                        string                 `mapstructure:"region"`
+	MaxLeaves                     int                    `mapstructure:"max_leaves"`
+	LeafHeartbeatTimeoutSeconds   int                    `mapstructure:"leaf_heartbeat_timeout_seconds"`
+	MetricsAggregationIntervalSec int                    `mapstructure:"metrics_aggregation_interval_seconds"`
+	Security                      FederationSecurity     `mapstructure:"security"`
+	Groups                        []GroupRuleConfig      `mapstructure:"groups"`
+	ConfigLevels                  ConfigLevelsConfig     `mapstructure:"config_levels"`
+	Canary                        CanaryConfig           `mapstructure:"canary"`
+	Operations                    OperationsConfig       `mapstructure:"operations"`
+}
+
+// FederationLeafConfig controls leaf-mode federation settings.
+type FederationLeafConfig struct {
+	HubAddr              string         `mapstructure:"hub_addr"`
+	ReconnectIntervalSec int            `mapstructure:"reconnect_interval_seconds"`
+	ReportIntervalSec    int            `mapstructure:"report_interval_seconds"`
+	Fallback             FallbackConfig `mapstructure:"fallback"`
+}
+
+// FederationSecurity holds federation security configuration.
+type FederationSecurity struct {
+	MTLS MTLSConfig `mapstructure:"mtls"`
+	PSK  string     `mapstructure:"psk"`
+}
+
+// GroupRuleConfig defines a leaf grouping rule.
+type GroupRuleConfig struct {
+	Name  string            `mapstructure:"name"`
+	Match map[string]string `mapstructure:"match"`
+}
+
+// ConfigLevelsConfig defines hierarchical configuration levels.
+type ConfigLevelsConfig struct {
+	Global  map[string]interface{}            `mapstructure:"global"`
+	Regions map[string]map[string]interface{} `mapstructure:"regions"`
+	Groups  map[string]map[string]interface{} `mapstructure:"groups"`
+	Agents  map[string]map[string]interface{} `mapstructure:"agents"`
+}
+
+// CanaryConfig controls canary deployment settings.
+type CanaryConfig struct {
+	Strategy string              `mapstructure:"strategy"`
+	Stages   []CanaryStageConfig `mapstructure:"stages"`
+}
+
+// CanaryStageConfig defines a single canary stage.
+type CanaryStageConfig struct {
+	Percentage   int  `mapstructure:"percentage"`
+	WaitSeconds  int  `mapstructure:"wait_seconds"`
+	AutoRollback bool `mapstructure:"auto_rollback"`
+}
+
+// OperationsConfig controls federation operations.
+type OperationsConfig struct {
+	MaxConcurrent         int               `mapstructure:"max_concurrent"`
+	DefaultTimeoutSeconds int               `mapstructure:"default_timeout_seconds"`
+	RetryPolicy           RetryPolicyConfig `mapstructure:"retry_policy"`
+}
+
+// RetryPolicyConfig controls retry behavior.
+type RetryPolicyConfig struct {
+	MaxRetries     int `mapstructure:"max_retries"`
+	BackoffSeconds int `mapstructure:"backoff_seconds"`
+}
+
+// FallbackConfig controls leaf fallback behavior.
+type FallbackConfig struct {
+	Enabled          bool   `mapstructure:"enabled"`
+	Mode             string `mapstructure:"mode"`
+	PlatformAddr     string `mapstructure:"platform_addr"`
+	CheckIntervalSec int    `mapstructure:"check_interval_seconds"`
+}
+
 // Load reads and validates configuration from a file path.
 func Load(path string) (*Config, error) {
 	v := viper.New()
@@ -350,6 +442,24 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("wasm.plugins_dir", "/etc/opsagent/wasm-plugins")
 	v.SetDefault("wasm.max_modules", 10)
 	v.SetDefault("wasm.cache_dir", "/var/lib/opsagent/wasm-cache")
+
+	// Federation defaults.
+	v.SetDefault("agent.mode", AgentModeStandalone)
+	v.SetDefault("federation.enabled", false)
+	v.SetDefault("federation.hub.listen_addr", ":9443")
+	v.SetDefault("federation.hub.max_leaves", 500)
+	v.SetDefault("federation.hub.leaf_heartbeat_timeout_seconds", 60)
+	v.SetDefault("federation.hub.metrics_aggregation_interval_seconds", 30)
+	v.SetDefault("federation.hub.canary.strategy", "percentage")
+	v.SetDefault("federation.hub.operations.max_concurrent", 50)
+	v.SetDefault("federation.hub.operations.default_timeout_seconds", 300)
+	v.SetDefault("federation.hub.operations.retry_policy.max_retries", 3)
+	v.SetDefault("federation.hub.operations.retry_policy.backoff_seconds", 10)
+	v.SetDefault("federation.leaf.reconnect_interval_seconds", 5)
+	v.SetDefault("federation.leaf.report_interval_seconds", 30)
+	v.SetDefault("federation.leaf.fallback.enabled", false)
+	v.SetDefault("federation.leaf.fallback.mode", "standalone")
+	v.SetDefault("federation.leaf.fallback.check_interval_seconds", 30)
 
 	if err := v.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("read config: %w", err)
@@ -584,6 +694,37 @@ func (c *Config) Validate() error {
 			validOps := map[string]bool{">": true, "<": true, ">=": true, "<=": true, "==": true, "!=": true}
 			if !validOps[rule.Condition.Operator] {
 				return fmt.Errorf("alerting.rules[%d].condition.operator must be one of: >, <, >=, <=, ==, !=", i)
+			}
+		}
+	}
+
+	// Federation validation (only when enabled and in hub/leaf mode).
+	if c.Federation.Enabled && (c.Agent.Mode == AgentModeHub || c.Agent.Mode == AgentModeLeaf) {
+		switch c.Agent.Mode {
+		case AgentModeHub:
+			if strings.TrimSpace(c.Federation.Hub.ListenAddr) == "" {
+				return fmt.Errorf("federation.hub.listen_addr is required when agent.mode=hub")
+			}
+			if strings.TrimSpace(c.Federation.Hub.Region) == "" {
+				return fmt.Errorf("federation.hub.region is required when agent.mode=hub")
+			}
+			if c.Federation.Hub.MaxLeaves <= 0 {
+				return fmt.Errorf("federation.hub.max_leaves must be > 0 when agent.mode=hub")
+			}
+			if c.Federation.Hub.LeafHeartbeatTimeoutSeconds <= 0 {
+				return fmt.Errorf("federation.hub.leaf_heartbeat_timeout_seconds must be > 0 when agent.mode=hub")
+			}
+			for i, stage := range c.Federation.Hub.Canary.Stages {
+				if stage.Percentage <= 0 || stage.Percentage > 100 {
+					return fmt.Errorf("federation.hub.canary.stages[%d].percentage must be 1-100", i)
+				}
+				if i > 0 && stage.Percentage <= c.Federation.Hub.Canary.Stages[i-1].Percentage {
+					return fmt.Errorf("federation.hub.canary.stages must be sorted by percentage ascending")
+				}
+			}
+		case AgentModeLeaf:
+			if strings.TrimSpace(c.Federation.Leaf.HubAddr) == "" {
+				return fmt.Errorf("federation.leaf.hub_addr is required when agent.mode=leaf")
 			}
 		}
 	}
