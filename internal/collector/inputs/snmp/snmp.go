@@ -27,14 +27,14 @@ type SNMPInput struct {
 }
 
 // Init parses the config map and sets defaults.
-func (s *SNMPInput) Init(cfg map[string]interface{}) error {
+func (s *SNMPInput) Init(cfg map[string]any) error {
 	// Set defaults
 	s.Version = 2
 	s.Community = "public"
 	s.Timeout = 5
 
 	if v, ok := cfg["agents"]; ok {
-		agents, ok := v.([]interface{})
+		agents, ok := v.([]any)
 		if !ok {
 			return fmt.Errorf("snmp: agents must be a list, got %T", v)
 		}
@@ -68,7 +68,7 @@ func (s *SNMPInput) Init(cfg map[string]interface{}) error {
 	}
 
 	if v, ok := cfg["oids"]; ok {
-		oids, ok := v.([]interface{})
+		oids, ok := v.([]any)
 		if !ok {
 			return fmt.Errorf("snmp: oids must be a list, got %T", v)
 		}
@@ -143,7 +143,7 @@ func (s *SNMPInput) gatherAgent(ctx context.Context, agent string, acc collector
 	tags := map[string]string{
 		"agent": agentAddr,
 	}
-	fields := make(map[string]interface{})
+	fields := make(map[string]any)
 
 	for _, pdu := range result.Variables {
 		value := snmpValue(pdu)
@@ -180,7 +180,7 @@ func (s *SNMPInput) SampleConfig() string {
 }
 
 // snmpValue converts a gosnmp PDU value to a Go type suitable for metric fields.
-func snmpValue(pdu gosnmp.SnmpPDU) interface{} {
+func snmpValue(pdu gosnmp.SnmpPDU) any {
 	switch pdu.Type {
 	case gosnmp.OctetString:
 		return string(pdu.Value.([]byte))
@@ -217,8 +217,8 @@ func snmpVersion(v int) gosnmp.SnmpVersion {
 	}
 }
 
-// toInt converts interface{} values to int, handling both int and float64 (from JSON).
-func toInt(v interface{}) (int, bool) {
+// toInt converts any values to int, handling both int and float64 (from JSON).
+func toInt(v any) (int, bool) {
 	switch val := v.(type) {
 	case int:
 		return val, true

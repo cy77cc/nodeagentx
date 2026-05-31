@@ -19,7 +19,7 @@ type testHandler struct {
 	executeFunc func(ctx context.Context, req *TaskRequest) (*TaskResponse, error)
 }
 
-func (h *testHandler) Init(cfg map[string]interface{}) error {
+func (h *testHandler) Init(cfg map[string]any) error {
 	h.initCalled = true
 	return nil
 }
@@ -143,7 +143,7 @@ func TestServe_ExecuteTask(t *testing.T) {
 			return &TaskResponse{
 				TaskID: req.TaskID,
 				Status: "ok",
-				Data:   map[string]interface{}{"echo": req.Params["msg"]},
+				Data:   map[string]any{"echo": req.Params["msg"]},
 			}, nil
 		},
 	}
@@ -155,7 +155,7 @@ func TestServe_ExecuteTask(t *testing.T) {
 		Params: TaskRequest{
 			TaskID:   "task-1",
 			TaskType: "echo",
-			Params:   map[string]interface{}{"msg": "hello"},
+			Params:   map[string]any{"msg": "hello"},
 		},
 	})
 
@@ -167,7 +167,7 @@ func TestServe_ExecuteTask(t *testing.T) {
 	}
 
 	// Result is a TaskResponse after JSON round-trip.
-	resultMap, ok := resp.Result.(map[string]interface{})
+	resultMap, ok := resp.Result.(map[string]any)
 	if !ok {
 		t.Fatalf("expected map result, got %T", resp.Result)
 	}
@@ -179,7 +179,7 @@ func TestServe_ExecuteTask(t *testing.T) {
 		t.Fatalf("expected status ok, got %v", resultMap["status"])
 	}
 
-	data, ok := resultMap["data"].(map[string]interface{})
+	data, ok := resultMap["data"].(map[string]any)
 	if !ok {
 		t.Fatalf("expected data map, got %T", resultMap["data"])
 	}

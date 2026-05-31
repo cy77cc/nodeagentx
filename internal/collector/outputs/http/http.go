@@ -37,10 +37,10 @@ type HTTPOutput struct {
 }
 
 type metricJSON struct {
-	Name      string                 `json:"name"`
-	Tags      map[string]string      `json:"tags"`
-	Fields    map[string]interface{} `json:"fields"`
-	Timestamp int64                  `json:"timestamp"`
+	Name      string            `json:"name"`
+	Tags      map[string]string `json:"tags"`
+	Fields    map[string]any    `json:"fields"`
+	Timestamp int64             `json:"timestamp"`
 }
 
 type payload struct {
@@ -49,7 +49,7 @@ type payload struct {
 }
 
 // Init configures the HTTP output from the provided config map.
-func (h *HTTPOutput) Init(cfg map[string]interface{}) error {
+func (h *HTTPOutput) Init(cfg map[string]any) error {
 	urlStr, ok := cfg["url"].(string)
 	if !ok || urlStr == "" {
 		return fmt.Errorf("http output: url is required")
@@ -91,10 +91,7 @@ func (h *HTTPOutput) Init(cfg map[string]interface{}) error {
 // Write sends metrics to the configured HTTP endpoint as JSON.
 func (h *HTTPOutput) Write(ctx context.Context, metrics []collector.Metric) error {
 	for i := 0; i < len(metrics); i += h.batchSize {
-		end := i + h.batchSize
-		if end > len(metrics) {
-			end = len(metrics)
-		}
+		end := min(i+h.batchSize, len(metrics))
 		batch := metrics[i:end]
 
 		if err := h.sendBatch(ctx, batch); err != nil {

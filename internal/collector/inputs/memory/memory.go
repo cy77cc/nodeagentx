@@ -18,7 +18,7 @@ func init() {
 // MemoryInput gathers memory and swap usage statistics.
 type MemoryInput struct{}
 
-func (m *MemoryInput) Init(_ map[string]interface{}) error {
+func (m *MemoryInput) Init(_ map[string]any) error {
 	return nil
 }
 
@@ -28,7 +28,7 @@ func (m *MemoryInput) Gather(ctx context.Context, acc collector.Accumulator) err
 		return fmt.Errorf("memory: failed to get virtual memory: %w", err)
 	}
 
-	fields := map[string]interface{}{
+	fields := map[string]any{
 		"total_bytes":     int64(vmStat.Total),
 		"available_bytes": int64(vmStat.Available),
 		"used_bytes":      int64(vmStat.Used),
@@ -39,7 +39,7 @@ func (m *MemoryInput) Gather(ctx context.Context, acc collector.Accumulator) err
 
 	swapStat, err := mem.SwapMemoryWithContext(ctx)
 	if err == nil && swapStat != nil {
-		swapFields := map[string]interface{}{
+		swapFields := map[string]any{
 			"total_bytes":  int64(swapStat.Total),
 			"used_bytes":   int64(swapStat.Used),
 			"free_bytes":   int64(swapStat.Free),

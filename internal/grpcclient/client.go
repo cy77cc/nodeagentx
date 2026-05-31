@@ -18,8 +18,8 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	"github.com/cy77cc/opsagent/internal/collector"
-	"github.com/cy77cc/opsagent/internal/health"
 	pb "github.com/cy77cc/opsagent/internal/grpcclient/proto"
+	"github.com/cy77cc/opsagent/internal/health"
 )
 
 // Config holds configuration for the gRPC client.
@@ -49,15 +49,15 @@ func DefaultConfig() Config {
 
 // Client manages a bidirectional gRPC stream to the platform.
 type Client struct {
-	cfg       Config
-	logger    zerolog.Logger
-	receiver  *Receiver
-	cache     *MetricCache
-	conn      *grpc.ClientConn
-	stream    pb.AgentService_ConnectClient
-	mu        sync.Mutex
-	cancel    context.CancelFunc
-	wg        sync.WaitGroup
+	cfg           Config
+	logger        zerolog.Logger
+	receiver      *Receiver
+	cache         *MetricCache
+	conn          *grpc.ClientConn
+	stream        pb.AgentService_ConnectClient
+	mu            sync.Mutex
+	cancel        context.CancelFunc
+	wg            sync.WaitGroup
 	connected     bool
 	onStateChange func(connected bool)
 }
@@ -90,11 +90,9 @@ func NewClient(cfg Config, logger zerolog.Logger, receiver *Receiver) *Client {
 // Start begins the connection loop in a background goroutine.
 func (c *Client) Start(ctx context.Context) error {
 	ctx, c.cancel = context.WithCancel(ctx)
-	c.wg.Add(1)
-	go func() {
-		defer c.wg.Done()
+	c.wg.Go(func() {
 		c.connectLoop(ctx)
-	}()
+	})
 	return nil
 }
 
@@ -402,10 +400,7 @@ func (c *Client) replayCache() {
 	// Send in batches to avoid exceeding gRPC message size limits.
 	const batchSize = 100
 	for i := 0; i < len(metrics); i += batchSize {
-		end := i + batchSize
-		if end > len(metrics) {
-			end = len(metrics)
-		}
+		end := min(i+batchSize, len(metrics))
 		batch := metrics[i:end]
 		msg := NewMetricBatchMessage(batch)
 		if err := stream.Send(msg); err != nil {
@@ -532,10 +527,7 @@ func (c *Client) FlushAndStop(ctx context.Context, persistPath string) error {
 				default:
 				}
 
-				end := i + batchSize
-				if end > len(metrics) {
-					end = len(metrics)
-				}
+				end := min(i+batchSize, len(metrics))
 				batch := metrics[i:end]
 				msg := NewMetricBatchMessage(batch)
 				if err := stream.Send(msg); err != nil {

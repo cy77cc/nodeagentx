@@ -7,7 +7,7 @@ import (
 
 func TestAccumulatorAddFields(t *testing.T) {
 	acc := NewAccumulator(100)
-	acc.AddFields("cpu", map[string]string{"host": "s1"}, map[string]interface{}{"usage": 75.5})
+	acc.AddFields("cpu", map[string]string{"host": "s1"}, map[string]any{"usage": 75.5})
 
 	metrics := acc.Collect()
 	if len(metrics) != 1 {
@@ -30,7 +30,7 @@ func TestAccumulatorAddFields(t *testing.T) {
 
 func TestAccumulatorAddGauge(t *testing.T) {
 	acc := NewAccumulator(100)
-	acc.AddGauge("temperature", map[string]string{"host": "s1"}, map[string]interface{}{"value": 98.6})
+	acc.AddGauge("temperature", map[string]string{"host": "s1"}, map[string]any{"value": 98.6})
 
 	metrics := acc.Collect()
 	if len(metrics) != 1 {
@@ -47,7 +47,7 @@ func TestAccumulatorAddGauge(t *testing.T) {
 
 func TestAccumulatorAddCounter(t *testing.T) {
 	acc := NewAccumulator(100)
-	acc.AddCounter("requests", map[string]string{"path": "/api"}, map[string]interface{}{"count": int64(10)})
+	acc.AddCounter("requests", map[string]string{"path": "/api"}, map[string]any{"count": int64(10)})
 
 	metrics := acc.Collect()
 	if len(metrics) != 1 {
@@ -65,10 +65,10 @@ func TestAccumulatorAddCounter(t *testing.T) {
 func TestAccumulatorOverflow(t *testing.T) {
 	acc := NewAccumulator(3)
 
-	acc.AddFields("a", nil, map[string]interface{}{"v": 1})
-	acc.AddFields("b", nil, map[string]interface{}{"v": 2})
-	acc.AddFields("c", nil, map[string]interface{}{"v": 3})
-	acc.AddFields("d", nil, map[string]interface{}{"v": 4}) // should be dropped
+	acc.AddFields("a", nil, map[string]any{"v": 1})
+	acc.AddFields("b", nil, map[string]any{"v": 2})
+	acc.AddFields("c", nil, map[string]any{"v": 3})
+	acc.AddFields("d", nil, map[string]any{"v": 4}) // should be dropped
 
 	metrics := acc.Collect()
 	if len(metrics) != 3 {
@@ -89,7 +89,7 @@ func TestAccumulatorOverflow(t *testing.T) {
 func TestAccumulatorCustomTimestamp(t *testing.T) {
 	acc := NewAccumulator(100)
 	ts := time.Date(2025, 6, 15, 12, 0, 0, 0, time.UTC)
-	acc.AddFieldsWithTimestamp("cpu", nil, map[string]interface{}{"v": 1}, ts)
+	acc.AddFieldsWithTimestamp("cpu", nil, map[string]any{"v": 1}, ts)
 
 	metrics := acc.Collect()
 	if len(metrics) != 1 {
@@ -102,7 +102,7 @@ func TestAccumulatorCustomTimestamp(t *testing.T) {
 
 func TestAccumulatorCollectResets(t *testing.T) {
 	acc := NewAccumulator(100)
-	acc.AddFields("a", nil, map[string]interface{}{"v": 1})
+	acc.AddFields("a", nil, map[string]any{"v": 1})
 
 	metrics1 := acc.Collect()
 	if len(metrics1) != 1 {
@@ -118,7 +118,7 @@ func TestAccumulatorCollectResets(t *testing.T) {
 func TestAccumulatorAddGaugeWithTimestamp(t *testing.T) {
 	acc := NewAccumulator(100)
 	ts := time.Date(2025, 3, 10, 8, 30, 0, 0, time.UTC)
-	acc.AddGaugeWithTimestamp("temperature", map[string]string{"host": "s1"}, map[string]interface{}{"value": 98.6}, ts)
+	acc.AddGaugeWithTimestamp("temperature", map[string]string{"host": "s1"}, map[string]any{"value": 98.6}, ts)
 
 	metrics := acc.Collect()
 	if len(metrics) != 1 {
@@ -142,7 +142,7 @@ func TestAccumulatorAddGaugeWithTimestamp(t *testing.T) {
 func TestAccumulatorAddCounterWithTimestamp(t *testing.T) {
 	acc := NewAccumulator(100)
 	ts := time.Date(2025, 3, 10, 9, 0, 0, 0, time.UTC)
-	acc.AddCounterWithTimestamp("requests", map[string]string{"path": "/api"}, map[string]interface{}{"count": int64(42)}, ts)
+	acc.AddCounterWithTimestamp("requests", map[string]string{"path": "/api"}, map[string]any{"count": int64(42)}, ts)
 
 	metrics := acc.Collect()
 	if len(metrics) != 1 {

@@ -8,8 +8,8 @@ import (
 func TestBufferAddAndBatch(t *testing.T) {
 	buf := NewBuffer(100, 3, DropNewest)
 
-	for i := 0; i < 5; i++ {
-		m := NewMetric("test", nil, map[string]interface{}{"v": float64(i)}, Gauge, time.Now())
+	for i := range 5 {
+		m := NewMetric("test", nil, map[string]any{"v": float64(i)}, Gauge, time.Now())
 		buf.Add(m)
 	}
 
@@ -39,8 +39,8 @@ func TestBufferAddAndBatch(t *testing.T) {
 func TestBufferDropNewest(t *testing.T) {
 	buf := NewBuffer(3, 10, DropNewest)
 
-	for i := 0; i < 5; i++ {
-		m := NewMetric("test", nil, map[string]interface{}{"v": float64(i)}, Gauge, time.Now())
+	for i := range 5 {
+		m := NewMetric("test", nil, map[string]any{"v": float64(i)}, Gauge, time.Now())
 		buf.Add(m)
 	}
 
@@ -63,8 +63,8 @@ func TestBufferDropNewest(t *testing.T) {
 func TestBufferDropOldest(t *testing.T) {
 	buf := NewBuffer(3, 10, DropOldest)
 
-	for i := 0; i < 5; i++ {
-		m := NewMetric("test", nil, map[string]interface{}{"v": float64(i)}, Gauge, time.Now())
+	for i := range 5 {
+		m := NewMetric("test", nil, map[string]any{"v": float64(i)}, Gauge, time.Now())
 		buf.Add(m)
 	}
 

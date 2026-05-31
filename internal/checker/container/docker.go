@@ -64,7 +64,7 @@ func (c *DockerChecker) Check(_ context.Context, params json.RawMessage) (*check
 	}
 
 	// Attempt to extract the value by parsing JSON into a map.
-	var config map[string]interface{}
+	var config map[string]any
 	if err := json.Unmarshal(data, &config); err != nil {
 		return &checker.CheckResult{
 			Status:   checker.StatusError,

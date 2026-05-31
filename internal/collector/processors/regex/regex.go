@@ -43,19 +43,19 @@ func New(cfg Config) (*Processor, error) {
 // Init parses configuration from a map (e.g. from YAML unmarshaling) and
 // compiles regex patterns. Each entry in "tags" is expected to be a map
 // with "key", "pattern", and "replacement" fields.
-func (p *Processor) Init(cfg map[string]interface{}) error {
+func (p *Processor) Init(cfg map[string]any) error {
 	raw, ok := cfg["tags"]
 	if !ok {
 		return nil
 	}
-	tagList, ok := raw.([]interface{})
+	tagList, ok := raw.([]any)
 	if !ok {
 		return fmt.Errorf("regex: \"tags\" must be a list, got %T", raw)
 	}
 
 	rules := make([]Rule, 0, len(tagList))
 	for i, entry := range tagList {
-		tagMap, ok := entry.(map[string]interface{})
+		tagMap, ok := entry.(map[string]any)
 		if !ok {
 			return fmt.Errorf("regex: tag entry %d must be a map, got %T", i, entry)
 		}

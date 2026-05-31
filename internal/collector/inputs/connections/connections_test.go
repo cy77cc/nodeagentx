@@ -9,7 +9,7 @@ import (
 
 func TestConnectionsInputInit(t *testing.T) {
 	input := &ConnectionsInput{}
-	if err := input.Init(map[string]interface{}{}); err != nil {
+	if err := input.Init(map[string]any{}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 	if len(input.states) != 0 {
@@ -19,8 +19,8 @@ func TestConnectionsInputInit(t *testing.T) {
 
 func TestConnectionsInputInitWithStates(t *testing.T) {
 	input := &ConnectionsInput{}
-	cfg := map[string]interface{}{
-		"states": []interface{}{"ESTABLISHED", "LISTEN"},
+	cfg := map[string]any{
+		"states": []any{"ESTABLISHED", "LISTEN"},
 	}
 	if err := input.Init(cfg); err != nil {
 		t.Fatalf("Init() error: %v", err)
@@ -32,7 +32,7 @@ func TestConnectionsInputInitWithStates(t *testing.T) {
 
 func TestConnectionsInputInitInvalidStates(t *testing.T) {
 	input := &ConnectionsInput{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"states": "notalist",
 	}
 	if err := input.Init(cfg); err == nil {
@@ -42,8 +42,8 @@ func TestConnectionsInputInitInvalidStates(t *testing.T) {
 
 func TestConnectionsInputInitInvalidStateItem(t *testing.T) {
 	input := &ConnectionsInput{}
-	cfg := map[string]interface{}{
-		"states": []interface{}{123},
+	cfg := map[string]any{
+		"states": []any{123},
 	}
 	if err := input.Init(cfg); err == nil {
 		t.Fatal("Init() should fail with non-string state item")
@@ -60,7 +60,7 @@ func TestConnectionsInputSampleConfig(t *testing.T) {
 
 func TestConnectionsInputGather(t *testing.T) {
 	input := &ConnectionsInput{}
-	if err := input.Init(map[string]interface{}{}); err != nil {
+	if err := input.Init(map[string]any{}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 
@@ -91,8 +91,8 @@ func TestConnectionsInputGather(t *testing.T) {
 
 func TestConnectionsInputGatherFilterState(t *testing.T) {
 	input := &ConnectionsInput{}
-	cfg := map[string]interface{}{
-		"states": []interface{}{"ESTABLISHED"},
+	cfg := map[string]any{
+		"states": []any{"ESTABLISHED"},
 	}
 	if err := input.Init(cfg); err != nil {
 		t.Fatalf("Init() error: %v", err)

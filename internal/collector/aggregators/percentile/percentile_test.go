@@ -14,29 +14,29 @@ type testAccumulator struct {
 	metrics []struct {
 		name   string
 		tags   map[string]string
-		fields map[string]interface{}
+		fields map[string]any
 	}
 }
 
-func (t *testAccumulator) AddFields(name string, tags map[string]string, fields map[string]interface{}) {
+func (t *testAccumulator) AddFields(name string, tags map[string]string, fields map[string]any) {
 }
-func (t *testAccumulator) AddGauge(name string, tags map[string]string, fields map[string]interface{}) {}
-func (t *testAccumulator) AddCounter(name string, tags map[string]string, fields map[string]interface{}) {
+func (t *testAccumulator) AddGauge(name string, tags map[string]string, fields map[string]any) {}
+func (t *testAccumulator) AddCounter(name string, tags map[string]string, fields map[string]any) {
 }
-func (t *testAccumulator) AddFieldsWithTimestamp(name string, tags map[string]string, fields map[string]interface{}, ts time.Time) {
+func (t *testAccumulator) AddFieldsWithTimestamp(name string, tags map[string]string, fields map[string]any, ts time.Time) {
 }
-func (t *testAccumulator) AddGaugeWithTimestamp(name string, tags map[string]string, fields map[string]interface{}, ts time.Time) {
+func (t *testAccumulator) AddGaugeWithTimestamp(name string, tags map[string]string, fields map[string]any, ts time.Time) {
 	t.metrics = append(t.metrics, struct {
 		name   string
 		tags   map[string]string
-		fields map[string]interface{}
+		fields map[string]any
 	}{name: name, tags: tags, fields: fields})
 }
-func (t *testAccumulator) AddCounterWithTimestamp(name string, tags map[string]string, fields map[string]interface{}, ts time.Time) {
+func (t *testAccumulator) AddCounterWithTimestamp(name string, tags map[string]string, fields map[string]any, ts time.Time) {
 }
 func (t *testAccumulator) Collect() []*collector.Metric { return nil }
 
-func newMetric(name string, tags map[string]string, fields map[string]interface{}) *collector.Metric {
+func newMetric(name string, tags map[string]string, fields map[string]any) *collector.Metric {
 	return collector.NewMetric(name, tags, fields, collector.Gauge, time.Now())
 }
 
@@ -46,9 +46,9 @@ func floatEquals(a, b, epsilon float64) bool {
 
 // TestKnownDistribution verifies p50, p95, p99 for values 1..100.
 func TestKnownDistribution(t *testing.T) {
-	cfg := map[string]interface{}{
-		"fields":      []interface{}{"response_time_ms"},
-		"percentiles": []interface{}{50, 95, 99},
+	cfg := map[string]any{
+		"fields":      []any{"response_time_ms"},
+		"percentiles": []any{50, 95, 99},
 	}
 	agg := &Aggregator{}
 	if err := agg.Init(cfg); err != nil {
@@ -57,7 +57,7 @@ func TestKnownDistribution(t *testing.T) {
 
 	for i := 1; i <= 100; i++ {
 		m := newMetric("http_request", map[string]string{"host": "web1"},
-			map[string]interface{}{"response_time_ms": float64(i)})
+			map[string]any{"response_time_ms": float64(i)})
 		agg.Add(m)
 	}
 
@@ -107,8 +107,8 @@ func TestKnownDistribution(t *testing.T) {
 
 // TestEmptyWindow verifies that pushing with no data emits nothing.
 func TestEmptyWindow(t *testing.T) {
-	cfg := map[string]interface{}{
-		"fields": []interface{}{"response_time_ms"},
+	cfg := map[string]any{
+		"fields": []any{"response_time_ms"},
 	}
 	agg := &Aggregator{}
 	if err := agg.Init(cfg); err != nil {
@@ -125,9 +125,9 @@ func TestEmptyWindow(t *testing.T) {
 
 // TestSingleValue verifies that a single value yields that value for all percentiles.
 func TestSingleValue(t *testing.T) {
-	cfg := map[string]interface{}{
-		"fields":      []interface{}{"latency_ms"},
-		"percentiles": []interface{}{50, 95, 99},
+	cfg := map[string]any{
+		"fields":      []any{"latency_ms"},
+		"percentiles": []any{50, 95, 99},
 	}
 	agg := &Aggregator{}
 	if err := agg.Init(cfg); err != nil {
@@ -135,7 +135,7 @@ func TestSingleValue(t *testing.T) {
 	}
 
 	m := newMetric("request", map[string]string{},
-		map[string]interface{}{"latency_ms": float64(42)})
+		map[string]any{"latency_ms": float64(42)})
 	agg.Add(m)
 
 	acc := &testAccumulator{}
@@ -160,9 +160,9 @@ func TestSingleValue(t *testing.T) {
 
 // TestLargeDataset verifies correctness with 10000 values.
 func TestLargeDataset(t *testing.T) {
-	cfg := map[string]interface{}{
-		"fields":      []interface{}{"value"},
-		"percentiles": []interface{}{50, 95, 99},
+	cfg := map[string]any{
+		"fields":      []any{"value"},
+		"percentiles": []any{50, 95, 99},
 	}
 	agg := &Aggregator{}
 	if err := agg.Init(cfg); err != nil {
@@ -171,7 +171,7 @@ func TestLargeDataset(t *testing.T) {
 
 	n := 10000
 	for i := 1; i <= n; i++ {
-		m := newMetric("data", nil, map[string]interface{}{"value": float64(i)})
+		m := newMetric("data", nil, map[string]any{"value": float64(i)})
 		agg.Add(m)
 	}
 
@@ -209,9 +209,9 @@ func TestLargeDataset(t *testing.T) {
 
 // TestCustomPercentiles verifies non-default percentiles (25, 75).
 func TestCustomPercentiles(t *testing.T) {
-	cfg := map[string]interface{}{
-		"fields":      []interface{}{"value"},
-		"percentiles": []interface{}{25, 75},
+	cfg := map[string]any{
+		"fields":      []any{"value"},
+		"percentiles": []any{25, 75},
 	}
 	agg := &Aggregator{}
 	if err := agg.Init(cfg); err != nil {
@@ -220,7 +220,7 @@ func TestCustomPercentiles(t *testing.T) {
 
 	// Add 1..100
 	for i := 1; i <= 100; i++ {
-		m := newMetric("test", nil, map[string]interface{}{"value": float64(i)})
+		m := newMetric("test", nil, map[string]any{"value": float64(i)})
 		agg.Add(m)
 	}
 
@@ -272,9 +272,9 @@ func TestRegisteredInDefaultRegistry(t *testing.T) {
 
 // TestReset verifies that Reset clears accumulated state.
 func TestReset(t *testing.T) {
-	cfg := map[string]interface{}{
-		"fields":      []interface{}{"val"},
-		"percentiles": []interface{}{50},
+	cfg := map[string]any{
+		"fields":      []any{"val"},
+		"percentiles": []any{50},
 	}
 	agg := &Aggregator{}
 	if err := agg.Init(cfg); err != nil {
@@ -282,7 +282,7 @@ func TestReset(t *testing.T) {
 	}
 
 	m := newMetric("m", map[string]string{"k": "v"},
-		map[string]interface{}{"val": float64(42)})
+		map[string]any{"val": float64(42)})
 	agg.Add(m)
 	agg.Reset()
 
@@ -296,9 +296,9 @@ func TestReset(t *testing.T) {
 
 // TestConcurrentSafety verifies concurrent Add calls don't race.
 func TestConcurrentSafety(t *testing.T) {
-	cfg := map[string]interface{}{
-		"fields":      []interface{}{"val"},
-		"percentiles": []interface{}{50, 95, 99},
+	cfg := map[string]any{
+		"fields":      []any{"val"},
+		"percentiles": []any{50, 95, 99},
 	}
 	agg := &Aggregator{}
 	if err := agg.Init(cfg); err != nil {
@@ -306,12 +306,12 @@ func TestConcurrentSafety(t *testing.T) {
 	}
 
 	var wg sync.WaitGroup
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		wg.Add(1)
 		go func(n int) {
 			defer wg.Done()
 			m := newMetric("test", map[string]string{"g": "g"},
-				map[string]interface{}{"val": float64(n * 10)})
+				map[string]any{"val": float64(n * 10)})
 			agg.Add(m)
 		}(i)
 	}
@@ -321,15 +321,15 @@ func TestConcurrentSafety(t *testing.T) {
 
 // TestDefaultPercentiles verifies that omitting percentiles uses [50, 95, 99].
 func TestDefaultPercentiles(t *testing.T) {
-	cfg := map[string]interface{}{
-		"fields": []interface{}{"val"},
+	cfg := map[string]any{
+		"fields": []any{"val"},
 	}
 	agg := &Aggregator{}
 	if err := agg.Init(cfg); err != nil {
 		t.Fatalf("Init failed: %v", err)
 	}
 
-	m := newMetric("m", nil, map[string]interface{}{"val": float64(42)})
+	m := newMetric("m", nil, map[string]any{"val": float64(42)})
 	agg.Add(m)
 
 	acc := &testAccumulator{}
@@ -348,16 +348,16 @@ func TestDefaultPercentiles(t *testing.T) {
 
 // TestPercentileValidationRejectsOutOfRange verifies [0,100] range check.
 func TestPercentileValidationRejectsOutOfRange(t *testing.T) {
-	cfg := map[string]interface{}{
-		"fields":      []interface{}{"val"},
-		"percentiles": []interface{}{150},
+	cfg := map[string]any{
+		"fields":      []any{"val"},
+		"percentiles": []any{150},
 	}
 	agg := &Aggregator{}
 	if err := agg.Init(cfg); err == nil {
 		t.Error("expected error for percentile > 100")
 	}
 
-	cfg["percentiles"] = []interface{}{-10}
+	cfg["percentiles"] = []any{-10}
 	agg = &Aggregator{}
 	if err := agg.Init(cfg); err == nil {
 		t.Error("expected error for percentile < 0")
@@ -366,9 +366,9 @@ func TestPercentileValidationRejectsOutOfRange(t *testing.T) {
 
 // TestPercentileValidationRejectsFractional verifies whole-number check.
 func TestPercentileValidationRejectsFractional(t *testing.T) {
-	cfg := map[string]interface{}{
-		"fields":      []interface{}{"val"},
-		"percentiles": []interface{}{99.9},
+	cfg := map[string]any{
+		"fields":      []any{"val"},
+		"percentiles": []any{99.9},
 	}
 	agg := &Aggregator{}
 	if err := agg.Init(cfg); err == nil {

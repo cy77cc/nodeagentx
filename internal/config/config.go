@@ -9,12 +9,12 @@ import (
 
 // Config is the root runtime configuration.
 type Config struct {
-	Agent      AgentConfig      `mapstructure:"agent"`
-	Server     ServerConfig     `mapstructure:"server"`
-	Executor   ExecutorConfig   `mapstructure:"executor"`
-	Reporter   ReporterConfig   `mapstructure:"reporter"`
-	Auth       AuthConfig       `mapstructure:"auth"`
-	Prometheus PrometheusConfig `mapstructure:"prometheus"`
+	Agent         AgentConfig         `mapstructure:"agent"`
+	Server        ServerConfig        `mapstructure:"server"`
+	Executor      ExecutorConfig      `mapstructure:"executor"`
+	Reporter      ReporterConfig      `mapstructure:"reporter"`
+	Auth          AuthConfig          `mapstructure:"auth"`
+	Prometheus    PrometheusConfig    `mapstructure:"prometheus"`
 	Plugin        PluginConfig        `mapstructure:"plugin"`
 	GRPC          GRPCConfig          `mapstructure:"grpc"`
 	Sandbox       SandboxConfig       `mapstructure:"sandbox"`
@@ -32,12 +32,12 @@ type Config struct {
 
 // AgentConfig controls agent identity and collection cadence.
 type AgentConfig struct {
-	ID                     string          `mapstructure:"id"`
-	Name                   string          `mapstructure:"name"`
-	Mode                   string          `mapstructure:"mode"` // standalone | hub | leaf
-	IntervalSeconds        int             `mapstructure:"interval_seconds"`
-	ShutdownTimeoutSeconds int             `mapstructure:"shutdown_timeout_seconds"`
-	AuditLog               AuditLogConfig  `mapstructure:"audit_log"`
+	ID                     string         `mapstructure:"id"`
+	Name                   string         `mapstructure:"name"`
+	Mode                   string         `mapstructure:"mode"` // standalone | hub | leaf
+	IntervalSeconds        int            `mapstructure:"interval_seconds"`
+	ShutdownTimeoutSeconds int            `mapstructure:"shutdown_timeout_seconds"`
+	AuditLog               AuditLogConfig `mapstructure:"audit_log"`
 }
 
 // AuditLogConfig controls the agent-level audit log.
@@ -147,20 +147,20 @@ type CollectorConfig struct {
 
 // PluginInstanceConfig is a single plugin instance in the collector pipeline.
 type PluginInstanceConfig struct {
-	Type   string                 `mapstructure:"type"`
-	Config map[string]interface{} `mapstructure:"config"`
+	Type   string         `mapstructure:"type"`
+	Config map[string]any `mapstructure:"config"`
 }
 
 // PluginGatewayConfig manages custom plugin discovery and lifecycle.
 type PluginGatewayConfig struct {
-	Enabled                 bool                              `mapstructure:"enabled"`
-	PluginsDir              string                            `mapstructure:"plugins_dir"`
-	StartupTimeoutSeconds   int                               `mapstructure:"startup_timeout_seconds"`
-	HealthCheckIntervalSecs int                               `mapstructure:"health_check_interval_seconds"`
-	MaxRestarts             int                               `mapstructure:"max_restarts"`
-	RestartBackoffSeconds   int                               `mapstructure:"restart_backoff_seconds"`
-	FileWatchDebounceSecs   int                               `mapstructure:"file_watch_debounce_seconds"`
-	PluginConfigs           map[string]map[string]interface{} `mapstructure:"plugin_configs"`
+	Enabled                 bool                      `mapstructure:"enabled"`
+	PluginsDir              string                    `mapstructure:"plugins_dir"`
+	StartupTimeoutSeconds   int                       `mapstructure:"startup_timeout_seconds"`
+	HealthCheckIntervalSecs int                       `mapstructure:"health_check_interval_seconds"`
+	MaxRestarts             int                       `mapstructure:"max_restarts"`
+	RestartBackoffSeconds   int                       `mapstructure:"restart_backoff_seconds"`
+	FileWatchDebounceSecs   int                       `mapstructure:"file_watch_debounce_seconds"`
+	PluginConfigs           map[string]map[string]any `mapstructure:"plugin_configs"`
 }
 
 // CheckerConfig controls the system health checker subsystem.
@@ -297,16 +297,16 @@ type FederationConfig struct {
 
 // FederationHubConfig controls hub-mode federation settings.
 type FederationHubConfig struct {
-	ListenAddr                    string                 `mapstructure:"listen_addr"`
-	Region                        string                 `mapstructure:"region"`
-	MaxLeaves                     int                    `mapstructure:"max_leaves"`
-	LeafHeartbeatTimeoutSeconds   int                    `mapstructure:"leaf_heartbeat_timeout_seconds"`
-	MetricsAggregationIntervalSec int                    `mapstructure:"metrics_aggregation_interval_seconds"`
-	Security                      FederationSecurity     `mapstructure:"security"`
-	Groups                        []GroupRuleConfig      `mapstructure:"groups"`
-	ConfigLevels                  ConfigLevelsConfig     `mapstructure:"config_levels"`
-	Canary                        CanaryConfig           `mapstructure:"canary"`
-	Operations                    OperationsConfig       `mapstructure:"operations"`
+	ListenAddr                    string             `mapstructure:"listen_addr"`
+	Region                        string             `mapstructure:"region"`
+	MaxLeaves                     int                `mapstructure:"max_leaves"`
+	LeafHeartbeatTimeoutSeconds   int                `mapstructure:"leaf_heartbeat_timeout_seconds"`
+	MetricsAggregationIntervalSec int                `mapstructure:"metrics_aggregation_interval_seconds"`
+	Security                      FederationSecurity `mapstructure:"security"`
+	Groups                        []GroupRuleConfig  `mapstructure:"groups"`
+	ConfigLevels                  ConfigLevelsConfig `mapstructure:"config_levels"`
+	Canary                        CanaryConfig       `mapstructure:"canary"`
+	Operations                    OperationsConfig   `mapstructure:"operations"`
 }
 
 // FederationLeafConfig controls leaf-mode federation settings.
@@ -331,10 +331,10 @@ type GroupRuleConfig struct {
 
 // ConfigLevelsConfig defines hierarchical configuration levels.
 type ConfigLevelsConfig struct {
-	Global  map[string]interface{}            `mapstructure:"global"`
-	Regions map[string]map[string]interface{} `mapstructure:"regions"`
-	Groups  map[string]map[string]interface{} `mapstructure:"groups"`
-	Agents  map[string]map[string]interface{} `mapstructure:"agents"`
+	Global  map[string]any            `mapstructure:"global"`
+	Regions map[string]map[string]any `mapstructure:"regions"`
+	Groups  map[string]map[string]any `mapstructure:"groups"`
+	Agents  map[string]map[string]any `mapstructure:"agents"`
 }
 
 // CanaryConfig controls canary deployment settings.

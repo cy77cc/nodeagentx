@@ -9,7 +9,7 @@ import (
 
 func TestProcessInputInit(t *testing.T) {
 	input := &ProcessInput{}
-	if err := input.Init(map[string]interface{}{}); err != nil {
+	if err := input.Init(map[string]any{}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 	if input.topN != 10 {
@@ -19,7 +19,7 @@ func TestProcessInputInit(t *testing.T) {
 
 func TestProcessInputInitWithTopN(t *testing.T) {
 	input := &ProcessInput{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"top_n": 5,
 	}
 	if err := input.Init(cfg); err != nil {
@@ -32,7 +32,7 @@ func TestProcessInputInitWithTopN(t *testing.T) {
 
 func TestProcessInputInitTopNFloat64(t *testing.T) {
 	input := &ProcessInput{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"top_n": float64(3),
 	}
 	if err := input.Init(cfg); err != nil {
@@ -45,7 +45,7 @@ func TestProcessInputInitTopNFloat64(t *testing.T) {
 
 func TestProcessInputInitInvalidTopN(t *testing.T) {
 	input := &ProcessInput{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"top_n": "notanint",
 	}
 	if err := input.Init(cfg); err == nil {
@@ -55,7 +55,7 @@ func TestProcessInputInitInvalidTopN(t *testing.T) {
 
 func TestProcessInputInitNegativeTopN(t *testing.T) {
 	input := &ProcessInput{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"top_n": -1,
 	}
 	if err := input.Init(cfg); err == nil {
@@ -65,7 +65,7 @@ func TestProcessInputInitNegativeTopN(t *testing.T) {
 
 func TestProcessInputGather(t *testing.T) {
 	input := &ProcessInput{}
-	if err := input.Init(map[string]interface{}{"top_n": 3}); err != nil {
+	if err := input.Init(map[string]any{"top_n": 3}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 
@@ -133,7 +133,7 @@ func TestProcessInputGather(t *testing.T) {
 
 func TestProcessInputGatherSortedByCPU(t *testing.T) {
 	input := &ProcessInput{}
-	if err := input.Init(map[string]interface{}{"top_n": 5}); err != nil {
+	if err := input.Init(map[string]any{"top_n": 5}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 

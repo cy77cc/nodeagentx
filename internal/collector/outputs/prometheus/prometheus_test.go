@@ -12,17 +12,17 @@ import (
 func TestPrometheusOutput_Init(t *testing.T) {
 	tests := []struct {
 		name    string
-		cfg     map[string]interface{}
+		cfg     map[string]any
 		wantErr bool
 	}{
 		{
 			name:    "default config",
-			cfg:     map[string]interface{}{},
+			cfg:     map[string]any{},
 			wantErr: false,
 		},
 		{
 			name: "custom config",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"path":  "/custom",
 				":8080": ":8080",
 			},
@@ -43,14 +43,14 @@ func TestPrometheusOutput_Init(t *testing.T) {
 
 func TestPrometheusOutput_RenderPrometheus(t *testing.T) {
 	p := &PrometheusOutput{}
-	if err := p.Init(map[string]interface{}{}); err != nil {
+	if err := p.Init(map[string]any{}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 
 	now := time.Now()
 	metrics := []collector.Metric{
-		*collector.NewMetric("cpu.usage", map[string]string{"host": "server1"}, map[string]interface{}{"value": 75.5}, collector.Gauge, now),
-		*collector.NewMetric("requests.count", map[string]string{"endpoint": "/api", "method": "GET"}, map[string]interface{}{"value": int64(100)}, collector.Counter, now),
+		*collector.NewMetric("cpu.usage", map[string]string{"host": "server1"}, map[string]any{"value": 75.5}, collector.Gauge, now),
+		*collector.NewMetric("requests.count", map[string]string{"endpoint": "/api", "method": "GET"}, map[string]any{"value": int64(100)}, collector.Counter, now),
 	}
 
 	if err := p.Write(context.Background(), metrics); err != nil {
@@ -93,7 +93,7 @@ func TestPrometheusOutput_RenderPrometheus(t *testing.T) {
 
 func TestPrometheusOutput_RenderEmpty(t *testing.T) {
 	p := &PrometheusOutput{}
-	if err := p.Init(map[string]interface{}{}); err != nil {
+	if err := p.Init(map[string]any{}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 
@@ -128,13 +128,13 @@ func TestPrometheusOutput_SanitizeName(t *testing.T) {
 
 func TestPrometheusOutput_Write(t *testing.T) {
 	p := &PrometheusOutput{}
-	if err := p.Init(map[string]interface{}{}); err != nil {
+	if err := p.Init(map[string]any{}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 
 	now := time.Now()
-	m1 := collector.NewMetric("test", map[string]string{}, map[string]interface{}{"value": 1.0}, collector.Gauge, now)
-	m2 := collector.NewMetric("test", map[string]string{}, map[string]interface{}{"value": 2.0}, collector.Gauge, now.Add(time.Second))
+	m1 := collector.NewMetric("test", map[string]string{}, map[string]any{"value": 1.0}, collector.Gauge, now)
+	m2 := collector.NewMetric("test", map[string]string{}, map[string]any{"value": 2.0}, collector.Gauge, now.Add(time.Second))
 
 	if err := p.Write(context.Background(), []collector.Metric{*m1}); err != nil {
 		t.Fatalf("Write() error: %v", err)
@@ -175,7 +175,7 @@ func TestPrometheusOutput_Close(t *testing.T) {
 
 func TestPrometheusOutput_LabelSorting(t *testing.T) {
 	p := &PrometheusOutput{}
-	if err := p.Init(map[string]interface{}{}); err != nil {
+	if err := p.Init(map[string]any{}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 
@@ -183,7 +183,7 @@ func TestPrometheusOutput_LabelSorting(t *testing.T) {
 	m := collector.NewMetric(
 		"test_metric",
 		map[string]string{"z_label": "z", "a_label": "a", "m_label": "m"},
-		map[string]interface{}{"value": 42.0},
+		map[string]any{"value": 42.0},
 		collector.Gauge,
 		now,
 	)
@@ -228,12 +228,12 @@ func TestEscapeLabelValue(t *testing.T) {
 
 func TestPrometheusOutput_Timestamp(t *testing.T) {
 	p := &PrometheusOutput{}
-	if err := p.Init(map[string]interface{}{}); err != nil {
+	if err := p.Init(map[string]any{}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 
 	ts := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-	m := collector.NewMetric("test", map[string]string{}, map[string]interface{}{"value": 1.0}, collector.Gauge, ts)
+	m := collector.NewMetric("test", map[string]string{}, map[string]any{"value": 1.0}, collector.Gauge, ts)
 
 	if err := p.Write(context.Background(), []collector.Metric{*m}); err != nil {
 		t.Fatalf("Write() error: %v", err)

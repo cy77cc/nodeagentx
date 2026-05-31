@@ -3,6 +3,7 @@ package templates
 import (
 	"bytes"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -19,8 +20,8 @@ type VarDef struct {
 
 // TemplatePlugin represents a single collector input plugin.
 type TemplatePlugin struct {
-	Type   string                 `yaml:"type"`
-	Config map[string]interface{} `yaml:"config"`
+	Type   string         `yaml:"type"`
+	Config map[string]any `yaml:"config"`
 }
 
 // TemplateCollector holds the list of input plugins for a template.
@@ -30,11 +31,11 @@ type TemplateCollector struct {
 
 // Template represents a monitoring configuration template.
 type Template struct {
-	Name        string                   `yaml:"name"`
-	Description string                   `yaml:"description"`
-	Version     string                   `yaml:"version"`
-	Variables   map[string]VarDef        `yaml:"variables"`
-	Collector   TemplateCollector        `yaml:"collector"`
+	Name        string            `yaml:"name"`
+	Description string            `yaml:"description"`
+	Version     string            `yaml:"version"`
+	Variables   map[string]VarDef `yaml:"variables"`
+	Collector   TemplateCollector `yaml:"collector"`
 }
 
 // ApplyResult contains the rendered template output.
@@ -113,9 +114,7 @@ func (l *Loader) Apply(tmpl *Template, vars map[string]string) (*ApplyResult, er
 	for name, def := range tmpl.Variables {
 		resolvedVars[name] = def.Default
 	}
-	for k, v := range vars {
-		resolvedVars[k] = v
-	}
+	maps.Copy(resolvedVars, vars)
 
 	result := &ApplyResult{
 		Inputs: make([]TemplatePlugin, 0, len(tmpl.Collector.Inputs)),
@@ -137,8 +136,8 @@ func (l *Loader) Apply(tmpl *Template, vars map[string]string) (*ApplyResult, er
 }
 
 // renderConfig recursively applies variable substitution to a config map.
-func renderConfig(config map[string]interface{}, vars map[string]string) (map[string]interface{}, error) {
-	result := make(map[string]interface{}, len(config))
+func renderConfig(config map[string]any, vars map[string]string) (map[string]any, error) {
+	result := make(map[string]any, len(config))
 
 	for key, val := range config {
 		rendered, err := renderValue(val, vars)
@@ -152,14 +151,14 @@ func renderConfig(config map[string]interface{}, vars map[string]string) (map[st
 }
 
 // renderValue applies template substitution to a single value.
-func renderValue(val interface{}, vars map[string]string) (interface{}, error) {
+func renderValue(val any, vars map[string]string) (any, error) {
 	switch v := val.(type) {
 	case string:
 		return renderString(v, vars)
-	case map[string]interface{}:
+	case map[string]any:
 		return renderConfig(v, vars)
-	case []interface{}:
-		result := make([]interface{}, len(v))
+	case []any:
+		result := make([]any, len(v))
 		for i, item := range v {
 			rendered, err := renderValue(item, vars)
 			if err != nil {

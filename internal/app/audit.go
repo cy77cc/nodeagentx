@@ -17,8 +17,8 @@ type AuditEvent struct {
 	Component string                 `json:"component"`
 	Action    string                 `json:"action"`
 	Status    string                 `json:"status"`
-	Details   map[string]interface{} `json:"details,omitempty"`
-	Error     string                 `json:"error,omitempty"`
+	Details   map[string]any `json:"details,omitzero"`
+	Error     string                 `json:"error,omitzero"`
 }
 
 // AuditLogger writes structured audit events to a JSON-lines file with rotation.

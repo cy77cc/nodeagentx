@@ -25,7 +25,7 @@ type ReloadConfig struct {
 // PluginConfig is a single plugin instance config.
 type PluginConfig struct {
 	Type   string
-	Config map[string]interface{}
+	Config map[string]any
 }
 
 // ScheduledInput pairs an Input with its collection interval and static tags.
@@ -38,17 +38,17 @@ type ScheduledInput struct {
 // Scheduler runs multiple inputs on their own intervals and sends
 // collected metric batches to a shared output channel.
 type Scheduler struct {
-	inputs      []ScheduledInput
-	processors  []Processor
-	aggregators []Aggregator
-	outputs     []Output
-	cancel      context.CancelFunc
-	wg          sync.WaitGroup
-	logger      zerolog.Logger
-	accSize     int
-	running     bool
-	mu          sync.RWMutex
-	interval    time.Duration
+	inputs         []ScheduledInput
+	processors     []Processor
+	aggregators    []Aggregator
+	outputs        []Output
+	cancel         context.CancelFunc
+	wg             sync.WaitGroup
+	logger         zerolog.Logger
+	accSize        int
+	running        bool
+	mu             sync.RWMutex
+	interval       time.Duration
 	outCh          chan []*Metric
 	lastCollection time.Time
 }
@@ -85,13 +85,15 @@ func (s *Scheduler) Start(ctx context.Context) <-chan []*Metric {
 	s.running = true
 
 	for _, si := range s.inputs {
-		s.wg.Add(1)
-		go s.runInput(ctx, si, ch)
+		s.wg.Go(func() {
+			s.runInput(ctx, si, ch)
+		})
 	}
 	// Periodically push aggregators.
 	if len(s.aggregators) > 0 {
-		s.wg.Add(1)
-		go s.runAggregatorPush(ctx)
+		s.wg.Go(func() {
+			s.runAggregatorPush(ctx)
+		})
 	}
 	// Close channel when all goroutines are done.
 	go func() {
@@ -217,12 +219,14 @@ func (s *Scheduler) Reload(ctx context.Context, cfg ReloadConfig) error {
 	if s.running {
 		ctx, s.cancel = context.WithCancel(ctx)
 		for _, si := range s.inputs {
-			s.wg.Add(1)
-			go s.runInput(ctx, si, s.outCh)
+			s.wg.Go(func() {
+				s.runInput(ctx, si, s.outCh)
+			})
 		}
 		if len(s.aggregators) > 0 {
-			s.wg.Add(1)
-			go s.runAggregatorPush(ctx)
+			s.wg.Go(func() {
+				s.runAggregatorPush(ctx)
+			})
 		}
 	}
 
@@ -230,8 +234,6 @@ func (s *Scheduler) Reload(ctx context.Context, cfg ReloadConfig) error {
 }
 
 func (s *Scheduler) runInput(ctx context.Context, si ScheduledInput, ch chan<- []*Metric) {
-	defer s.wg.Done()
-
 	ticker := time.NewTicker(si.Interval)
 	defer ticker.Stop()
 
@@ -306,7 +308,6 @@ func (s *Scheduler) gatherOnce(ctx context.Context, si ScheduledInput, ch chan<-
 
 // runAggregators periodically pushes aggregator results and resets them.
 func (s *Scheduler) runAggregatorPush(ctx context.Context) {
-	defer s.wg.Done()
 	// Push every 60 seconds by default.
 	ticker := time.NewTicker(60 * time.Second)
 	defer ticker.Stop()

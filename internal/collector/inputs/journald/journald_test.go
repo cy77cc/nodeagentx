@@ -117,8 +117,8 @@ func newMockFactory(journal *mockJournal) func() (journalReader, error) {
 
 func TestJournaldInputInit(t *testing.T) {
 	ji := &JournaldInput{}
-	cfg := map[string]interface{}{
-		"units":               []interface{}{"nginx", "sshd"},
+	cfg := map[string]any{
+		"units":               []any{"nginx", "sshd"},
 		"priority":            "info",
 		"cursor_persist_path": "/tmp/journal.cursor",
 	}
@@ -183,7 +183,7 @@ func TestPriorityValue(t *testing.T) {
 
 func TestJournaldInputInitInvalidUnits(t *testing.T) {
 	ji := &JournaldInput{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"units": "not-a-list",
 	}
 	if err := ji.Init(cfg); err == nil {
@@ -193,7 +193,7 @@ func TestJournaldInputInitInvalidUnits(t *testing.T) {
 
 func TestJournaldInputInitInvalidPriority(t *testing.T) {
 	ji := &JournaldInput{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"priority": 123,
 	}
 	if err := ji.Init(cfg); err == nil {
@@ -203,7 +203,7 @@ func TestJournaldInputInitInvalidPriority(t *testing.T) {
 
 func TestJournaldInputInitInvalidCursorPath(t *testing.T) {
 	ji := &JournaldInput{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"cursor_persist_path": 123,
 	}
 	if err := ji.Init(cfg); err == nil {
@@ -213,8 +213,8 @@ func TestJournaldInputInitInvalidCursorPath(t *testing.T) {
 
 func TestJournaldInputInitInvalidUnitEntry(t *testing.T) {
 	ji := &JournaldInput{}
-	cfg := map[string]interface{}{
-		"units": []interface{}{123},
+	cfg := map[string]any{
+		"units": []any{123},
 	}
 	if err := ji.Init(cfg); err == nil {
 		t.Error("Init should fail with non-string unit entry")

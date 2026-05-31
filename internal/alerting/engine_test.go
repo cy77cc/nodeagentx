@@ -11,17 +11,17 @@ func TestEngineEvaluate(t *testing.T) {
 	cfg := EngineConfig{
 		Rules: []RuleConfig{
 			{
-				Name:     "high_cpu",
+				Name:      "high_cpu",
 				Condition: "cpu_usage_percent > 80",
-				Severity: "critical",
-				For:      "0s",
+				Severity:  "critical",
+				For:       "0s",
 			},
 		},
 	}
 
 	engine := NewEngine(cfg)
 
-	fields := map[string]interface{}{
+	fields := map[string]any{
 		"usage_percent": 95.0,
 	}
 	metrics := []*collector.Metric{
@@ -47,17 +47,17 @@ func TestEngineNoAlert(t *testing.T) {
 	cfg := EngineConfig{
 		Rules: []RuleConfig{
 			{
-				Name:     "high_cpu",
+				Name:      "high_cpu",
 				Condition: "cpu_usage_percent > 80",
-				Severity: "critical",
-				For:      "0s",
+				Severity:  "critical",
+				For:       "0s",
 			},
 		},
 	}
 
 	engine := NewEngine(cfg)
 
-	fields := map[string]interface{}{
+	fields := map[string]any{
 		"usage_percent": 50.0,
 	}
 	metrics := []*collector.Metric{
@@ -74,17 +74,17 @@ func TestEngineWithPendingDuration(t *testing.T) {
 	cfg := EngineConfig{
 		Rules: []RuleConfig{
 			{
-				Name:     "high_cpu",
+				Name:      "high_cpu",
 				Condition: "cpu_usage_percent > 80",
-				Severity: "critical",
-				For:      "5m",
+				Severity:  "critical",
+				For:       "5m",
 			},
 		},
 	}
 
 	engine := NewEngine(cfg)
 
-	fields := map[string]interface{}{
+	fields := map[string]any{
 		"usage_percent": 95.0,
 	}
 	metrics := []*collector.Metric{

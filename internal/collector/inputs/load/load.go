@@ -18,7 +18,7 @@ func init() {
 // LoadInput gathers system load average metrics.
 type LoadInput struct{}
 
-func (l *LoadInput) Init(cfg map[string]interface{}) error {
+func (l *LoadInput) Init(cfg map[string]any) error {
 	return nil
 }
 
@@ -28,7 +28,7 @@ func (l *LoadInput) Gather(ctx context.Context, acc collector.Accumulator) error
 		return fmt.Errorf("load: failed to get load average: %w", err)
 	}
 
-	fields := map[string]interface{}{
+	fields := map[string]any{
 		"load1":  avg.Load1,
 		"load5":  avg.Load5,
 		"load15": avg.Load15,

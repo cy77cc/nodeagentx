@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"maps"
 	"os"
 	"regexp"
-	"sort"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -40,7 +41,7 @@ type PrometheusOutput struct {
 }
 
 // Init configures the Prometheus output from the provided config map.
-func (p *PrometheusOutput) Init(cfg map[string]interface{}) error {
+func (p *PrometheusOutput) Init(cfg map[string]any) error {
 	p.logger = zerolog.New(os.Stderr).With().Str("component", "prometheus-output").Logger()
 	p.path = defaultPath
 	if v, ok := cfg["path"].(string); ok && v != "" {
@@ -119,11 +120,7 @@ func (p *PrometheusOutput) renderPrometheus() string {
 	}
 
 	// Sort names for deterministic output.
-	names := make([]string, 0, len(p.latest))
-	for name := range p.latest {
-		names = append(names, name)
-	}
-	sort.Strings(names)
+	names := slices.Sorted(maps.Keys(p.latest))
 
 	var sb strings.Builder
 	for _, name := range names {
@@ -144,11 +141,7 @@ func (p *PrometheusOutput) renderPrometheus() string {
 
 		// Build labels.
 		tags := m.Tags()
-		tagKeys := make([]string, 0, len(tags))
-		for k := range tags {
-			tagKeys = append(tagKeys, k)
-		}
-		sort.Strings(tagKeys)
+		tagKeys := slices.Sorted(maps.Keys(tags))
 
 		sb.WriteString(sanitizedName)
 		if len(tagKeys) > 0 {
@@ -196,4 +189,3 @@ func SanitizeName(name string) string {
 	}
 	return sanitized
 }
-

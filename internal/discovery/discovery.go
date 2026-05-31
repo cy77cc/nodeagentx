@@ -13,10 +13,10 @@ import (
 type Service struct {
 	Name         string         `json:"name"`
 	Type         string         `json:"type"`
-	PID          int            `json:"pid,omitempty"`
-	Ports        []int          `json:"ports,omitempty"`
-	Labels       map[string]string `json:"labels,omitempty"`
-	Metadata     map[string]any    `json:"metadata,omitempty"`
+	PID          int            `json:"pid,omitzero"`
+	Ports        []int          `json:"ports,omitzero"`
+	Labels       map[string]string `json:"labels,omitzero"`
+	Metadata     map[string]any    `json:"metadata,omitzero"`
 	DiscoveredAt time.Time      `json:"discovered_at"`
 }
 

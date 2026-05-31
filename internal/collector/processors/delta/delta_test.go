@@ -10,8 +10,8 @@ import (
 
 func TestFirstCollectionOutputsZero(t *testing.T) {
 	p := &Processor{}
-	if err := p.Init(map[string]interface{}{
-		"fields": []interface{}{"read_bytes", "write_bytes"},
+	if err := p.Init(map[string]any{
+		"fields": []any{"read_bytes", "write_bytes"},
 		"output": "delta",
 	}); err != nil {
 		t.Fatalf("Init failed: %v", err)
@@ -20,7 +20,7 @@ func TestFirstCollectionOutputsZero(t *testing.T) {
 	now := time.Now()
 	m := collector.NewMetric("diskio",
 		map[string]string{"host": "server-01"},
-		map[string]interface{}{
+		map[string]any{
 			"read_bytes":  int64(1000),
 			"write_bytes": int64(500),
 			"other_field": int64(999),
@@ -54,8 +54,8 @@ func TestFirstCollectionOutputsZero(t *testing.T) {
 
 func TestConsecutiveCollectionsDelta(t *testing.T) {
 	p := &Processor{}
-	if err := p.Init(map[string]interface{}{
-		"fields": []interface{}{"read_bytes"},
+	if err := p.Init(map[string]any{
+		"fields": []any{"read_bytes"},
 		"output": "delta",
 	}); err != nil {
 		t.Fatalf("Init failed: %v", err)
@@ -66,7 +66,7 @@ func TestConsecutiveCollectionsDelta(t *testing.T) {
 
 	m0 := collector.NewMetric("diskio",
 		map[string]string{"host": "server-01"},
-		map[string]interface{}{"read_bytes": int64(100)},
+		map[string]any{"read_bytes": int64(100)},
 		collector.Counter, t0,
 	)
 	result := p.Apply([]*collector.Metric{m0})
@@ -76,7 +76,7 @@ func TestConsecutiveCollectionsDelta(t *testing.T) {
 
 	m1 := collector.NewMetric("diskio",
 		map[string]string{"host": "server-01"},
-		map[string]interface{}{"read_bytes": int64(250)},
+		map[string]any{"read_bytes": int64(250)},
 		collector.Counter, t1,
 	)
 	result = p.Apply([]*collector.Metric{m1})
@@ -87,8 +87,8 @@ func TestConsecutiveCollectionsDelta(t *testing.T) {
 
 func TestConsecutiveCollectionsRate(t *testing.T) {
 	p := &Processor{}
-	if err := p.Init(map[string]interface{}{
-		"fields": []interface{}{"read_bytes"},
+	if err := p.Init(map[string]any{
+		"fields": []any{"read_bytes"},
 		"output": "rate",
 	}); err != nil {
 		t.Fatalf("Init failed: %v", err)
@@ -99,14 +99,14 @@ func TestConsecutiveCollectionsRate(t *testing.T) {
 
 	m0 := collector.NewMetric("diskio",
 		map[string]string{"host": "server-01"},
-		map[string]interface{}{"read_bytes": int64(100)},
+		map[string]any{"read_bytes": int64(100)},
 		collector.Counter, t0,
 	)
 	p.Apply([]*collector.Metric{m0})
 
 	m1 := collector.NewMetric("diskio",
 		map[string]string{"host": "server-01"},
-		map[string]interface{}{"read_bytes": int64(200)},
+		map[string]any{"read_bytes": int64(200)},
 		collector.Counter, t1,
 	)
 	result := p.Apply([]*collector.Metric{m1})
@@ -120,8 +120,8 @@ func TestConsecutiveCollectionsRate(t *testing.T) {
 
 func TestCounterWrapOutputsZero(t *testing.T) {
 	p := &Processor{}
-	if err := p.Init(map[string]interface{}{
-		"fields": []interface{}{"read_bytes"},
+	if err := p.Init(map[string]any{
+		"fields": []any{"read_bytes"},
 		"output": "delta",
 	}); err != nil {
 		t.Fatalf("Init failed: %v", err)
@@ -132,7 +132,7 @@ func TestCounterWrapOutputsZero(t *testing.T) {
 
 	m0 := collector.NewMetric("diskio",
 		map[string]string{"host": "server-01"},
-		map[string]interface{}{"read_bytes": int64(1000)},
+		map[string]any{"read_bytes": int64(1000)},
 		collector.Counter, t0,
 	)
 	p.Apply([]*collector.Metric{m0})
@@ -140,7 +140,7 @@ func TestCounterWrapOutputsZero(t *testing.T) {
 	// Counter wraps to a lower value.
 	m1 := collector.NewMetric("diskio",
 		map[string]string{"host": "server-01"},
-		map[string]interface{}{"read_bytes": int64(50)},
+		map[string]any{"read_bytes": int64(50)},
 		collector.Counter, t1,
 	)
 	result := p.Apply([]*collector.Metric{m1})
@@ -151,8 +151,8 @@ func TestCounterWrapOutputsZero(t *testing.T) {
 
 func TestMixedTypes(t *testing.T) {
 	p := &Processor{}
-	if err := p.Init(map[string]interface{}{
-		"fields": []interface{}{"int_field", "float_field"},
+	if err := p.Init(map[string]any{
+		"fields": []any{"int_field", "float_field"},
 		"output": "delta",
 	}); err != nil {
 		t.Fatalf("Init failed: %v", err)
@@ -163,7 +163,7 @@ func TestMixedTypes(t *testing.T) {
 
 	m0 := collector.NewMetric("mixed",
 		map[string]string{},
-		map[string]interface{}{
+		map[string]any{
 			"int_field":   int64(10),
 			"float_field": float64(1.5),
 		},
@@ -179,7 +179,7 @@ func TestMixedTypes(t *testing.T) {
 
 	m1 := collector.NewMetric("mixed",
 		map[string]string{},
-		map[string]interface{}{
+		map[string]any{
 			"int_field":   int64(30),
 			"float_field": float64(4.5),
 		},
@@ -196,8 +196,8 @@ func TestMixedTypes(t *testing.T) {
 
 func TestMissingFieldSkipped(t *testing.T) {
 	p := &Processor{}
-	if err := p.Init(map[string]interface{}{
-		"fields": []interface{}{"read_bytes", "write_bytes"},
+	if err := p.Init(map[string]any{
+		"fields": []any{"read_bytes", "write_bytes"},
 		"output": "delta",
 	}); err != nil {
 		t.Fatalf("Init failed: %v", err)
@@ -209,7 +209,7 @@ func TestMissingFieldSkipped(t *testing.T) {
 	// First collection with only read_bytes.
 	m0 := collector.NewMetric("diskio",
 		map[string]string{"host": "s1"},
-		map[string]interface{}{"read_bytes": int64(100)},
+		map[string]any{"read_bytes": int64(100)},
 		collector.Counter, t0,
 	)
 	p.Apply([]*collector.Metric{m0})
@@ -217,7 +217,7 @@ func TestMissingFieldSkipped(t *testing.T) {
 	// Second collection with only write_bytes (read_bytes missing).
 	m1 := collector.NewMetric("diskio",
 		map[string]string{"host": "s1"},
-		map[string]interface{}{"write_bytes": int64(50)},
+		map[string]any{"write_bytes": int64(50)},
 		collector.Counter, t1,
 	)
 	result := p.Apply([]*collector.Metric{m1})
@@ -237,8 +237,8 @@ func TestMissingFieldSkipped(t *testing.T) {
 
 func TestStaleEntryCleanup(t *testing.T) {
 	p := &Processor{}
-	if err := p.Init(map[string]interface{}{
-		"fields":            []interface{}{"read_bytes"},
+	if err := p.Init(map[string]any{
+		"fields":            []any{"read_bytes"},
 		"output":            "delta",
 		"max_stale_seconds": 1,
 	}); err != nil {
@@ -250,7 +250,7 @@ func TestStaleEntryCleanup(t *testing.T) {
 
 	m0 := collector.NewMetric("diskio",
 		map[string]string{"host": "s1"},
-		map[string]interface{}{"read_bytes": int64(100)},
+		map[string]any{"read_bytes": int64(100)},
 		collector.Counter, t0,
 	)
 	result := p.Apply([]*collector.Metric{m0})
@@ -269,7 +269,7 @@ func TestStaleEntryCleanup(t *testing.T) {
 	// Apply a metric from a different series to trigger stale cleanup.
 	m1 := collector.NewMetric("diskio",
 		map[string]string{"host": "s2"},
-		map[string]interface{}{"read_bytes": int64(50)},
+		map[string]any{"read_bytes": int64(50)},
 		collector.Counter, t1,
 	)
 	p.Apply([]*collector.Metric{m1})
@@ -290,8 +290,8 @@ func TestStaleEntryCleanup(t *testing.T) {
 
 func TestConcurrentSafety(t *testing.T) {
 	p := &Processor{}
-	if err := p.Init(map[string]interface{}{
-		"fields": []interface{}{"read_bytes"},
+	if err := p.Init(map[string]any{
+		"fields": []any{"read_bytes"},
 		"output": "rate",
 	}); err != nil {
 		t.Fatalf("Init failed: %v", err)
@@ -300,14 +300,14 @@ func TestConcurrentSafety(t *testing.T) {
 	var wg sync.WaitGroup
 	baseTime := time.Now()
 
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
 			ts := baseTime.Add(time.Duration(i) * time.Second)
 			m := collector.NewMetric("diskio",
 				map[string]string{"host": "server-01"},
-				map[string]interface{}{"read_bytes": int64(100 * (i + 1))},
+				map[string]any{"read_bytes": int64(100 * (i + 1))},
 				collector.Counter, ts,
 			)
 			p.Apply([]*collector.Metric{m})

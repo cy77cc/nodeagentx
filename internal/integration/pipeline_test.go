@@ -26,7 +26,7 @@ func newCaptureOutput() *captureOutput {
 	return &captureOutput{}
 }
 
-func (o *captureOutput) Init(_ map[string]interface{}) error {
+func (o *captureOutput) Init(_ map[string]any) error {
 	return nil
 }
 
@@ -100,8 +100,8 @@ func TestPipelineIntegration(t *testing.T) {
 
 	// Create tagger processor with static tags.
 	tagger := procFactory()
-	if err := tagger.Init(map[string]interface{}{
-		"tags": map[string]interface{}{"env": "test", "cluster": "dev"},
+	if err := tagger.Init(map[string]any{
+		"tags": map[string]any{"env": "test", "cluster": "dev"},
 	}); err != nil {
 		t.Fatalf("tagger Init failed: %v", err)
 	}

@@ -9,14 +9,14 @@ import (
 
 func TestLoadInputInit(t *testing.T) {
 	input := &LoadInput{}
-	if err := input.Init(map[string]interface{}{}); err != nil {
+	if err := input.Init(map[string]any{}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 }
 
 func TestLoadInputInitIgnoresExtraFields(t *testing.T) {
 	input := &LoadInput{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"unknown_field": "value",
 	}
 	if err := input.Init(cfg); err != nil {
@@ -34,7 +34,7 @@ func TestLoadInputSampleConfig(t *testing.T) {
 
 func TestLoadInputGather(t *testing.T) {
 	input := &LoadInput{}
-	if err := input.Init(map[string]interface{}{}); err != nil {
+	if err := input.Init(map[string]any{}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 

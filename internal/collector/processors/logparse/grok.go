@@ -2,6 +2,7 @@ package logparse
 
 import (
 	"fmt"
+	"maps"
 	"regexp"
 	"strings"
 )
@@ -38,12 +39,8 @@ type Grok struct {
 func NewGrok(pattern string, customPatterns map[string]string) (*Grok, error) {
 	// Merge custom patterns over built-in ones.
 	all := make(map[string]string, len(builtinPatterns)+len(customPatterns))
-	for k, v := range builtinPatterns {
-		all[k] = v
-	}
-	for k, v := range customPatterns {
-		all[k] = v
-	}
+	maps.Copy(all, builtinPatterns)
+	maps.Copy(all, customPatterns)
 
 	// Expand the top-level pattern, then expand any nested references.
 	regex, names, err := expandPattern(pattern, all)
@@ -119,9 +116,9 @@ func expandOnce(pattern string, library map[string]string, existingNames []strin
 
 			// Split on ':' to get pattern name and optional capture name.
 			var patternName, captureName string
-			if idx := strings.IndexByte(inner, ':'); idx >= 0 {
-				patternName = inner[:idx]
-				captureName = inner[idx+1:]
+			if before, after, ok := strings.Cut(inner, ":"); ok {
+				patternName = before
+				captureName = after
 			} else {
 				patternName = inner
 			}

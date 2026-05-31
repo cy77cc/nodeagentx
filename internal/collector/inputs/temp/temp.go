@@ -21,7 +21,7 @@ type TempInput struct {
 	available bool
 }
 
-func (t *TempInput) Init(cfg map[string]interface{}) error {
+func (t *TempInput) Init(cfg map[string]any) error {
 	// Check availability by trying to read sensors once
 	temps, err := sensors.TemperaturesWithContext(context.Background())
 	if err != nil || len(temps) == 0 {
@@ -47,7 +47,7 @@ func (t *TempInput) Gather(ctx context.Context, acc collector.Accumulator) error
 		tags := map[string]string{
 			"sensor": sensor.SensorKey,
 		}
-		fields := map[string]interface{}{
+		fields := map[string]any{
 			"temperature": sensor.Temperature,
 		}
 		if sensor.High != 0 {

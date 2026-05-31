@@ -11,7 +11,7 @@ func makeMetric(name string) *collector.Metric {
 	return collector.NewMetric(
 		name,
 		map[string]string{"host": "test"},
-		map[string]interface{}{"value": float64(1.0)},
+		map[string]any{"value": float64(1.0)},
 		collector.Gauge,
 		time.Now(),
 	)

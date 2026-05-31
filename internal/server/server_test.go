@@ -76,7 +76,7 @@ func TestRateLimiting(t *testing.T) {
 	s := newTestServer(t)
 
 	// Send many requests rapidly
-	for i := 0; i < 25; i++ {
+	for i := range 25 {
 		req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 		req.RemoteAddr = "10.0.0.1:12345"
 		w := httptest.NewRecorder()

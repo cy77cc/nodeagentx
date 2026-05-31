@@ -2,6 +2,7 @@ package sum
 
 import (
 	"fmt"
+	"maps"
 	"sync"
 	"time"
 
@@ -17,7 +18,7 @@ type Config struct {
 type Aggregator struct {
 	mu     sync.Mutex
 	fields []string
-	sums   map[string]interface{}
+	sums   map[string]any
 	isInt  map[string]bool
 	tags   map[string]string
 	name   string
@@ -27,16 +28,16 @@ type Aggregator struct {
 func New(cfg Config) *Aggregator {
 	return &Aggregator{
 		fields: cfg.Fields,
-		sums:   make(map[string]interface{}),
+		sums:   make(map[string]any),
 		isInt:  make(map[string]bool),
 		tags:   make(map[string]string),
 	}
 }
 
 // Init parses configuration from a map (e.g. from YAML unmarshaling).
-// Expects "fields" as a []interface{} of field name strings.
-func (a *Aggregator) Init(cfg map[string]interface{}) error {
-	a.sums = make(map[string]interface{})
+// Expects "fields" as a []any of field name strings.
+func (a *Aggregator) Init(cfg map[string]any) error {
+	a.sums = make(map[string]any)
 	a.isInt = make(map[string]bool)
 	a.tags = make(map[string]string)
 
@@ -44,7 +45,7 @@ func (a *Aggregator) Init(cfg map[string]interface{}) error {
 	if !ok {
 		return nil
 	}
-	fieldList, ok := raw.([]interface{})
+	fieldList, ok := raw.([]any)
 	if !ok {
 		return fmt.Errorf("sum: \"fields\" must be a list, got %T", raw)
 	}
@@ -106,9 +107,7 @@ func (a *Aggregator) Add(in *collector.Metric) {
 			if _, ok := metricFields[fname]; ok {
 				a.name = in.Name()
 				tags := in.Tags()
-				for k, v := range tags {
-					a.tags[k] = v
-				}
+				maps.Copy(a.tags, tags)
 				break
 			}
 		}
@@ -124,7 +123,7 @@ func (a *Aggregator) Push(acc collector.Accumulator) {
 		return
 	}
 
-	fields := make(map[string]interface{})
+	fields := make(map[string]any)
 	for _, fname := range a.fields {
 		val, ok := a.sums[fname]
 		if !ok {
@@ -143,7 +142,7 @@ func (a *Aggregator) Reset() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	a.sums = make(map[string]interface{})
+	a.sums = make(map[string]any)
 	a.isInt = make(map[string]bool)
 	a.tags = make(map[string]string)
 	a.name = ""

@@ -35,19 +35,19 @@ type LogParseProcessor struct {
 }
 
 // Init parses configuration from a map and compiles patterns.
-func (p *LogParseProcessor) Init(cfg map[string]interface{}) error {
+func (p *LogParseProcessor) Init(cfg map[string]any) error {
 	raw, ok := cfg["rules"]
 	if !ok {
 		return nil
 	}
-	ruleList, ok := raw.([]interface{})
+	ruleList, ok := raw.([]any)
 	if !ok {
 		return fmt.Errorf("logparse: \"rules\" must be a list, got %T", raw)
 	}
 
 	rules := make([]ParseRule, 0, len(ruleList))
 	for i, entry := range ruleList {
-		ruleMap, ok := entry.(map[string]interface{})
+		ruleMap, ok := entry.(map[string]any)
 		if !ok {
 			return fmt.Errorf("logparse: rule entry %d must be a map, got %T", i, entry)
 		}
@@ -65,7 +65,7 @@ func (p *LogParseProcessor) Init(cfg map[string]interface{}) error {
 		if v, ok := ruleMap["regex_pattern"].(string); ok {
 			rule.RegexPattern = v
 		}
-		if v, ok := ruleMap["patterns"].([]interface{}); ok {
+		if v, ok := ruleMap["patterns"].([]any); ok {
 			for _, p := range v {
 				if s, ok := p.(string); ok {
 					rule.Patterns = append(rule.Patterns, s)
@@ -187,7 +187,7 @@ func (p *LogParseProcessor) applyRegex(m *collector.Metric, rule ParseRule, inpu
 
 // applyJSON parses the input as JSON and adds each top-level key as a field.
 func (p *LogParseProcessor) applyJSON(m *collector.Metric, input string) {
-	var parsed map[string]interface{}
+	var parsed map[string]any
 	if err := json.Unmarshal([]byte(input), &parsed); err != nil {
 		return
 	}

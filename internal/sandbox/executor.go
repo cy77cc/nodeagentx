@@ -32,13 +32,13 @@ type Config struct {
 // ExecRequest is a sandbox execution request.
 type ExecRequest struct {
 	TaskID      string            `json:"task_id"`
-	Command     string            `json:"command,omitempty"`
-	Args        []string          `json:"args,omitempty"`
-	Script      string            `json:"script,omitempty"`
-	Interpreter string            `json:"interpreter,omitempty"`
-	Env         map[string]string `json:"env,omitempty"`
-	Timeout     time.Duration     `json:"timeout,omitempty"`
-	SandboxCfg  *SandboxOverride  `json:"sandbox_cfg,omitempty"`
+	Command     string            `json:"command,omitzero"`
+	Args        []string          `json:"args,omitzero"`
+	Script      string            `json:"script,omitzero"`
+	Interpreter string            `json:"interpreter,omitzero"`
+	Env         map[string]string `json:"env,omitzero"`
+	Timeout     time.Duration     `json:"timeout,omitzero"`
+	SandboxCfg  *SandboxOverride  `json:"sandbox_cfg,omitzero"`
 }
 
 // SandboxOverride allows per-request overrides of sandbox resource limits.
@@ -267,8 +267,7 @@ func (e *Executor) run(ctx context.Context, req ExecRequest, nsCfg NsjailConfig,
 				KillCgroupProcesses(cgroupPath)
 			}
 		} else {
-			var exitErr *exec.ExitError
-			if errors.As(err, &exitErr) {
+			if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 				result.ExitCode = exitErr.ExitCode()
 			} else {
 				result.ExitCode = -1

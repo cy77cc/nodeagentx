@@ -276,7 +276,7 @@ func TestDirPermCheckerStickyBitExpected(t *testing.T) {
 	require.NoError(t, os.Chmod(path, os.ModeSticky|0o777))
 
 	stickyTrue := true
-	params, _ := json.Marshal(map[string]interface{}{
+	params, _ := json.Marshal(map[string]any{
 		"path":         path,
 		"expected_mode": "1777",
 		"sticky_bit":   &stickyTrue,
@@ -294,7 +294,7 @@ func TestDirPermCheckerStickyBitMissing(t *testing.T) {
 	require.NoError(t, os.Mkdir(path, 0o777))
 
 	stickyTrue := true
-	params, _ := json.Marshal(map[string]interface{}{
+	params, _ := json.Marshal(map[string]any{
 		"path":         path,
 		"expected_mode": "1777",
 		"sticky_bit":   &stickyTrue,
@@ -311,7 +311,7 @@ func TestDirPermCheckerStickyBitNotExpected(t *testing.T) {
 	require.NoError(t, os.Mkdir(path, 0o755))
 
 	stickyFalse := false
-	params, _ := json.Marshal(map[string]interface{}{
+	params, _ := json.Marshal(map[string]any{
 		"path":         path,
 		"expected_mode": "0755",
 		"sticky_bit":   &stickyFalse,

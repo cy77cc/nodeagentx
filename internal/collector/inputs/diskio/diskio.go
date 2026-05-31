@@ -20,10 +20,10 @@ type DiskIOInput struct {
 	devices []string
 }
 
-func (d *DiskIOInput) Init(cfg map[string]interface{}) error {
+func (d *DiskIOInput) Init(cfg map[string]any) error {
 	if v, ok := cfg["devices"]; ok {
 		switch devs := v.(type) {
-		case []interface{}:
+		case []any:
 			for _, item := range devs {
 				s, ok := item.(string)
 				if !ok {
@@ -50,7 +50,7 @@ func (d *DiskIOInput) Gather(ctx context.Context, acc collector.Accumulator) err
 		tags := map[string]string{
 			"device": name,
 		}
-		fields := map[string]interface{}{
+		fields := map[string]any{
 			"read_bytes":    int64(counter.ReadBytes),
 			"write_bytes":   int64(counter.WriteBytes),
 			"read_count":    int64(counter.ReadCount),

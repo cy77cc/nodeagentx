@@ -43,7 +43,7 @@ func (c *NetworkParamChecker) Check(_ context.Context, params json.RawMessage) (
 	if strings.ContainsAny(p.Key, "/\\") {
 		return nil, fmt.Errorf("network_param_check: key must not contain path separators, got %q", p.Key)
 	}
-	for _, seg := range strings.Split(p.Key, ".") {
+	for seg := range strings.SplitSeq(p.Key, ".") {
 		if seg == ".." || seg == "" {
 			return nil, fmt.Errorf("network_param_check: key contains invalid segment, got %q", p.Key)
 		}

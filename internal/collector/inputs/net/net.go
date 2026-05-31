@@ -18,7 +18,7 @@ func init() {
 // NetInput gathers network I/O statistics per interface.
 type NetInput struct{}
 
-func (n *NetInput) Init(_ map[string]interface{}) error {
+func (n *NetInput) Init(_ map[string]any) error {
 	return nil
 }
 
@@ -32,7 +32,7 @@ func (n *NetInput) Gather(ctx context.Context, acc collector.Accumulator) error 
 		tags := map[string]string{
 			"interface": c.Name,
 		}
-		fields := map[string]interface{}{
+		fields := map[string]any{
 			"bytes_sent":   int64(c.BytesSent),
 			"bytes_recv":   int64(c.BytesRecv),
 			"packets_sent": int64(c.PacketsSent),

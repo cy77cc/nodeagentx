@@ -43,12 +43,12 @@ func (m *mockConnectStream) Recv() (*pb.PlatformMessage, error) {
 	return nil, io.EOF
 }
 
-func (m *mockConnectStream) Header() (metadata.MD, error)  { return nil, nil }
-func (m *mockConnectStream) Trailer() metadata.MD           { return nil }
-func (m *mockConnectStream) CloseSend() error               { return nil }
-func (m *mockConnectStream) Context() context.Context       { return context.Background() }
-func (m *mockConnectStream) SendMsg(interface{}) error      { return nil }
-func (m *mockConnectStream) RecvMsg(interface{}) error      { return nil }
+func (m *mockConnectStream) Header() (metadata.MD, error) { return nil, nil }
+func (m *mockConnectStream) Trailer() metadata.MD         { return nil }
+func (m *mockConnectStream) CloseSend() error             { return nil }
+func (m *mockConnectStream) Context() context.Context     { return context.Background() }
+func (m *mockConnectStream) SendMsg(any) error            { return nil }
+func (m *mockConnectStream) RecvMsg(any) error            { return nil }
 
 func TestClientDefaultConfig(t *testing.T) {
 	cfg := DefaultConfig()
@@ -186,7 +186,7 @@ func TestBuildTLSCredentials_InvalidCertPath(t *testing.T) {
 func TestClientSendMetrics_CachesWhenDisconnected(t *testing.T) {
 	c := NewClient(DefaultConfig(), zerolog.Nop(), nil)
 
-	m := collector.NewMetric("test", nil, map[string]interface{}{"v": 1.0}, collector.Gauge, time.Now())
+	m := collector.NewMetric("test", nil, map[string]any{"v": 1.0}, collector.Gauge, time.Now())
 	c.SendMetrics([]*collector.Metric{m})
 
 	if got := c.cache.Len(); got != 1 {
@@ -221,11 +221,11 @@ func TestClientReplayCache_SendsBatch(t *testing.T) {
 	c := NewClient(DefaultConfig(), zerolog.Nop(), nil)
 
 	// Add metrics to cache.
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		m := collector.NewMetric(
 			fmt.Sprintf("metric_%d", i),
 			nil,
-			map[string]interface{}{"v": float64(i)},
+			map[string]any{"v": float64(i)},
 			collector.Gauge,
 			time.Now(),
 		)
@@ -252,11 +252,11 @@ func TestClientReplayCache_SendFailureRecaches(t *testing.T) {
 	c := NewClient(DefaultConfig(), zerolog.Nop(), nil)
 
 	// Add metrics to cache.
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		m := collector.NewMetric(
 			fmt.Sprintf("metric_%d", i),
 			nil,
-			map[string]interface{}{"v": float64(i)},
+			map[string]any{"v": float64(i)},
 			collector.Gauge,
 			time.Now(),
 		)
@@ -308,8 +308,8 @@ func TestClientStartStop(t *testing.T) {
 func TestFlushAndStop_PersistsOnStreamUnavailable(t *testing.T) {
 	c := NewClient(Config{CacheMaxSize: 100}, zerolog.Nop(), nil)
 	// Add metrics to cache without starting connection.
-	for i := 0; i < 5; i++ {
-		c.cache.Add(collector.NewMetric("test", nil, map[string]interface{}{"v": float64(i)}, collector.Gauge, time.Now()))
+	for i := range 5 {
+		c.cache.Add(collector.NewMetric("test", nil, map[string]any{"v": float64(i)}, collector.Gauge, time.Now()))
 	}
 
 	tmpFile := t.TempDir() + "/cache.json"
@@ -506,7 +506,7 @@ func TestSendMetrics_SendsWhenConnected(t *testing.T) {
 	c.connected = true
 	c.mu.Unlock()
 
-	m := collector.NewMetric("test", nil, map[string]interface{}{"v": 1.0}, collector.Gauge, time.Now())
+	m := collector.NewMetric("test", nil, map[string]any{"v": 1.0}, collector.Gauge, time.Now())
 	c.SendMetrics([]*collector.Metric{m})
 
 	if got := mock.sendCount.Load(); got != 1 {
@@ -530,7 +530,7 @@ func TestSendMetrics_CachesOnSendFailure(t *testing.T) {
 	c.connected = true
 	c.mu.Unlock()
 
-	m := collector.NewMetric("test", nil, map[string]interface{}{"v": 1.0}, collector.Gauge, time.Now())
+	m := collector.NewMetric("test", nil, map[string]any{"v": 1.0}, collector.Gauge, time.Now())
 	c.SendMetrics([]*collector.Metric{m})
 
 	if got := c.cache.Len(); got != 1 {
@@ -722,8 +722,7 @@ func TestMessageLoop_EOF(t *testing.T) {
 	c.connected = true
 	c.mu.Unlock()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	// messageLoop should return after EOF.
 	c.messageLoop(ctx)
@@ -746,8 +745,7 @@ func TestMessageLoop_RecvError(t *testing.T) {
 	c.connected = true
 	c.mu.Unlock()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	c.messageLoop(ctx)
 
@@ -797,8 +795,7 @@ func TestMessageLoop_NilStream(t *testing.T) {
 	c.connected = true
 	c.mu.Unlock()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	c.messageLoop(ctx)
 
@@ -818,8 +815,8 @@ func TestFlushAndStop_EmptyCache(t *testing.T) {
 func TestFlushAndStop_SendsBatchWithStream(t *testing.T) {
 	c := NewClient(Config{CacheMaxSize: 100}, zerolog.Nop(), nil)
 
-	for i := 0; i < 5; i++ {
-		c.cache.Add(collector.NewMetric("test", nil, map[string]interface{}{"v": float64(i)}, collector.Gauge, time.Now()))
+	for i := range 5 {
+		c.cache.Add(collector.NewMetric("test", nil, map[string]any{"v": float64(i)}, collector.Gauge, time.Now()))
 	}
 
 	mock := &mockConnectStream{}
@@ -841,8 +838,8 @@ func TestFlushAndStop_SendsBatchWithStream(t *testing.T) {
 func TestFlushAndStop_NoPersistPathWithRemainingMetrics(t *testing.T) {
 	c := NewClient(Config{CacheMaxSize: 100}, zerolog.Nop(), nil)
 
-	for i := 0; i < 3; i++ {
-		c.cache.Add(collector.NewMetric("test", nil, map[string]interface{}{"v": float64(i)}, collector.Gauge, time.Now()))
+	for i := range 3 {
+		c.cache.Add(collector.NewMetric("test", nil, map[string]any{"v": float64(i)}, collector.Gauge, time.Now()))
 	}
 
 	mock := &mockConnectStream{
@@ -892,7 +889,7 @@ func TestLoadPersistedCache(t *testing.T) {
 
 	// Create a persisted cache file.
 	metrics := []*collector.Metric{
-		collector.NewMetric("test", nil, map[string]interface{}{"v": 1.0}, collector.Gauge, time.Now()),
+		collector.NewMetric("test", nil, map[string]any{"v": 1.0}, collector.Gauge, time.Now()),
 	}
 	data, _ := json.Marshal(metrics)
 	tmpFile := t.TempDir() + "/cache.json"

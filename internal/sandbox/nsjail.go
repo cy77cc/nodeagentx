@@ -61,14 +61,14 @@ func (c *NsjailConfig) seccompPolicyString() string {
 
 // NsjailConfig holds the resource and isolation parameters for an nsjail execution.
 type NsjailConfig struct {
-	TimeLimit    int      `json:"time_limit"`
-	MemoryMB     int      `json:"memory_mb"`
-	CPUPercent   int      `json:"cpu_percent"`
-	MaxPIDs      int      `json:"max_pids"`
-	MaxFileSize  int      `json:"max_file_size"`
-	NetworkMode  string   `json:"network_mode"`
-	AllowedIPs   []string `json:"allowed_ips"`
-	WorkDir      string   `json:"work_dir"`
+	TimeLimit   int      `json:"time_limit"`
+	MemoryMB    int      `json:"memory_mb"`
+	CPUPercent  int      `json:"cpu_percent"`
+	MaxPIDs     int      `json:"max_pids"`
+	MaxFileSize int      `json:"max_file_size"`
+	NetworkMode string   `json:"network_mode"`
+	AllowedIPs  []string `json:"allowed_ips"`
+	WorkDir     string   `json:"work_dir"`
 }
 
 // ToArgs generates the nsjail CLI arguments for the given task.
@@ -232,33 +232,34 @@ func (c *NsjailConfig) WriteConfigFile(taskID string) (string, error) {
 
 // buildConfigContent produces the text of an nsjail protobuf config.
 func (c *NsjailConfig) buildConfigContent(taskID string) string {
-	s := fmt.Sprintf("name: \"sandbox-%s\"\nmode: ONCE\n", taskID)
+	var s strings.Builder
+	s.WriteString(fmt.Sprintf("name: \"sandbox-%s\"\nmode: ONCE\n", taskID))
 	if c.TimeLimit > 0 {
-		s += fmt.Sprintf("time_limit: %d\n", c.TimeLimit)
+		s.WriteString(fmt.Sprintf("time_limit: %d\n", c.TimeLimit))
 	}
 	workDir := c.WorkDir
 	if workDir == "" {
 		workDir = "/work"
 	}
-	s += fmt.Sprintf("cwd: %q\n", workDir)
+	s.WriteString(fmt.Sprintf("cwd: %q\n", workDir))
 
 	// Cgroup.
-	s += "cgroup_mem_max: " + strconv.Itoa(c.MemoryMB*1024*1024) + "\n"
-	s += "cgroup_pids_max: " + strconv.Itoa(c.MaxPIDs) + "\n"
+	s.WriteString("cgroup_mem_max: " + strconv.Itoa(c.MemoryMB*1024*1024) + "\n")
+	s.WriteString("cgroup_pids_max: " + strconv.Itoa(c.MaxPIDs) + "\n")
 
 	// Mounts.
 	for _, dir := range []string{"/usr", "/lib", "/lib64", "/bin"} {
-		s += fmt.Sprintf("mount { src: %q dst: %q is_bind: true rw: false }\n", dir, dir)
+		s.WriteString(fmt.Sprintf("mount { src: %q dst: %q is_bind: true rw: false }\n", dir, dir))
 	}
-	s += "mount { dst: \"/etc\" fstype: \"tmpfs\" options: \"size=1048576\" rw: true }\n"
-	s += "mount { dst: \"/tmp\" fstype: \"tmpfs\" options: \"size=67108864\" rw: true }\n"
-	s += "mount { dst: \"/work\" fstype: \"tmpfs\" options: \"size=134217728\" rw: true }\n"
+	s.WriteString("mount { dst: \"/etc\" fstype: \"tmpfs\" options: \"size=1048576\" rw: true }\n")
+	s.WriteString("mount { dst: \"/tmp\" fstype: \"tmpfs\" options: \"size=67108864\" rw: true }\n")
+	s.WriteString("mount { dst: \"/work\" fstype: \"tmpfs\" options: \"size=134217728\" rw: true }\n")
 
 	// UID/GID mapping.
-	s += "uidmap { inside_id: 0 outside_id: 65534 count: 1 }\n"
-	s += "gidmap { inside_id: 0 outside_id: 65534 count: 1 }\n"
+	s.WriteString("uidmap { inside_id: 0 outside_id: 65534 count: 1 }\n")
+	s.WriteString("gidmap { inside_id: 0 outside_id: 65534 count: 1 }\n")
 
-	return s
+	return s.String()
 }
 
 // interpreterToPath maps a short interpreter name to its absolute path.

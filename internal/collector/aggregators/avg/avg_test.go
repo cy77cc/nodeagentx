@@ -19,15 +19,15 @@ func TestAddAndPushSingleField(t *testing.T) {
 
 	m1 := collector.NewMetric("cpu",
 		map[string]string{"host": "server-01"},
-		map[string]interface{}{"value": float64(10)},
+		map[string]any{"value": float64(10)},
 		collector.Gauge, time.Now())
 	m2 := collector.NewMetric("cpu",
 		map[string]string{"host": "server-01"},
-		map[string]interface{}{"value": float64(20)},
+		map[string]any{"value": float64(20)},
 		collector.Gauge, time.Now())
 	m3 := collector.NewMetric("cpu",
 		map[string]string{"host": "server-01"},
-		map[string]interface{}{"value": float64(30)},
+		map[string]any{"value": float64(30)},
 		collector.Gauge, time.Now())
 
 	a.Add(m1)
@@ -66,11 +66,11 @@ func TestAddAndPushMultipleFields(t *testing.T) {
 
 	m1 := collector.NewMetric("req",
 		map[string]string{"env": "prod"},
-		map[string]interface{}{"value": float64(100), "count": int64(5)},
+		map[string]any{"value": float64(100), "count": int64(5)},
 		collector.Gauge, time.Now())
 	m2 := collector.NewMetric("req",
 		map[string]string{"env": "prod"},
-		map[string]interface{}{"value": float64(200), "count": int64(15)},
+		map[string]any{"value": float64(200), "count": int64(15)},
 		collector.Gauge, time.Now())
 
 	a.Add(m1)
@@ -120,7 +120,7 @@ func TestReset(t *testing.T) {
 
 	m := collector.NewMetric("cpu",
 		map[string]string{"host": "server-01"},
-		map[string]interface{}{"value": float64(42)},
+		map[string]any{"value": float64(42)},
 		collector.Gauge, time.Now())
 	a.Add(m)
 
@@ -140,11 +140,11 @@ func TestAddInt64FieldValues(t *testing.T) {
 
 	m1 := collector.NewMetric("requests",
 		map[string]string{"host": "server"},
-		map[string]interface{}{"count": int64(100)},
+		map[string]any{"count": int64(100)},
 		collector.Counter, time.Now())
 	m2 := collector.NewMetric("requests",
 		map[string]string{"host": "server"},
-		map[string]interface{}{"count": int64(300)},
+		map[string]any{"count": int64(300)},
 		collector.Counter, time.Now())
 
 	a.Add(m1)
@@ -174,7 +174,7 @@ func TestAddSkipsNonMatchingFields(t *testing.T) {
 
 	m := collector.NewMetric("cpu",
 		map[string]string{"host": "server"},
-		map[string]interface{}{"value": float64(42)},
+		map[string]any{"value": float64(42)},
 		collector.Gauge, time.Now())
 
 	a.Add(m)
@@ -209,8 +209,8 @@ func TestRegisteredInDefaultRegistry(t *testing.T) {
 
 func TestInitValidConfig(t *testing.T) {
 	a := New(Config{})
-	cfg := map[string]interface{}{
-		"fields": []interface{}{"value", "latency"},
+	cfg := map[string]any{
+		"fields": []any{"value", "latency"},
 	}
 	if err := a.Init(cfg); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -225,7 +225,7 @@ func TestInitValidConfig(t *testing.T) {
 
 func TestInitMissingFieldsKey(t *testing.T) {
 	a := New(Config{Fields: []string{"old"}})
-	cfg := map[string]interface{}{}
+	cfg := map[string]any{}
 	if err := a.Init(cfg); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -235,7 +235,7 @@ func TestInitMissingFieldsKey(t *testing.T) {
 
 func TestInitFieldsNotAList(t *testing.T) {
 	a := New(Config{})
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"fields": "not a list",
 	}
 	err := a.Init(cfg)
@@ -246,8 +246,8 @@ func TestInitFieldsNotAList(t *testing.T) {
 
 func TestInitFieldEntryNotAString(t *testing.T) {
 	a := New(Config{})
-	cfg := map[string]interface{}{
-		"fields": []interface{}{123},
+	cfg := map[string]any{
+		"fields": []any{123},
 	}
 	err := a.Init(cfg)
 	if err == nil {
@@ -260,15 +260,15 @@ func TestAddNonNumericFieldValues(t *testing.T) {
 
 	m1 := collector.NewMetric("cpu",
 		map[string]string{"host": "server"},
-		map[string]interface{}{"value": "string_value"},
+		map[string]any{"value": "string_value"},
 		collector.Gauge, time.Now())
 	m2 := collector.NewMetric("cpu",
 		map[string]string{"host": "server"},
-		map[string]interface{}{"value": true},
+		map[string]any{"value": true},
 		collector.Gauge, time.Now())
 	m3 := collector.NewMetric("cpu",
 		map[string]string{"host": "server"},
-		map[string]interface{}{"value": float64(10)},
+		map[string]any{"value": float64(10)},
 		collector.Gauge, time.Now())
 
 	a.Add(m1)

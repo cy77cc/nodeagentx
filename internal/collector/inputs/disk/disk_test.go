@@ -9,7 +9,7 @@ import (
 
 func TestDiskInputInit(t *testing.T) {
 	input := &DiskInput{}
-	if err := input.Init(map[string]interface{}{}); err != nil {
+	if err := input.Init(map[string]any{}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 	if len(input.mountPoints) != 0 {
@@ -19,8 +19,8 @@ func TestDiskInputInit(t *testing.T) {
 
 func TestDiskInputInitWithMountPoints(t *testing.T) {
 	input := &DiskInput{}
-	cfg := map[string]interface{}{
-		"mount_points": []interface{}{"/", "/home"},
+	cfg := map[string]any{
+		"mount_points": []any{"/", "/home"},
 	}
 	if err := input.Init(cfg); err != nil {
 		t.Fatalf("Init() error: %v", err)
@@ -32,7 +32,7 @@ func TestDiskInputInitWithMountPoints(t *testing.T) {
 
 func TestDiskInputInitInvalidMountPoints(t *testing.T) {
 	input := &DiskInput{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"mount_points": "notalist",
 	}
 	if err := input.Init(cfg); err == nil {
@@ -42,8 +42,8 @@ func TestDiskInputInitInvalidMountPoints(t *testing.T) {
 
 func TestDiskInputInitInvalidMountPointItem(t *testing.T) {
 	input := &DiskInput{}
-	cfg := map[string]interface{}{
-		"mount_points": []interface{}{123},
+	cfg := map[string]any{
+		"mount_points": []any{123},
 	}
 	if err := input.Init(cfg); err == nil {
 		t.Fatal("Init() should fail with non-string mount_point item")
@@ -52,7 +52,7 @@ func TestDiskInputInitInvalidMountPointItem(t *testing.T) {
 
 func TestDiskInputGather(t *testing.T) {
 	input := &DiskInput{}
-	if err := input.Init(map[string]interface{}{}); err != nil {
+	if err := input.Init(map[string]any{}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 
@@ -117,8 +117,8 @@ func TestDiskInputGather(t *testing.T) {
 func TestDiskInputGatherFilterMountPoints(t *testing.T) {
 	input := &DiskInput{}
 	// Use a mount point that exists on Linux
-	cfg := map[string]interface{}{
-		"mount_points": []interface{}{"/"},
+	cfg := map[string]any{
+		"mount_points": []any{"/"},
 	}
 	if err := input.Init(cfg); err != nil {
 		t.Fatalf("Init() error: %v", err)

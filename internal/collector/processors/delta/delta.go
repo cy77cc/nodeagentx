@@ -2,7 +2,8 @@ package delta
 
 import (
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -12,7 +13,7 @@ import (
 
 // entry holds the previous values and timestamp for a metric series.
 type entry struct {
-	values    map[string]interface{}
+	values    map[string]any
 	timestamp time.Time
 }
 
@@ -27,11 +28,7 @@ type Processor struct {
 
 // metricKey builds a unique key from the metric name and sorted tags.
 func metricKey(name string, tags map[string]string) string {
-	keys := make([]string, 0, len(tags))
-	for k := range tags {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
+	keys := slices.Sorted(maps.Keys(tags))
 
 	var b strings.Builder
 	b.WriteString(name)
@@ -45,13 +42,13 @@ func metricKey(name string, tags map[string]string) string {
 }
 
 // Init parses configuration from a map (e.g. from YAML unmarshaling).
-func (p *Processor) Init(cfg map[string]interface{}) error {
+func (p *Processor) Init(cfg map[string]any) error {
 	p.prev = make(map[string]entry)
 	p.outputMode = "rate"
 	p.maxStaleSeconds = 300
 
 	if rawFields, ok := cfg["fields"]; ok {
-		fieldList, ok := rawFields.([]interface{})
+		fieldList, ok := rawFields.([]any)
 		if !ok {
 			return fmt.Errorf("delta: \"fields\" must be a list, got %T", rawFields)
 		}
@@ -116,10 +113,8 @@ func (p *Processor) Apply(in []*collector.Metric) []*collector.Metric {
 		prev, exists := p.prev[key]
 
 		fields := m.Fields()
-		newFields := make(map[string]interface{}, len(fields))
-		for k, v := range fields {
-			newFields[k] = v
-		}
+		newFields := make(map[string]any, len(fields))
+		maps.Copy(newFields, fields)
 
 		for fieldName := range p.fields {
 			curVal, ok := fields[fieldName]
@@ -168,10 +163,8 @@ func (p *Processor) Apply(in []*collector.Metric) []*collector.Metric {
 		}
 
 		// Store current values for next iteration (AFTER computing result).
-		storedValues := make(map[string]interface{}, len(fields))
-		for k, v := range fields {
-			storedValues[k] = v
-		}
+		storedValues := make(map[string]any, len(fields))
+		maps.Copy(storedValues, fields)
 		p.prev[key] = entry{
 			values:    storedValues,
 			timestamp: m.Timestamp(),
@@ -196,7 +189,7 @@ func (p *Processor) cleanupStale(now time.Time) {
 
 // computeDelta computes the difference between two numeric values.
 // Returns nil if the values are not numeric or if current < previous (counter wrap).
-func computeDelta(prev, cur interface{}) *float64 {
+func computeDelta(prev, cur any) *float64 {
 	prevF, ok1 := toFloat64(prev)
 	curF, ok2 := toFloat64(cur)
 	if !ok1 || !ok2 {
@@ -210,7 +203,7 @@ func computeDelta(prev, cur interface{}) *float64 {
 }
 
 // toFloat64 converts a numeric value to float64.
-func toFloat64(v interface{}) (float64, bool) {
+func toFloat64(v any) (float64, bool) {
 	switch val := v.(type) {
 	case int64:
 		return float64(val), true
@@ -226,7 +219,7 @@ func toFloat64(v interface{}) (float64, bool) {
 }
 
 // zeroOfSameType returns a zero value of the same type as the input.
-func zeroOfSameType(v interface{}) interface{} {
+func zeroOfSameType(v any) any {
 	switch v.(type) {
 	case int64:
 		return int64(0)

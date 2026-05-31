@@ -3,6 +3,7 @@ package federation
 import (
 	"context"
 	"fmt"
+	"maps"
 	"sync"
 	"time"
 
@@ -106,8 +107,6 @@ func (s *HubServer) GetLeaves() map[string]*LeafState {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	result := make(map[string]*LeafState, len(s.leaves))
-	for k, v := range s.leaves {
-		result[k] = v
-	}
+	maps.Copy(result, s.leaves)
 	return result
 }

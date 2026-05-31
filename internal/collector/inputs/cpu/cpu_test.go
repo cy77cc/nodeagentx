@@ -9,7 +9,7 @@ import (
 
 func TestCPUInputInit(t *testing.T) {
 	input := &CPUInput{}
-	if err := input.Init(map[string]interface{}{}); err != nil {
+	if err := input.Init(map[string]any{}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 	if !input.totalCPU {
@@ -22,7 +22,7 @@ func TestCPUInputInit(t *testing.T) {
 
 func TestCPUInputInitConfig(t *testing.T) {
 	input := &CPUInput{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"percpu":   true,
 		"totalcpu": false,
 	}
@@ -39,7 +39,7 @@ func TestCPUInputInitConfig(t *testing.T) {
 
 func TestCPUInputInitInvalidConfig(t *testing.T) {
 	input := &CPUInput{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"percpu": "notabool",
 	}
 	if err := input.Init(cfg); err == nil {
@@ -49,7 +49,7 @@ func TestCPUInputInitInvalidConfig(t *testing.T) {
 
 func TestCPUInputGatherTotal(t *testing.T) {
 	input := &CPUInput{}
-	if err := input.Init(map[string]interface{}{}); err != nil {
+	if err := input.Init(map[string]any{}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 
@@ -90,7 +90,7 @@ func TestCPUInputGatherTotal(t *testing.T) {
 
 func TestCPUInputGatherPerCPU(t *testing.T) {
 	input := &CPUInput{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"percpu":   true,
 		"totalcpu": false,
 	}

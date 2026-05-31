@@ -9,10 +9,10 @@ import (
 // ConfigLevels holds configuration at multiple inheritance levels.
 // Priority: Agent > Group > Region > Global
 type ConfigLevels struct {
-	Global  map[string]interface{}            `json:"global"`
-	Regions map[string]map[string]interface{} `json:"regions"`
-	Groups  map[string]map[string]interface{} `json:"groups"`
-	Agents  map[string]map[string]interface{} `json:"agents"`
+	Global  map[string]any            `json:"global"`
+	Regions map[string]map[string]any `json:"regions"`
+	Groups  map[string]map[string]any `json:"groups"`
+	Agents  map[string]map[string]any `json:"agents"`
 }
 
 // ConfigDistributor resolves merged configuration for agents based on
@@ -29,7 +29,7 @@ func NewConfigDistributor(levels ConfigLevels, engine *GroupEngine) *ConfigDistr
 
 // ResolveConfig merges configuration levels for a specific agent.
 // Priority order: Global < Region < Group < Agent
-func (cd *ConfigDistributor) ResolveConfig(agentID, region string, groups []string) (map[string]interface{}, error) {
+func (cd *ConfigDistributor) ResolveConfig(agentID, region string, groups []string) (map[string]any, error) {
 	result := deepCopyMap(cd.levels.Global)
 
 	// Merge region config
@@ -42,7 +42,7 @@ func (cd *ConfigDistributor) ResolveConfig(agentID, region string, groups []stri
 		sortedGroups := make([]string, len(groups))
 		copy(sortedGroups, groups)
 		// Simple insertion sort for small slices
-		for i := 0; i < len(sortedGroups); i++ {
+		for i := range sortedGroups {
 			for j := i + 1; j < len(sortedGroups); j++ {
 				if sortedGroups[i] > sortedGroups[j] {
 					sortedGroups[i], sortedGroups[j] = sortedGroups[j], sortedGroups[i]
@@ -83,7 +83,7 @@ func (cd *ConfigDistributor) UpdateLevels(levels ConfigLevels) {
 	cd.levels = levels
 }
 
-func deepMerge(dst, src map[string]interface{}) map[string]interface{} {
+func deepMerge(dst, src map[string]any) map[string]any {
 	result := deepCopyMap(dst)
 	for k, srcVal := range src {
 		dstVal, exists := result[k]
@@ -91,8 +91,8 @@ func deepMerge(dst, src map[string]interface{}) map[string]interface{} {
 			result[k] = deepCopy(srcVal)
 			continue
 		}
-		srcMap, srcIsMap := srcVal.(map[string]interface{})
-		dstMap, dstIsMap := dstVal.(map[string]interface{})
+		srcMap, srcIsMap := srcVal.(map[string]any)
+		dstMap, dstIsMap := dstVal.(map[string]any)
 		if srcIsMap && dstIsMap {
 			result[k] = deepMerge(dstMap, srcMap)
 		} else {
@@ -102,23 +102,23 @@ func deepMerge(dst, src map[string]interface{}) map[string]interface{} {
 	return result
 }
 
-func deepCopyMap(m map[string]interface{}) map[string]interface{} {
+func deepCopyMap(m map[string]any) map[string]any {
 	if m == nil {
-		return make(map[string]interface{})
+		return make(map[string]any)
 	}
-	result := make(map[string]interface{}, len(m))
+	result := make(map[string]any, len(m))
 	for k, v := range m {
 		result[k] = deepCopy(v)
 	}
 	return result
 }
 
-func deepCopy(v interface{}) interface{} {
+func deepCopy(v any) any {
 	switch val := v.(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		return deepCopyMap(val)
-	case []interface{}:
-		cp := make([]interface{}, len(val))
+	case []any:
+		cp := make([]any, len(val))
 		for i, item := range val {
 			cp[i] = deepCopy(item)
 		}

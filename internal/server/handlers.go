@@ -18,8 +18,8 @@ const maxTimeoutSeconds = 300
 
 type apiResponse struct {
 	Success bool   `json:"success"`
-	Data    any    `json:"data,omitempty"`
-	Error   string `json:"error,omitempty"`
+	Data    any    `json:"data,omitzero"`
+	Error   string `json:"error,omitzero"`
 }
 
 func (s *Server) registerRoutes(mux *http.ServeMux) {

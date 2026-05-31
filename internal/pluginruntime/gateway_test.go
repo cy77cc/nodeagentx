@@ -181,7 +181,7 @@ func TestMergePluginConfig(t *testing.T) {
 	})
 
 	t.Run("manifest only", func(t *testing.T) {
-		manifestCfg := map[string]interface{}{"key1": "val1", "key2": 42}
+		manifestCfg := map[string]any{"key1": "val1", "key2": 42}
 		result := mergePluginConfig(manifestCfg, nil)
 		if result["key1"] != "val1" {
 			t.Errorf("key1 = %v, want val1", result["key1"])
@@ -192,7 +192,7 @@ func TestMergePluginConfig(t *testing.T) {
 	})
 
 	t.Run("agent only", func(t *testing.T) {
-		agentCfg := map[string]interface{}{"key1": "override"}
+		agentCfg := map[string]any{"key1": "override"}
 		result := mergePluginConfig(nil, agentCfg)
 		if result["key1"] != "override" {
 			t.Errorf("key1 = %v, want override", result["key1"])
@@ -200,8 +200,8 @@ func TestMergePluginConfig(t *testing.T) {
 	})
 
 	t.Run("agent overrides manifest", func(t *testing.T) {
-		manifestCfg := map[string]interface{}{"key1": "original", "key2": 42}
-		agentCfg := map[string]interface{}{"key1": "overridden", "key3": "new"}
+		manifestCfg := map[string]any{"key1": "original", "key2": 42}
+		agentCfg := map[string]any{"key1": "overridden", "key3": "new"}
 		result := mergePluginConfig(manifestCfg, agentCfg)
 		if result["key1"] != "overridden" {
 			t.Errorf("key1 = %v, want overridden", result["key1"])
@@ -215,7 +215,7 @@ func TestMergePluginConfig(t *testing.T) {
 	})
 
 	t.Run("empty maps", func(t *testing.T) {
-		result := mergePluginConfig(map[string]interface{}{}, map[string]interface{}{})
+		result := mergePluginConfig(map[string]any{}, map[string]any{})
 		if result != nil {
 			t.Errorf("expected nil for empty maps, got %v", result)
 		}
@@ -480,8 +480,8 @@ func TestGateway_Callbacks(t *testing.T) {
 		Runtime:    "process",
 	}
 	mp := &ManagedPlugin{
-		Manifest: manifest,
-		Status:   PluginStatusRunning,
+		Manifest:   manifest,
+		Status:     PluginStatusRunning,
 		SocketPath: "/tmp/test.sock",
 	}
 	g.plugins["cb-plugin"] = mp

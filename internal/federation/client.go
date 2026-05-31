@@ -50,10 +50,10 @@ func (lc *LeafClient) IsConnected() bool {
 	return lc.connected
 }
 
-func (lc *LeafClient) HealthStatus() map[string]interface{} {
+func (lc *LeafClient) HealthStatus() map[string]any {
 	lc.mu.RLock()
 	defer lc.mu.RUnlock()
-	return map[string]interface{}{
+	return map[string]any{
 		"connected": lc.connected,
 		"hub_addr":  lc.cfg.HubAddr,
 	}

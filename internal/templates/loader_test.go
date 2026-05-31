@@ -69,7 +69,7 @@ func TestLoaderApply(t *testing.T) {
 	// Verify the http input has the substituted URL.
 	httpInput := result.Inputs[0]
 	assert.Equal(t, "http", httpInput.Type)
-	urls, ok := httpInput.Config["urls"].([]interface{})
+	urls, ok := httpInput.Config["urls"].([]any)
 	require.True(t, ok, "expected urls to be a slice")
 	require.Len(t, urls, 1)
 	assert.Equal(t, "http://10.0.0.1:9090/nginx_status", urls[0])
@@ -77,7 +77,7 @@ func TestLoaderApply(t *testing.T) {
 	// Verify the tail input has the substituted log path.
 	tailInput := result.Inputs[1]
 	assert.Equal(t, "tail", tailInput.Type)
-	files, ok := tailInput.Config["files"].([]interface{})
+	files, ok := tailInput.Config["files"].([]any)
 	require.True(t, ok, "expected files to be a slice")
 	require.Len(t, files, 1)
 	assert.Equal(t, "/custom/nginx/access.log", files[0])
@@ -98,13 +98,13 @@ func TestLoaderApplyDefaults(t *testing.T) {
 
 	// Verify defaults are applied.
 	httpInput := result.Inputs[0]
-	urls, ok := httpInput.Config["urls"].([]interface{})
+	urls, ok := httpInput.Config["urls"].([]any)
 	require.True(t, ok)
 	require.Len(t, urls, 1)
 	assert.Equal(t, "http://127.0.0.1:80/nginx_status", urls[0])
 
 	tailInput := result.Inputs[1]
-	files, ok := tailInput.Config["files"].([]interface{})
+	files, ok := tailInput.Config["files"].([]any)
 	require.True(t, ok)
 	require.Len(t, files, 1)
 	assert.Equal(t, "/var/log/nginx/access.log", files[0])

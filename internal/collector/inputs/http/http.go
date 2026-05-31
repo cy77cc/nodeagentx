@@ -28,12 +28,12 @@ type HTTPInput struct {
 }
 
 // Init parses the plugin configuration.
-func (h *HTTPInput) Init(cfg map[string]interface{}) error {
+func (h *HTTPInput) Init(cfg map[string]any) error {
 	if v, ok := cfg["urls"]; ok {
 		switch urls := v.(type) {
 		case []string:
 			h.URLs = urls
-		case []interface{}:
+		case []any:
 			for _, u := range urls {
 				s, ok := u.(string)
 				if !ok {
@@ -84,7 +84,7 @@ func (h *HTTPInput) Gather(ctx context.Context, acc collector.Accumulator) error
 
 		req, err := http.NewRequestWithContext(ctx, h.Method, url, nil)
 		if err != nil {
-			fields := map[string]interface{}{
+			fields := map[string]any{
 				"error": err.Error(),
 			}
 			acc.AddFields("http", tags, fields)
@@ -96,7 +96,7 @@ func (h *HTTPInput) Gather(ctx context.Context, acc collector.Accumulator) error
 		elapsed := time.Since(start)
 
 		if err != nil {
-			fields := map[string]interface{}{
+			fields := map[string]any{
 				"error": err.Error(),
 			}
 			acc.AddFields("http", tags, fields)
@@ -106,10 +106,10 @@ func (h *HTTPInput) Gather(ctx context.Context, acc collector.Accumulator) error
 		body, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
 
-		fields := map[string]interface{}{
-			"status_code":     resp.StatusCode,
+		fields := map[string]any{
+			"status_code":      resp.StatusCode,
 			"response_time_ms": elapsed.Milliseconds(),
-			"content_length":  len(body),
+			"content_length":   len(body),
 		}
 		acc.AddFields("http", tags, fields)
 	}

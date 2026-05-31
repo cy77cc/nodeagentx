@@ -1,7 +1,8 @@
 package federation
 
 import (
-	"sort"
+	"maps"
+	"slices"
 	"sync"
 )
 
@@ -50,7 +51,7 @@ func (ge *GroupEngine) UpdateLeaf(leaf *LeafState) {
 
 	// Remove from groups no longer matched
 	for _, g := range oldGroups {
-		if !contains(newGroups, g) {
+		if !slices.Contains(newGroups, g) {
 			delete(ge.groupIndex[g], leaf.AgentID)
 			if len(ge.groupIndex[g]) == 0 {
 				delete(ge.groupIndex, g)
@@ -100,11 +101,7 @@ func (ge *GroupEngine) GetGroupMembers(groupName string) []string {
 	if len(members) == 0 {
 		return nil
 	}
-	ids := make([]string, 0, len(members))
-	for id := range members {
-		ids = append(ids, id)
-	}
-	sort.Strings(ids)
+	ids := slices.Sorted(maps.Keys(members))
 	return ids
 }
 
@@ -120,9 +117,7 @@ func (ge *GroupEngine) GetAllLeaves() map[string]*LeafState {
 	ge.mu.RLock()
 	defer ge.mu.RUnlock()
 	result := make(map[string]*LeafState, len(ge.leafStates))
-	for k, v := range ge.leafStates {
-		result[k] = v
-	}
+	maps.Copy(result, ge.leafStates)
 	return result
 }
 
@@ -145,11 +140,3 @@ func matchesAll(labels, match map[string]string) bool {
 	return true
 }
 
-func contains(slice []string, val string) bool {
-	for _, s := range slice {
-		if s == val {
-			return true
-		}
-	}
-	return false
-}

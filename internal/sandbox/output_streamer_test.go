@@ -19,8 +19,8 @@ func TestOutputStreamerFlushBySize(t *testing.T) {
 	os := NewOutputStreamer("t1", "stdout", 10, 10*time.Second, sender)
 	defer os.Stop()
 
-	os.Write([]byte("12345"))      // 5 bytes, below threshold
-	os.Write([]byte("67890abcd"))  // 9 more = 14 total, triggers flush
+	os.Write([]byte("12345"))     // 5 bytes, below threshold
+	os.Write([]byte("67890abcd")) // 9 more = 14 total, triggers flush
 
 	// Give a tiny moment for the flush to propagate.
 	time.Sleep(50 * time.Millisecond)
@@ -130,7 +130,7 @@ func TestOutputStreamerMultipleWrites(t *testing.T) {
 	os := NewOutputStreamer("t6", "stdout", 100, 10*time.Second, sender)
 	defer os.Stop()
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		os.Write([]byte("abcdefghij")) // 10 bytes each
 	}
 	os.Flush()

@@ -13,7 +13,7 @@ import (
 
 func TestGPUInputInit(t *testing.T) {
 	input := &GPUInput{}
-	if err := input.Init(map[string]interface{}{}); err != nil {
+	if err := input.Init(map[string]any{}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 	if input.binPath != "" {
@@ -23,7 +23,7 @@ func TestGPUInputInit(t *testing.T) {
 
 func TestGPUInputInitWithBinPath(t *testing.T) {
 	input := &GPUInput{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"bin_path": "/usr/bin/nvidia-smi",
 	}
 	if err := input.Init(cfg); err != nil {
@@ -36,7 +36,7 @@ func TestGPUInputInitWithBinPath(t *testing.T) {
 
 func TestGPUInputInitInvalidBinPath(t *testing.T) {
 	input := &GPUInput{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"bin_path": 123,
 	}
 	if err := input.Init(cfg); err == nil {

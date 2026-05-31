@@ -18,21 +18,21 @@ const (
 )
 
 type Operation struct {
-	ID           string                   `json:"id"`
-	Type         string                   `json:"type"`
-	TargetGroup  string                   `json:"target_group"`
-	Params       map[string]string        `json:"params"`
-	Status       string                   `json:"status"`
-	LeafResults  map[string]*LeafOpResult `json:"leaf_results"`
-	CreatedAt    time.Time                `json:"created_at"`
-	UpdatedAt    time.Time                `json:"updated_at"`
+	ID          string                   `json:"id"`
+	Type        string                   `json:"type"`
+	TargetGroup string                   `json:"target_group"`
+	Params      map[string]string        `json:"params"`
+	Status      string                   `json:"status"`
+	LeafResults map[string]*LeafOpResult `json:"leaf_results"`
+	CreatedAt   time.Time                `json:"created_at"`
+	UpdatedAt   time.Time                `json:"updated_at"`
 }
 
 type LeafOpResult struct {
 	Status     string    `json:"status"`
-	Error      string    `json:"error,omitempty"`
-	StartedAt  time.Time `json:"started_at,omitempty"`
-	FinishedAt time.Time `json:"finished_at,omitempty"`
+	Error      string    `json:"error,omitzero"`
+	StartedAt  time.Time `json:"started_at"`
+	FinishedAt time.Time `json:"finished_at"`
 }
 
 type OperationStatus struct {

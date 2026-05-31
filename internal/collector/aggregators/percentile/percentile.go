@@ -2,6 +2,7 @@ package percentile
 
 import (
 	"fmt"
+	"maps"
 	"math"
 	"sort"
 	"sync"
@@ -24,9 +25,9 @@ type Aggregator struct {
 }
 
 // Init parses configuration from a map (e.g. from YAML unmarshaling).
-// Expects "fields" as a []interface{} of field name strings,
-// and optionally "percentiles" as a []interface{} of numeric percentile values.
-func (a *Aggregator) Init(cfg map[string]interface{}) error {
+// Expects "fields" as a []any of field name strings,
+// and optionally "percentiles" as a []any of numeric percentile values.
+func (a *Aggregator) Init(cfg map[string]any) error {
 	a.values = make(map[string][]float64)
 	a.tags = make(map[string]string)
 	a.percentiles = make([]float64, len(defaultPercentiles))
@@ -37,7 +38,7 @@ func (a *Aggregator) Init(cfg map[string]interface{}) error {
 	if !ok {
 		return nil
 	}
-	fieldList, ok := raw.([]interface{})
+	fieldList, ok := raw.([]any)
 	if !ok {
 		return fmt.Errorf("percentile: \"fields\" must be a list, got %T", raw)
 	}
@@ -52,7 +53,7 @@ func (a *Aggregator) Init(cfg map[string]interface{}) error {
 
 	// Parse percentiles.
 	if raw, ok := cfg["percentiles"]; ok {
-		pList, ok := raw.([]interface{})
+		pList, ok := raw.([]any)
 		if !ok {
 			return fmt.Errorf("percentile: \"percentiles\" must be a list, got %T", raw)
 		}
@@ -111,9 +112,7 @@ func (a *Aggregator) Add(in *collector.Metric) {
 			if _, ok := metricFields[fname]; ok {
 				a.name = in.Name()
 				tags := in.Tags()
-				for k, v := range tags {
-					a.tags[k] = v
-				}
+				maps.Copy(a.tags, tags)
 				break
 			}
 		}
@@ -129,7 +128,7 @@ func (a *Aggregator) Push(acc collector.Accumulator) {
 		return
 	}
 
-	fields := make(map[string]interface{})
+	fields := make(map[string]any)
 	for _, fname := range a.fields {
 		vals, ok := a.values[fname]
 		if !ok || len(vals) == 0 {

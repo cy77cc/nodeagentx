@@ -12,12 +12,12 @@ import (
 func TestOTLPOutputInit(t *testing.T) {
 	tests := []struct {
 		name    string
-		cfg     map[string]interface{}
+		cfg     map[string]any
 		wantErr bool
 	}{
 		{
 			name: "valid config with all fields",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"endpoint":    "localhost:4317",
 				"protocol":    "grpc",
 				"headers":     map[string]string{"Authorization": "Bearer token"},
@@ -29,7 +29,7 @@ func TestOTLPOutputInit(t *testing.T) {
 		},
 		{
 			name: "valid config with http protocol",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"endpoint": "http://localhost:4318",
 				"protocol": "http",
 			},
@@ -37,21 +37,21 @@ func TestOTLPOutputInit(t *testing.T) {
 		},
 		{
 			name: "missing endpoint",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"protocol": "grpc",
 			},
 			wantErr: true,
 		},
 		{
 			name: "empty endpoint",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"endpoint": "",
 			},
 			wantErr: true,
 		},
 		{
 			name: "endpoint wrong type",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"endpoint": 123,
 			},
 			wantErr: true,
@@ -71,7 +71,7 @@ func TestOTLPOutputInit(t *testing.T) {
 
 func TestOTLPOutputInitDefaults(t *testing.T) {
 	o := &OTLPOutput{}
-	err := o.Init(map[string]interface{}{
+	err := o.Init(map[string]any{
 		"endpoint": "localhost:4317",
 	})
 	if err != nil {
@@ -94,7 +94,7 @@ func TestOTLPOutputInitDefaults(t *testing.T) {
 
 func TestOTLPOutputInitMissingEndpoint(t *testing.T) {
 	o := &OTLPOutput{}
-	err := o.Init(map[string]interface{}{})
+	err := o.Init(map[string]any{})
 	if err == nil {
 		t.Fatal("Init() should return error when endpoint is missing")
 	}
@@ -116,7 +116,7 @@ func TestOTLPOutputSampleConfig(t *testing.T) {
 
 func TestOTLPOutputWriteEmpty(t *testing.T) {
 	o := &OTLPOutput{}
-	if err := o.Init(map[string]interface{}{"endpoint": "localhost:4317"}); err != nil {
+	if err := o.Init(map[string]any{"endpoint": "localhost:4317"}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 
@@ -133,13 +133,13 @@ func TestOTLPOutputWriteEmpty(t *testing.T) {
 
 func TestOTLPOutputWriteStub(t *testing.T) {
 	o := &OTLPOutput{}
-	if err := o.Init(map[string]interface{}{"endpoint": "localhost:4317"}); err != nil {
+	if err := o.Init(map[string]any{"endpoint": "localhost:4317"}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 
 	now := time.Now()
 	metrics := []collector.Metric{
-		*collector.NewMetric("cpu.usage", map[string]string{"host": "s1"}, map[string]interface{}{"value": 50.0}, collector.Gauge, now),
+		*collector.NewMetric("cpu.usage", map[string]string{"host": "s1"}, map[string]any{"value": 50.0}, collector.Gauge, now),
 	}
 
 	// The stub Write should return nil (no-op).
@@ -151,7 +151,7 @@ func TestOTLPOutputWriteStub(t *testing.T) {
 
 func TestOTLPOutputClose(t *testing.T) {
 	o := &OTLPOutput{}
-	if err := o.Init(map[string]interface{}{"endpoint": "localhost:4317"}); err != nil {
+	if err := o.Init(map[string]any{"endpoint": "localhost:4317"}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 	if err := o.Close(); err != nil {

@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	defaultProtocol = "grpc"
+	defaultProtocol  = "grpc"
 	defaultBatchSize = 512
 	defaultTimeout   = 10
 )
@@ -34,7 +34,7 @@ type OTLPOutput struct {
 
 // Init configures the OTLP output from the provided config map.
 // Endpoint is required; all other fields have sensible defaults.
-func (o *OTLPOutput) Init(cfg map[string]interface{}) error {
+func (o *OTLPOutput) Init(cfg map[string]any) error {
 	endpoint, ok := cfg["endpoint"].(string)
 	if !ok || endpoint == "" {
 		return fmt.Errorf("otlp output: endpoint is required")

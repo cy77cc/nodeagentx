@@ -9,9 +9,9 @@ import (
 
 func TestLogParseProcessorInit(t *testing.T) {
 	p := &LogParseProcessor{}
-	cfg := map[string]interface{}{
-		"rules": []interface{}{
-			map[string]interface{}{
+	cfg := map[string]any{
+		"rules": []any{
+			map[string]any{
 				"field":        "message",
 				"parser":       "grok",
 				"grok_pattern": `%{IP:client} %{GREEDYDATA:msg}`,
@@ -31,9 +31,9 @@ func TestLogParseProcessorInit(t *testing.T) {
 
 func TestLogParseApplyGrok(t *testing.T) {
 	p := &LogParseProcessor{}
-	cfg := map[string]interface{}{
-		"rules": []interface{}{
-			map[string]interface{}{
+	cfg := map[string]any{
+		"rules": []any{
+			map[string]any{
 				"field":        "message",
 				"parser":       "grok",
 				"grok_pattern": `%{IP:client} %{WORD:method} %{GREEDYDATA:path}`,
@@ -46,7 +46,7 @@ func TestLogParseApplyGrok(t *testing.T) {
 
 	m := collector.NewMetric("access_log",
 		map[string]string{},
-		map[string]interface{}{
+		map[string]any{
 			"message": "192.168.1.1 GET /index.html",
 		},
 		collector.Gauge, time.Time{})
@@ -70,9 +70,9 @@ func TestLogParseApplyGrok(t *testing.T) {
 
 func TestLogParseApplyJSON(t *testing.T) {
 	p := &LogParseProcessor{}
-	cfg := map[string]interface{}{
-		"rules": []interface{}{
-			map[string]interface{}{
+	cfg := map[string]any{
+		"rules": []any{
+			map[string]any{
 				"field":  "message",
 				"parser": "json",
 			},
@@ -84,7 +84,7 @@ func TestLogParseApplyJSON(t *testing.T) {
 
 	m := collector.NewMetric("app_log",
 		map[string]string{},
-		map[string]interface{}{
+		map[string]any{
 			"message": `{"status":200,"latency_ms":42.5,"path":"/api"}`,
 		},
 		collector.Gauge, time.Time{})
@@ -109,9 +109,9 @@ func TestLogParseApplyJSON(t *testing.T) {
 
 func TestLogParseApplyRegex(t *testing.T) {
 	p := &LogParseProcessor{}
-	cfg := map[string]interface{}{
-		"rules": []interface{}{
-			map[string]interface{}{
+	cfg := map[string]any{
+		"rules": []any{
+			map[string]any{
 				"field":         "message",
 				"parser":        "regex",
 				"regex_pattern": `^(?P<host>\S+) (?P<user>\S+)$`,
@@ -124,7 +124,7 @@ func TestLogParseApplyRegex(t *testing.T) {
 
 	m := collector.NewMetric("login",
 		map[string]string{},
-		map[string]interface{}{
+		map[string]any{
 			"message": "server-01 admin",
 		},
 		collector.Gauge, time.Time{})
@@ -153,14 +153,14 @@ func TestLogParseSampleConfig(t *testing.T) {
 
 func TestLogParseApplyMultipleRules(t *testing.T) {
 	p := &LogParseProcessor{}
-	cfg := map[string]interface{}{
-		"rules": []interface{}{
-			map[string]interface{}{
+	cfg := map[string]any{
+		"rules": []any{
+			map[string]any{
 				"field":        "message",
 				"parser":       "grok",
 				"grok_pattern": `%{IP:client} %{WORD:method}`,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"field":         "client",
 				"parser":        "regex",
 				"regex_pattern": `^(?P<first_octet>\d+)\.\d+\.\d+\.\d+$`,
@@ -173,7 +173,7 @@ func TestLogParseApplyMultipleRules(t *testing.T) {
 
 	m := collector.NewMetric("access",
 		map[string]string{},
-		map[string]interface{}{
+		map[string]any{
 			"message": "10.0.0.1 GET",
 		},
 		collector.Gauge, time.Time{})
@@ -196,9 +196,9 @@ func TestLogParseApplyMultipleRules(t *testing.T) {
 
 func TestLogParseApplyMissingField(t *testing.T) {
 	p := &LogParseProcessor{}
-	cfg := map[string]interface{}{
-		"rules": []interface{}{
-			map[string]interface{}{
+	cfg := map[string]any{
+		"rules": []any{
+			map[string]any{
 				"field":        "nonexistent",
 				"parser":       "grok",
 				"grok_pattern": `%{IP:client}`,
@@ -211,7 +211,7 @@ func TestLogParseApplyMissingField(t *testing.T) {
 
 	m := collector.NewMetric("test",
 		map[string]string{},
-		map[string]interface{}{"value": float64(1)},
+		map[string]any{"value": float64(1)},
 		collector.Gauge, time.Time{})
 
 	result := p.Apply([]*collector.Metric{m})
@@ -227,9 +227,9 @@ func TestLogParseApplyMissingField(t *testing.T) {
 
 func TestLogParseApplyNoMatch(t *testing.T) {
 	p := &LogParseProcessor{}
-	cfg := map[string]interface{}{
-		"rules": []interface{}{
-			map[string]interface{}{
+	cfg := map[string]any{
+		"rules": []any{
+			map[string]any{
 				"field":        "message",
 				"parser":       "grok",
 				"grok_pattern": `%{IP:client}`,
@@ -242,7 +242,7 @@ func TestLogParseApplyNoMatch(t *testing.T) {
 
 	m := collector.NewMetric("test",
 		map[string]string{},
-		map[string]interface{}{
+		map[string]any{
 			"message": "not an ip address",
 		},
 		collector.Gauge, time.Time{})
@@ -262,15 +262,15 @@ func TestLogParseApplyNoMatch(t *testing.T) {
 func TestLogParseProcessorInitErrors(t *testing.T) {
 	tests := []struct {
 		name string
-		cfg  map[string]interface{}
+		cfg  map[string]any
 	}{
-		{"rules wrong type", map[string]interface{}{"rules": "not a list"}},
-		{"rule not a map", map[string]interface{}{"rules": []interface{}{"not a map"}}},
-		{"empty parser", map[string]interface{}{"rules": []interface{}{map[string]interface{}{"field": "message"}}}},
-		{"unknown parser", map[string]interface{}{"rules": []interface{}{map[string]interface{}{"field": "message", "parser": "unknown"}}}},
-		{"grok no pattern", map[string]interface{}{"rules": []interface{}{map[string]interface{}{"field": "message", "parser": "grok"}}}},
-		{"regex empty pattern", map[string]interface{}{"rules": []interface{}{map[string]interface{}{"field": "message", "parser": "regex"}}}},
-		{"invalid regex", map[string]interface{}{"rules": []interface{}{map[string]interface{}{"field": "message", "parser": "regex", "regex_pattern": "[invalid"}}}},
+		{"rules wrong type", map[string]any{"rules": "not a list"}},
+		{"rule not a map", map[string]any{"rules": []any{"not a map"}}},
+		{"empty parser", map[string]any{"rules": []any{map[string]any{"field": "message"}}}},
+		{"unknown parser", map[string]any{"rules": []any{map[string]any{"field": "message", "parser": "unknown"}}}},
+		{"grok no pattern", map[string]any{"rules": []any{map[string]any{"field": "message", "parser": "grok"}}}},
+		{"regex empty pattern", map[string]any{"rules": []any{map[string]any{"field": "message", "parser": "regex"}}}},
+		{"invalid regex", map[string]any{"rules": []any{map[string]any{"field": "message", "parser": "regex", "regex_pattern": "[invalid"}}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

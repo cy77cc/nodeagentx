@@ -55,7 +55,7 @@ func TestApplySingleRule(t *testing.T) {
 
 	m := collector.NewMetric("cpu",
 		map[string]string{"host": "server-01"},
-		map[string]interface{}{"value": float64(42)},
+		map[string]any{"value": float64(42)},
 		collector.Gauge, time.Now())
 
 	result := p.Apply([]*collector.Metric{m})
@@ -79,7 +79,7 @@ func TestApplyMultipleRules(t *testing.T) {
 
 	m := collector.NewMetric("cpu",
 		map[string]string{"host": "srv-01", "env": "prod"},
-		map[string]interface{}{"value": float64(1)},
+		map[string]any{"value": float64(1)},
 		collector.Gauge, time.Now())
 
 	result := p.Apply([]*collector.Metric{m})
@@ -102,7 +102,7 @@ func TestApplyMissingTag(t *testing.T) {
 
 	m := collector.NewMetric("cpu",
 		map[string]string{"host": "server"},
-		map[string]interface{}{"value": float64(1)},
+		map[string]any{"value": float64(1)},
 		collector.Gauge, time.Now())
 
 	result := p.Apply([]*collector.Metric{m})
@@ -121,7 +121,7 @@ func TestApplyEmptyRules(t *testing.T) {
 
 	m := collector.NewMetric("cpu",
 		map[string]string{"host": "server"},
-		map[string]interface{}{"value": float64(1)},
+		map[string]any{"value": float64(1)},
 		collector.Gauge, time.Now())
 
 	result := p.Apply([]*collector.Metric{m})
@@ -144,11 +144,11 @@ func TestApplyMultipleMetrics(t *testing.T) {
 	metrics := []*collector.Metric{
 		collector.NewMetric("cpu",
 			map[string]string{"host": "server-01"},
-			map[string]interface{}{"value": float64(1)},
+			map[string]any{"value": float64(1)},
 			collector.Gauge, time.Now()),
 		collector.NewMetric("mem",
 			map[string]string{"host": "server-02"},
-			map[string]interface{}{"value": float64(2)},
+			map[string]any{"value": float64(2)},
 			collector.Gauge, time.Now()),
 	}
 
@@ -193,7 +193,7 @@ func TestApplyNoMatch(t *testing.T) {
 
 	m := collector.NewMetric("cpu",
 		map[string]string{"host": "server-01"},
-		map[string]interface{}{"value": float64(42)},
+		map[string]any{"value": float64(42)},
 		collector.Gauge, time.Now())
 
 	result := p.Apply([]*collector.Metric{m})
@@ -217,7 +217,7 @@ func TestApplyMultipleRulesSameKeyInOrder(t *testing.T) {
 
 	m := collector.NewMetric("cpu",
 		map[string]string{"host": "server-01"},
-		map[string]interface{}{"value": float64(1)},
+		map[string]any{"value": float64(1)},
 		collector.Gauge, time.Now())
 
 	result := p.Apply([]*collector.Metric{m})
@@ -232,9 +232,9 @@ func TestApplyMultipleRulesSameKeyInOrder(t *testing.T) {
 func TestInitInvalidPattern(t *testing.T) {
 	p, _ := New(Config{})
 
-	cfg := map[string]interface{}{
-		"tags": []interface{}{
-			map[string]interface{}{
+	cfg := map[string]any{
+		"tags": []any{
+			map[string]any{
 				"key":         "host",
 				"pattern":     `[invalid`,
 				"replacement": "x",
@@ -251,9 +251,9 @@ func TestInitInvalidPattern(t *testing.T) {
 func TestInitEmptyKey(t *testing.T) {
 	p, _ := New(Config{})
 
-	cfg := map[string]interface{}{
-		"tags": []interface{}{
-			map[string]interface{}{
+	cfg := map[string]any{
+		"tags": []any{
+			map[string]any{
 				"key":         "",
 				"pattern":     `.*`,
 				"replacement": "x",
@@ -284,7 +284,7 @@ func TestInitNoTagsKey(t *testing.T) {
 	p, _ := New(Config{})
 
 	// Config map without "tags" key — Init should succeed with no rules.
-	cfg := map[string]interface{}{}
+	cfg := map[string]any{}
 
 	err := p.Init(cfg)
 	if err != nil {
@@ -294,7 +294,7 @@ func TestInitNoTagsKey(t *testing.T) {
 	// Apply should be a no-op.
 	m := collector.NewMetric("cpu",
 		map[string]string{"host": "server"},
-		map[string]interface{}{"value": float64(1)},
+		map[string]any{"value": float64(1)},
 		collector.Gauge, time.Now())
 
 	result := p.Apply([]*collector.Metric{m})

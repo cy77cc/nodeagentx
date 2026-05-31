@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -59,7 +60,7 @@ func (p *ProcLayer) Discover(ctx context.Context) ([]Service, error) {
 			pidMap[c.Pid] = info
 		}
 		// Deduplicate ports within the same PID.
-		if !containsPort(info.ports, port) {
+		if !slices.Contains(info.ports, port) {
 			info.ports = append(info.ports, port)
 		}
 	}
@@ -127,12 +128,3 @@ func (p *ProcLayer) readComm(pid int32) string {
 	return strings.TrimSpace(string(data))
 }
 
-// containsPort checks whether a port slice already contains the given port.
-func containsPort(ports []int, port int) bool {
-	for _, p := range ports {
-		if p == port {
-			return true
-		}
-	}
-	return false
-}

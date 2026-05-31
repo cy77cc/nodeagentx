@@ -79,12 +79,14 @@ func (g *Gateway) Start(ctx context.Context) error {
 		g.listener = ln
 		g.logger.Info().Str("addr", g.cfg.ListenAddr).Msg("gateway listener started")
 
-		g.wg.Add(1)
-		go g.acceptLoop()
+		g.wg.Go(func() {
+			g.acceptLoop()
+		})
 	}
 
-	g.wg.Add(1)
-	go g.idleReaper()
+	g.wg.Go(func() {
+		g.idleReaper()
+	})
 
 	// Register proxy hosts.
 	for _, h := range g.cfg.Hosts {
@@ -205,7 +207,6 @@ func (g *Gateway) HandleProxyCommand(ctx context.Context, hostID, command string
 }
 
 func (g *Gateway) acceptLoop() {
-	defer g.wg.Done()
 	for {
 		conn, err := g.listener.Accept()
 		if err != nil {
@@ -217,13 +218,13 @@ func (g *Gateway) acceptLoop() {
 				continue
 			}
 		}
-		g.wg.Add(1)
-		go g.handleIncoming(conn)
+		g.wg.Go(func() {
+			g.handleIncoming(conn)
+		})
 	}
 }
 
 func (g *Gateway) handleIncoming(conn net.Conn) {
-	defer g.wg.Done()
 	defer conn.Close()
 
 	remoteAddr := conn.RemoteAddr().String()
@@ -290,7 +291,6 @@ func (g *Gateway) authenticateConnection(conn net.Conn) error {
 }
 
 func (g *Gateway) idleReaper() {
-	defer g.wg.Done()
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 	for {

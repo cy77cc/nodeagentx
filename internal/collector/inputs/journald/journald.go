@@ -56,7 +56,7 @@ type JournaldInput struct {
 }
 
 // Init parses the config map and sets defaults.
-func (j *JournaldInput) Init(cfg map[string]interface{}) error {
+func (j *JournaldInput) Init(cfg map[string]any) error {
 	j.Priority = "info"
 
 	if j.newJournal == nil {
@@ -70,7 +70,7 @@ func (j *JournaldInput) Init(cfg map[string]interface{}) error {
 	}
 
 	if v, ok := cfg["units"]; ok {
-		arr, ok := v.([]interface{})
+		arr, ok := v.([]any)
 		if !ok {
 			return fmt.Errorf("journald: units must be a list")
 		}
@@ -189,7 +189,7 @@ func (j *JournaldInput) Gather(ctx context.Context, acc collector.Accumulator) e
 
 		ts := time.UnixMicro(int64(entry.RealtimeTimestamp))
 
-		fields := map[string]interface{}{
+		fields := map[string]any{
 			"message": string(entry.Fields["MESSAGE"]),
 		}
 		if pid, ok := entry.Fields["_PID"]; ok {

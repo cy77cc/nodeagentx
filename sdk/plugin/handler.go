@@ -6,7 +6,7 @@ import "context"
 // from the OpsAgent PluginGateway.
 type Handler interface {
 	// Init is called once when the plugin starts. cfg may be nil.
-	Init(cfg map[string]interface{}) error
+	Init(cfg map[string]any) error
 
 	// TaskTypes returns the list of task type strings this handler supports.
 	TaskTypes() []string

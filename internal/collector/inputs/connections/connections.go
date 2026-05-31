@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/rs/zerolog/log"
 	"github.com/shirou/gopsutil/v4/net"
@@ -22,10 +23,10 @@ type ConnectionsInput struct {
 	states []string
 }
 
-func (c *ConnectionsInput) Init(cfg map[string]interface{}) error {
+func (c *ConnectionsInput) Init(cfg map[string]any) error {
 	if v, ok := cfg["states"]; ok {
 		switch states := v.(type) {
-		case []interface{}:
+		case []any:
 			for _, item := range states {
 				s, ok := item.(string)
 				if !ok {
@@ -71,13 +72,7 @@ func (c *ConnectionsInput) Gather(ctx context.Context, acc collector.Accumulator
 	for protocol, stateCounts := range counts {
 		for state, count := range stateCounts {
 			if len(c.states) > 0 {
-				found := false
-				for _, s := range c.states {
-					if s == state {
-						found = true
-						break
-					}
-				}
+				found := slices.Contains(c.states, state)
 				if !found {
 					continue
 				}
@@ -87,7 +82,7 @@ func (c *ConnectionsInput) Gather(ctx context.Context, acc collector.Accumulator
 				"state":    state,
 				"protocol": protocol,
 			}
-			fields := map[string]interface{}{
+			fields := map[string]any{
 				"count_by_state": int64(count),
 			}
 			acc.AddGauge("connections", tags, fields)

@@ -46,9 +46,7 @@ func (g *Gateway) startWatcher() error {
 		timers:   make(map[string]*time.Timer),
 	}
 
-	g.wg.Add(1)
-	go func() {
-		defer g.wg.Done()
+	g.wg.Go(func() {
 		defer watcher.Close()
 
 		for {
@@ -67,7 +65,7 @@ func (g *Gateway) startWatcher() error {
 				g.logger.Error().Err(err).Msg("file watcher error")
 			}
 		}
-	}()
+	})
 
 	return nil
 }

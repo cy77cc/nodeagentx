@@ -30,7 +30,7 @@ func TestApplyStaticTags(t *testing.T) {
 
 	m := collector.NewMetric("cpu",
 		map[string]string{"host": "server-01"},
-		map[string]interface{}{"value": float64(42)},
+		map[string]any{"value": float64(42)},
 		collector.Gauge, time.Now())
 
 	result := p.Apply([]*collector.Metric{m})
@@ -60,13 +60,13 @@ func TestApplyConditionalTags(t *testing.T) {
 	// Matching metric name - condition should apply.
 	m1 := collector.NewMetric("disk_usage",
 		map[string]string{"host": "server-01"},
-		map[string]interface{}{"value": float64(90)},
+		map[string]any{"value": float64(90)},
 		collector.Gauge, time.Now())
 
 	// Non-matching metric name - condition should not apply.
 	m2 := collector.NewMetric("cpu_usage",
 		map[string]string{"host": "server-01"},
-		map[string]interface{}{"value": float64(50)},
+		map[string]any{"value": float64(50)},
 		collector.Gauge, time.Now())
 
 	result := p.Apply([]*collector.Metric{m1, m2})
@@ -92,7 +92,7 @@ func TestApplyStaticAndConditional(t *testing.T) {
 
 	m := collector.NewMetric("disk",
 		map[string]string{"host": "server-01"},
-		map[string]interface{}{"value": float64(95)},
+		map[string]any{"value": float64(95)},
 		collector.Gauge, time.Now())
 
 	result := p.Apply([]*collector.Metric{m})
@@ -116,17 +116,17 @@ func TestApplyMultipleConditions(t *testing.T) {
 
 	m1 := collector.NewMetric("http_requests",
 		map[string]string{},
-		map[string]interface{}{"count": int64(100)},
+		map[string]any{"count": int64(100)},
 		collector.Counter, time.Now())
 
 	m2 := collector.NewMetric("db_queries",
 		map[string]string{},
-		map[string]interface{}{"count": int64(50)},
+		map[string]any{"count": int64(50)},
 		collector.Counter, time.Now())
 
 	m3 := collector.NewMetric("cpu",
 		map[string]string{},
-		map[string]interface{}{"value": float64(50)},
+		map[string]any{"value": float64(50)},
 		collector.Gauge, time.Now())
 
 	result := p.Apply([]*collector.Metric{m1, m2, m3})
@@ -147,7 +147,7 @@ func TestApplyEmptyConfig(t *testing.T) {
 
 	m := collector.NewMetric("cpu",
 		map[string]string{"host": "server"},
-		map[string]interface{}{"value": float64(1)},
+		map[string]any{"value": float64(1)},
 		collector.Gauge, time.Now())
 
 	result := p.Apply([]*collector.Metric{m})
@@ -186,7 +186,7 @@ func TestApplyNilMetricInSlice(t *testing.T) {
 
 	m := collector.NewMetric("cpu",
 		map[string]string{"host": "server"},
-		map[string]interface{}{"value": float64(1)},
+		map[string]any{"value": float64(1)},
 		collector.Gauge, time.Now())
 
 	// A nil metric in the slice causes a panic because Apply calls m.AddTag
@@ -208,7 +208,7 @@ func TestApplyEmptyTagsMap(t *testing.T) {
 	// Metric with no existing tags (empty map).
 	m := collector.NewMetric("cpu",
 		map[string]string{},
-		map[string]interface{}{"value": float64(42)},
+		map[string]any{"value": float64(42)},
 		collector.Gauge, time.Now())
 
 	result := p.Apply([]*collector.Metric{m})
@@ -237,7 +237,7 @@ func TestApplyTagOverride(t *testing.T) {
 	// Metric already has "env" and "host" tags — static tags should override them.
 	m := collector.NewMetric("cpu",
 		map[string]string{"env": "development", "host": "old-host"},
-		map[string]interface{}{"value": float64(42)},
+		map[string]any{"value": float64(42)},
 		collector.Gauge, time.Now())
 
 	result := p.Apply([]*collector.Metric{m})
@@ -261,13 +261,13 @@ func TestApplyConditionWhenNameExactMatch(t *testing.T) {
 	// Metric name exactly matches WhenName — condition should apply.
 	mMatch := collector.NewMetric("disk",
 		map[string]string{},
-		map[string]interface{}{"value": float64(90)},
+		map[string]any{"value": float64(90)},
 		collector.Gauge, time.Now())
 
 	// Metric name contains but is not equal to WhenName — condition should NOT apply.
 	mPartial := collector.NewMetric("disk_io",
 		map[string]string{},
-		map[string]interface{}{"value": float64(50)},
+		map[string]any{"value": float64(50)},
 		collector.Gauge, time.Now())
 
 	result := p.Apply([]*collector.Metric{mMatch, mPartial})
@@ -293,13 +293,13 @@ func TestApplyEmptySlice(t *testing.T) {
 
 func TestInitHappyPath(t *testing.T) {
 	p := &Processor{}
-	cfg := map[string]interface{}{
-		"tags": map[string]interface{}{
+	cfg := map[string]any{
+		"tags": map[string]any{
 			"env":    "production",
 			"region": "us-east-1",
 		},
-		"conditions": []interface{}{
-			map[string]interface{}{
+		"conditions": []any{
+			map[string]any{
 				"tag":       "critical",
 				"value":     "true",
 				"when_name": "disk_usage",
@@ -337,7 +337,7 @@ func TestInitHappyPath(t *testing.T) {
 
 func TestInitTagsNotAMap(t *testing.T) {
 	p := &Processor{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"tags": "not-a-map",
 	}
 
@@ -352,7 +352,7 @@ func TestInitTagsNotAMap(t *testing.T) {
 
 func TestInitConditionsNotAList(t *testing.T) {
 	p := &Processor{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"conditions": "not-a-list",
 	}
 
@@ -367,8 +367,8 @@ func TestInitConditionsNotAList(t *testing.T) {
 
 func TestInitConditionEntryNotAMap(t *testing.T) {
 	p := &Processor{}
-	cfg := map[string]interface{}{
-		"conditions": []interface{}{
+	cfg := map[string]any{
+		"conditions": []any{
 			"not-a-map",
 		},
 	}
@@ -384,9 +384,9 @@ func TestInitConditionEntryNotAMap(t *testing.T) {
 
 func TestInitConditionEntryNotAMapAtIndex(t *testing.T) {
 	p := &Processor{}
-	cfg := map[string]interface{}{
-		"conditions": []interface{}{
-			map[string]interface{}{"tag": "a", "value": "1", "when_name": "x"},
+	cfg := map[string]any{
+		"conditions": []any{
+			map[string]any{"tag": "a", "value": "1", "when_name": "x"},
 			42,
 		},
 	}
@@ -402,8 +402,8 @@ func TestInitConditionEntryNotAMapAtIndex(t *testing.T) {
 
 func TestInitOnlyTags(t *testing.T) {
 	p := &Processor{}
-	cfg := map[string]interface{}{
-		"tags": map[string]interface{}{
+	cfg := map[string]any{
+		"tags": map[string]any{
 			"env": "staging",
 		},
 	}
@@ -425,9 +425,9 @@ func TestInitOnlyTags(t *testing.T) {
 
 func TestInitOnlyConditions(t *testing.T) {
 	p := &Processor{}
-	cfg := map[string]interface{}{
-		"conditions": []interface{}{
-			map[string]interface{}{
+	cfg := map[string]any{
+		"conditions": []any{
+			map[string]any{
 				"tag":       "alert",
 				"value":     "high",
 				"when_name": "cpu",
@@ -452,7 +452,7 @@ func TestInitOnlyConditions(t *testing.T) {
 
 func TestInitEmptyConfig(t *testing.T) {
 	p := &Processor{}
-	cfg := map[string]interface{}{}
+	cfg := map[string]any{}
 
 	if err := p.Init(cfg); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -468,8 +468,8 @@ func TestInitEmptyConfig(t *testing.T) {
 
 func TestInitTagsValueConvertedToString(t *testing.T) {
 	p := &Processor{}
-	cfg := map[string]interface{}{
-		"tags": map[string]interface{}{
+	cfg := map[string]any{
+		"tags": map[string]any{
 			"count": 42,
 			"rate":  3.14,
 			"ok":    true,

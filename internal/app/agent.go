@@ -703,7 +703,7 @@ func (a *Agent) Run(ctx context.Context) error {
 	a.auditLog.Log(AuditEvent{
 		EventType: "agent.started", Component: "agent",
 		Action: "start", Status: "success",
-		Details: map[string]interface{}{"agent_id": a.cfg.Agent.ID},
+		Details: map[string]any{"agent_id": a.cfg.Agent.ID},
 	})
 	a.eventLoop(ctx, pipelineCh, errCh)
 
@@ -773,7 +773,7 @@ func (a *Agent) withTaskMiddleware(taskType string, handler task.Handler) task.H
 			a.auditLog.Log(AuditEvent{
 				EventType: "task.failed", Component: "dispatcher",
 				Action: taskType, Status: "failure",
-				Details: map[string]interface{}{"task_id": t.TaskID},
+				Details: map[string]any{"task_id": t.TaskID},
 				Error:   "agent is shutting down",
 			})
 			return nil, fmt.Errorf("agent is shutting down")
@@ -782,7 +782,7 @@ func (a *Agent) withTaskMiddleware(taskType string, handler task.Handler) task.H
 		a.auditLog.Log(AuditEvent{
 			EventType: "task.started", Component: "dispatcher",
 			Action: taskType, Status: "success",
-			Details: map[string]interface{}{"task_id": t.TaskID},
+			Details: map[string]any{"task_id": t.TaskID},
 		})
 		a.metricsReg.TasksRunning.Inc()
 		defer a.metricsReg.TasksRunning.Dec()
@@ -793,7 +793,7 @@ func (a *Agent) withTaskMiddleware(taskType string, handler task.Handler) task.H
 			a.auditLog.Log(AuditEvent{
 				EventType: "task.failed", Component: "dispatcher",
 				Action: taskType, Status: "failure",
-				Details: map[string]interface{}{"task_id": t.TaskID},
+				Details: map[string]any{"task_id": t.TaskID},
 				Error:   err.Error(),
 			})
 			return nil, err
@@ -803,7 +803,7 @@ func (a *Agent) withTaskMiddleware(taskType string, handler task.Handler) task.H
 		a.auditLog.Log(AuditEvent{
 			EventType: "task.completed", Component: "dispatcher",
 			Action: taskType, Status: "success",
-			Details: map[string]interface{}{"task_id": t.TaskID},
+			Details: map[string]any{"task_id": t.TaskID},
 		})
 		return res, nil
 	}
@@ -872,7 +872,7 @@ func (a *Agent) registerTaskHandlers(dispatcher *task.Dispatcher) {
 		a.auditLog.Log(AuditEvent{
 			EventType: "task.started", Component: "dispatcher",
 			Action: "health_check", Status: "success",
-			Details: map[string]interface{}{"task_id": t.TaskID},
+			Details: map[string]any{"task_id": t.TaskID},
 		})
 		return map[string]any{
 			"status":            "ok",
@@ -1075,7 +1075,7 @@ func (a *Agent) registerGRPCHandlers(recv *grpcclient.Receiver) {
 			a.auditLog.Log(AuditEvent{
 				EventType: "task.cancelled", Component: "dispatcher",
 				Action: "cancel", Status: "success",
-				Details: map[string]interface{}{"task_id": taskID},
+				Details: map[string]any{"task_id": taskID},
 			})
 			a.log.Info().Str("task_id", taskID).Msg("cancel job executed")
 		} else {
@@ -1103,7 +1103,7 @@ func (a *Agent) registerGRPCHandlers(recv *grpcclient.Receiver) {
 		a.auditLog.Log(AuditEvent{
 			EventType: "config.reloaded", Component: "agent",
 			Action: "hot_reload", Status: "success",
-			Details: map[string]interface{}{"version": update.GetVersion()},
+			Details: map[string]any{"version": update.GetVersion()},
 		})
 		a.grpcClient.SendExecResult(&grpcclient.ExecResult{
 			TaskID: fmt.Sprintf("config-update-%d", update.GetVersion()),
@@ -1124,7 +1124,7 @@ func (a *Agent) registerGRPCHandlers(recv *grpcclient.Receiver) {
 		a.auditLog.Log(AuditEvent{
 			EventType: "health_check.started", Component: "checker",
 			Action: "health_check", Status: "success",
-			Details: map[string]interface{}{"request_id": req.RequestId, "item_count": len(req.Items)},
+			Details: map[string]any{"request_id": req.RequestId, "item_count": len(req.Items)},
 		})
 
 		start := time.Now()
@@ -1135,7 +1135,7 @@ func (a *Agent) registerGRPCHandlers(recv *grpcclient.Receiver) {
 		a.auditLog.Log(AuditEvent{
 			EventType: "health_check.completed", Component: "checker",
 			Action: "health_check", Status: "success",
-			Details: map[string]interface{}{
+			Details: map[string]any{
 				"request_id": req.RequestId,
 				"duration_ms": time.Since(start).Milliseconds(),
 			},
@@ -1153,7 +1153,7 @@ func (a *Agent) registerGRPCHandlers(recv *grpcclient.Receiver) {
 			a.auditLog.Log(AuditEvent{
 				EventType: "gateway.tunnel.close", Component: "gateway",
 				Action: "tunnel_close", Status: "success",
-				Details: map[string]interface{}{"tunnel_id": tunnelID, "reason": reason},
+				Details: map[string]any{"tunnel_id": tunnelID, "reason": reason},
 			})
 			return a.gateway.HandleTunnelClose(tunnelID, reason)
 		})
@@ -1161,7 +1161,7 @@ func (a *Agent) registerGRPCHandlers(recv *grpcclient.Receiver) {
 			a.auditLog.Log(AuditEvent{
 				EventType: "gateway.proxy.exec", Component: "gateway",
 				Action: "proxy_command", Status: "started",
-				Details: map[string]interface{}{"host_id": hostID, "command": command},
+				Details: map[string]any{"host_id": hostID, "command": command},
 			})
 			return a.gateway.HandleProxyCommand(ctx, hostID, command, args, timeoutSec)
 		})

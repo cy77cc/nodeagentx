@@ -1,9 +1,10 @@
 package process
 
 import (
+	"cmp"
 	"context"
 	"fmt"
-	"sort"
+	"slices"
 
 	"github.com/shirou/gopsutil/v4/process"
 
@@ -29,7 +30,7 @@ type ProcessInput struct {
 	topN int
 }
 
-func (p *ProcessInput) Init(cfg map[string]interface{}) error {
+func (p *ProcessInput) Init(cfg map[string]any) error {
 	p.topN = 10 // default
 
 	if v, ok := cfg["top_n"]; ok {
@@ -59,7 +60,7 @@ func (p *ProcessInput) Gather(ctx context.Context, acc collector.Accumulator) er
 	totalCount := len(pids)
 
 	// Emit summary metric
-	acc.AddGauge("process_summary", nil, map[string]interface{}{
+	acc.AddGauge("process_summary", nil, map[string]any{
 		"total_count": int64(totalCount),
 	})
 
@@ -110,22 +111,19 @@ func (p *ProcessInput) Gather(ctx context.Context, acc collector.Accumulator) er
 	}
 
 	// Sort by CPU percent descending
-	sort.Slice(infos, func(i, j int) bool {
-		return infos[i].cpuPercent > infos[j].cpuPercent
+	slices.SortFunc(infos, func(a, b processInfo) int {
+		return cmp.Compare(b.cpuPercent, a.cpuPercent) // descending
 	})
 
 	// Emit top N
-	limit := p.topN
-	if limit > len(infos) {
-		limit = len(infos)
-	}
-	for i := 0; i < limit; i++ {
+	limit := min(p.topN, len(infos))
+	for i := range limit {
 		info := infos[i]
 		tags := map[string]string{
 			"pid":  fmt.Sprintf("%d", info.pid),
 			"name": info.name,
 		}
-		fields := map[string]interface{}{
+		fields := map[string]any{
 			"cpu_percent":   info.cpuPercent,
 			"mem_percent":   float64(info.memPercent),
 			"mem_rss_bytes": int64(info.memRSS),

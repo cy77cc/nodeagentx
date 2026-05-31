@@ -54,7 +54,7 @@ func (c *MetricCache) Drain() []*collector.Metric {
 	}
 
 	result := make([]*collector.Metric, c.count)
-	for i := 0; i < c.count; i++ {
+	for i := range c.count {
 		idx := (c.tail + i) % c.maxSize
 		result[i] = c.buf[idx]
 		c.buf[idx] = nil // allow GC

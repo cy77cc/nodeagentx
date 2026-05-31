@@ -299,7 +299,7 @@ func TestAgentRun_ForwardsPipelineMetrics(t *testing.T) {
 		collector.NewMetric(
 			"cpu_usage",
 			map[string]string{"host": "test"},
-			map[string]interface{}{"value": float64(75.5)},
+			map[string]any{"value": float64(75.5)},
 			collector.Gauge,
 			time.Now(),
 		),
@@ -582,7 +582,7 @@ func TestRunOnce_Success(t *testing.T) {
 		collector.NewMetric(
 			"test_metric",
 			map[string]string{"host": "test"},
-			map[string]interface{}{"value": float64(42)},
+			map[string]any{"value": float64(42)},
 			collector.Gauge,
 			time.Now(),
 		),
@@ -883,7 +883,7 @@ func TestBuildScheduler_UnknownInputType(t *testing.T) {
 		Agent: config.AgentConfig{IntervalSeconds: 10},
 		Collector: config.CollectorConfig{
 			Inputs: []config.PluginInstanceConfig{
-				{Type: "nonexistent_input_type_xyz", Config: map[string]interface{}{}},
+				{Type: "nonexistent_input_type_xyz", Config: map[string]any{}},
 			},
 		},
 	}
@@ -901,10 +901,10 @@ func TestBuildScheduler_UnknownProcessorType(t *testing.T) {
 		Agent: config.AgentConfig{IntervalSeconds: 10},
 		Collector: config.CollectorConfig{
 			Inputs: []config.PluginInstanceConfig{
-				{Type: "cpu", Config: map[string]interface{}{}},
+				{Type: "cpu", Config: map[string]any{}},
 			},
 			Processors: []config.PluginInstanceConfig{
-				{Type: "nonexistent_processor_xyz", Config: map[string]interface{}{}},
+				{Type: "nonexistent_processor_xyz", Config: map[string]any{}},
 			},
 		},
 	}
@@ -922,10 +922,10 @@ func TestBuildScheduler_UnknownAggregatorType(t *testing.T) {
 		Agent: config.AgentConfig{IntervalSeconds: 10},
 		Collector: config.CollectorConfig{
 			Inputs: []config.PluginInstanceConfig{
-				{Type: "cpu", Config: map[string]interface{}{}},
+				{Type: "cpu", Config: map[string]any{}},
 			},
 			Aggregators: []config.PluginInstanceConfig{
-				{Type: "nonexistent_aggregator_xyz", Config: map[string]interface{}{}},
+				{Type: "nonexistent_aggregator_xyz", Config: map[string]any{}},
 			},
 		},
 	}
@@ -943,10 +943,10 @@ func TestBuildScheduler_UnknownOutputType(t *testing.T) {
 		Agent: config.AgentConfig{IntervalSeconds: 10},
 		Collector: config.CollectorConfig{
 			Inputs: []config.PluginInstanceConfig{
-				{Type: "cpu", Config: map[string]interface{}{}},
+				{Type: "cpu", Config: map[string]any{}},
 			},
 			Outputs: []config.PluginInstanceConfig{
-				{Type: "nonexistent_output_xyz", Config: map[string]interface{}{}},
+				{Type: "nonexistent_output_xyz", Config: map[string]any{}},
 			},
 		},
 	}
@@ -1810,10 +1810,10 @@ func TestBuildScheduler_InitInputError(t *testing.T) {
 		Agent: config.AgentConfig{IntervalSeconds: 10},
 		Collector: config.CollectorConfig{
 			Inputs: []config.PluginInstanceConfig{
-				{Type: "cpu", Config: map[string]interface{}{}},
+				{Type: "cpu", Config: map[string]any{}},
 			},
 			Outputs: []config.PluginInstanceConfig{
-				{Type: "http", Config: map[string]interface{}{"url": "http://localhost:9999/metrics"}},
+				{Type: "http", Config: map[string]any{"url": "http://localhost:9999/metrics"}},
 			},
 		},
 	}
@@ -2411,10 +2411,10 @@ func TestBuildScheduler_ProcessorInitError(t *testing.T) {
 		Agent: config.AgentConfig{IntervalSeconds: 10},
 		Collector: config.CollectorConfig{
 			Inputs: []config.PluginInstanceConfig{
-				{Type: "cpu", Config: map[string]interface{}{}},
+				{Type: "cpu", Config: map[string]any{}},
 			},
 			Processors: []config.PluginInstanceConfig{
-				{Type: "regex", Config: map[string]interface{}{"tags": "not-a-list"}},
+				{Type: "regex", Config: map[string]any{"tags": "not-a-list"}},
 			},
 		},
 	}
@@ -2432,10 +2432,10 @@ func TestBuildScheduler_AggregatorInitError(t *testing.T) {
 		Agent: config.AgentConfig{IntervalSeconds: 10},
 		Collector: config.CollectorConfig{
 			Inputs: []config.PluginInstanceConfig{
-				{Type: "cpu", Config: map[string]interface{}{}},
+				{Type: "cpu", Config: map[string]any{}},
 			},
 			Aggregators: []config.PluginInstanceConfig{
-				{Type: "avg", Config: map[string]interface{}{"fields": "not-a-list"}},
+				{Type: "avg", Config: map[string]any{"fields": "not-a-list"}},
 			},
 		},
 	}
@@ -2453,10 +2453,10 @@ func TestBuildScheduler_OutputInitError(t *testing.T) {
 		Agent: config.AgentConfig{IntervalSeconds: 10},
 		Collector: config.CollectorConfig{
 			Inputs: []config.PluginInstanceConfig{
-				{Type: "cpu", Config: map[string]interface{}{}},
+				{Type: "cpu", Config: map[string]any{}},
 			},
 			Outputs: []config.PluginInstanceConfig{
-				{Type: "http", Config: map[string]interface{}{"url": 12345}}, // url must be string
+				{Type: "http", Config: map[string]any{"url": 12345}}, // url must be string
 			},
 		},
 	}
@@ -2657,17 +2657,15 @@ func TestAuditLogger_MultipleWrites(t *testing.T) {
 
 	// Write many events to test the logger under concurrent access.
 	var wg sync.WaitGroup
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
+	for i := range 100 {
+		wg.Go(func() {
 			al.Log(AuditEvent{
 				EventType: fmt.Sprintf("event.%d", i),
 				Component: "test",
 				Action:    "write",
 				Status:    "success",
 			})
-		}(i)
+		})
 	}
 	wg.Wait()
 }
@@ -2717,7 +2715,7 @@ func TestEventLoop_PipelineMetrics(t *testing.T) {
 		collector.NewMetric(
 			"test",
 			map[string]string{"host": "test"},
-			map[string]interface{}{"value": float64(1)},
+			map[string]any{"value": float64(1)},
 			collector.Gauge,
 			time.Now(),
 		),

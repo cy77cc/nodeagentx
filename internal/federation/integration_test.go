@@ -1,7 +1,6 @@
 package federation
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -15,8 +14,8 @@ func TestIntegration_HubLeafRegistration(t *testing.T) {
 		{Name: "prod", Match: map[string]string{"env": "prod"}},
 	})
 	cd := NewConfigDistributor(ConfigLevels{
-		Global: map[string]interface{}{
-			"collector": map[string]interface{}{"interval_seconds": 30},
+		Global: map[string]any{
+			"collector": map[string]any{"interval_seconds": 30},
 		},
 	}, ge)
 
@@ -25,12 +24,11 @@ func TestIntegration_HubLeafRegistration(t *testing.T) {
 		Region:       "us-east",
 		MaxLeaves:    10,
 		Groups:       []GroupRule{{Name: "prod", Match: map[string]string{"env": "prod"}}},
-		ConfigLevels: ConfigLevels{Global: map[string]interface{}{"key": "value"}},
+		ConfigLevels: ConfigLevels{Global: map[string]any{"key": "value"}},
 		Logger:       zerolog.Nop(),
 	})
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	go hub.Start(ctx)
 	time.Sleep(100 * time.Millisecond)
@@ -88,27 +86,27 @@ func TestIntegration_GroupDynamicUpdate(t *testing.T) {
 
 func TestIntegration_ConfigInheritance(t *testing.T) {
 	cd := NewConfigDistributor(ConfigLevels{
-		Global: map[string]interface{}{
-			"collector": map[string]interface{}{
+		Global: map[string]any{
+			"collector": map[string]any{
 				"interval_seconds": 30,
-				"inputs":           []interface{}{"cpu", "memory"},
+				"inputs":           []any{"cpu", "memory"},
 			},
 		},
-		Regions: map[string]map[string]interface{}{
-			"us-east": {"collector": map[string]interface{}{"interval_seconds": 15}},
+		Regions: map[string]map[string]any{
+			"us-east": {"collector": map[string]any{"interval_seconds": 15}},
 		},
-		Groups: map[string]map[string]interface{}{
-			"prod-web": {"collector": map[string]interface{}{"inputs": []interface{}{"cpu", "memory", "net", "http"}}},
+		Groups: map[string]map[string]any{
+			"prod-web": {"collector": map[string]any{"inputs": []any{"cpu", "memory", "net", "http"}}},
 		},
-		Agents: map[string]map[string]interface{}{
-			"agent-001": {"collector": map[string]interface{}{"interval_seconds": 5}},
+		Agents: map[string]map[string]any{
+			"agent-001": {"collector": map[string]any{"interval_seconds": 5}},
 		},
 	}, NewGroupEngine(nil))
 
 	cfg, err := cd.ResolveConfig("agent-001", "us-east", []string{"prod-web"})
 	require.NoError(t, err)
 
-	collector := cfg["collector"].(map[string]interface{})
+	collector := cfg["collector"].(map[string]any)
 	assert.Equal(t, 5, collector["interval_seconds"])
-	assert.Equal(t, []interface{}{"cpu", "memory", "net", "http"}, collector["inputs"])
+	assert.Equal(t, []any{"cpu", "memory", "net", "http"}, collector["inputs"])
 }

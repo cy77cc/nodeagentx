@@ -32,14 +32,14 @@ type TailInput struct {
 }
 
 // Init parses the config map and sets defaults.
-func (t *TailInput) Init(cfg map[string]interface{}) error {
+func (t *TailInput) Init(cfg map[string]any) error {
 	// Defaults
 	t.WatchMethod = "poll"
 	t.MaxLineBytes = 65536
 	t.offsets = make(map[string]int64)
 
 	if v, ok := cfg["files"]; ok {
-		fileSlice, ok := v.([]interface{})
+		fileSlice, ok := v.([]any)
 		if !ok {
 			return fmt.Errorf("tail: files must be a list, got %T", v)
 		}
@@ -237,7 +237,7 @@ func (t *TailInput) gatherFile(path string, acc collector.Accumulator) error {
 	for scanner.Scan() {
 		line := scanner.Text()
 		tags := map[string]string{"file": path}
-		fields := map[string]interface{}{"message": line}
+		fields := map[string]any{"message": line}
 		acc.AddGauge("tail", tags, fields)
 	}
 

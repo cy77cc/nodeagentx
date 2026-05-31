@@ -92,11 +92,9 @@ func ServeWithOptions(handler Handler, opts ...Option) error {
 				o.Logger.Debug("accept stopped", "error", err)
 				return
 			}
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				handleConnection(conn, handler, o.Logger)
-			}()
+			})
 		}
 	}()
 
@@ -178,7 +176,7 @@ func handleConnection(conn net.Conn, handler Handler, logger *slog.Logger) {
 }
 
 // writeResult writes a successful JSON-RPC response to conn.
-func writeResult(conn net.Conn, id interface{}, result interface{}) {
+func writeResult(conn net.Conn, id any, result any) {
 	resp := rpcResponse{
 		ID:     id,
 		Result: result,
@@ -187,7 +185,7 @@ func writeResult(conn net.Conn, id interface{}, result interface{}) {
 }
 
 // writeError writes an error JSON-RPC response to conn.
-func writeError(conn net.Conn, id interface{}, code int, msg string) {
+func writeError(conn net.Conn, id any, code int, msg string) {
 	resp := rpcResponse{
 		ID: id,
 		Error: &rpcError{
@@ -199,7 +197,7 @@ func writeError(conn net.Conn, id interface{}, code int, msg string) {
 }
 
 // writeJSON marshals v and writes it as a newline-delimited line to conn.
-func writeJSON(conn net.Conn, v interface{}) {
+func writeJSON(conn net.Conn, v any) {
 	data, err := json.Marshal(v)
 	if err != nil {
 		return

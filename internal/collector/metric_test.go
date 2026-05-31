@@ -9,7 +9,7 @@ import (
 
 func TestMetricNew(t *testing.T) {
 	tags := map[string]string{"host": "server1", "env": "prod"}
-	fields := map[string]interface{}{
+	fields := map[string]any{
 		"cpu":    75.5,
 		"memory": int64(1024),
 		"name":   "test",
@@ -60,7 +60,7 @@ func TestMetricAddTag(t *testing.T) {
 }
 
 func TestMetricAddField(t *testing.T) {
-	m := NewMetric("test", map[string]string{}, map[string]interface{}{"existing": "value"}, Gauge, time.Time{})
+	m := NewMetric("test", map[string]string{}, map[string]any{"existing": "value"}, Gauge, time.Time{})
 	m.AddField("new_field", 42)
 	m.AddField("existing", "updated")
 
@@ -77,7 +77,7 @@ func TestMetricToProto(t *testing.T) {
 	ts := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	m := NewMetric("cpu.usage",
 		map[string]string{"host": "server1"},
-		map[string]interface{}{
+		map[string]any{
 			"cpu":    75.5,
 			"memory": int64(1024),
 			"name":   "test",
@@ -106,7 +106,7 @@ func TestMetricToProto(t *testing.T) {
 	}
 
 	// Verify field values by key
-	fieldMap := make(map[string]interface{})
+	fieldMap := make(map[string]any)
 	for _, f := range p.GetFields() {
 		switch v := f.GetValue().(type) {
 		case *pb.Field_DoubleValue:
@@ -136,7 +136,7 @@ func TestMetricToProto(t *testing.T) {
 
 func TestMetricCopyIsolation(t *testing.T) {
 	origTags := map[string]string{"a": "1"}
-	origFields := map[string]interface{}{"x": 1.0}
+	origFields := map[string]any{"x": 1.0}
 
 	m := NewMetric("test", origTags, origFields, Gauge, time.Now())
 

@@ -19,8 +19,8 @@ type ChangeSet struct {
 // NonReloadableChange records a change to a field that requires restart.
 type NonReloadableChange struct {
 	Field  string
-	OldVal interface{}
-	NewVal interface{}
+	OldVal any
+	NewVal any
 }
 
 // Diff compares old and new configs, returning a ChangeSet for reloadable

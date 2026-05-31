@@ -25,7 +25,7 @@ type GPUInput struct {
 	timeout   time.Duration
 }
 
-func (g *GPUInput) Init(cfg map[string]interface{}) error {
+func (g *GPUInput) Init(cfg map[string]any) error {
 	g.timeout = 5 * time.Second
 
 	if v, ok := cfg["bin_path"]; ok {
@@ -75,8 +75,8 @@ func (g *GPUInput) Gather(ctx context.Context, acc collector.Accumulator) error 
 		return fmt.Errorf("gpu: nvidia-smi execution failed: %w", err)
 	}
 
-	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(strings.TrimSpace(string(output)), "\n")
+	for line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
@@ -101,7 +101,7 @@ func (g *GPUInput) SampleConfig() string {
 }
 
 // parseGPUOutput parses a single CSV line from nvidia-smi output.
-func parseGPUOutput(line string) (map[string]string, map[string]interface{}, error) {
+func parseGPUOutput(line string) (map[string]string, map[string]any, error) {
 	parts := strings.Split(line, ", ")
 	if len(parts) < 9 {
 		return nil, nil, fmt.Errorf("unexpected field count: %d, want >= 9", len(parts))
@@ -112,7 +112,7 @@ func parseGPUOutput(line string) (map[string]string, map[string]interface{}, err
 		"gpu_name":  strings.TrimSpace(parts[1]),
 	}
 
-	fields := map[string]interface{}{}
+	fields := map[string]any{}
 	floatFields := map[string]int{
 		"utilization_gpu":    2,
 		"utilization_memory": 3,

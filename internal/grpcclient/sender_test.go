@@ -12,14 +12,14 @@ func TestSenderBatchToProto(t *testing.T) {
 	m1 := collector.NewMetric(
 		"cpu_usage",
 		map[string]string{"host": "web-1"},
-		map[string]interface{}{"value": float64(85.3)},
+		map[string]any{"value": float64(85.3)},
 		collector.Gauge,
 		time.UnixMilli(1700000000000),
 	)
 	m2 := collector.NewMetric(
 		"request_count",
 		map[string]string{"host": "web-1"},
-		map[string]interface{}{"value": int64(42)},
+		map[string]any{"value": int64(42)},
 		collector.Counter,
 		time.UnixMilli(1700000001000),
 	)
@@ -73,7 +73,7 @@ func TestSenderNewMetricBatchMessage(t *testing.T) {
 	m := collector.NewMetric(
 		"disk_free",
 		map[string]string{"mount": "/"},
-		map[string]interface{}{"value": float64(50.0)},
+		map[string]any{"value": float64(50.0)},
 		collector.Gauge,
 		time.Now(),
 	)

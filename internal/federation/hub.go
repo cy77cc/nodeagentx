@@ -65,7 +65,7 @@ func (h *Hub) Stop() {
 	h.cfg.Logger.Info().Msg("Hub stopped")
 }
 
-func (h *Hub) HealthStatus() map[string]interface{} {
+func (h *Hub) HealthStatus() map[string]any {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	status := "stopped"
@@ -79,7 +79,7 @@ func (h *Hub) HealthStatus() map[string]interface{} {
 			onlineCount++
 		}
 	}
-	return map[string]interface{}{
+	return map[string]any{
 		"status":         status,
 		"region":         h.cfg.Region,
 		"leaves_total":   len(leaves),

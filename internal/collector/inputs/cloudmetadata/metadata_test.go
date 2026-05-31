@@ -36,7 +36,7 @@ func TestCloudMetadataInputGather(t *testing.T) {
 	defer server.Close()
 
 	input := &MetadataInput{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"metadata_url": server.URL + "/",
 		"timeout":      5,
 	}
@@ -59,7 +59,7 @@ func TestCloudMetadataInputGather(t *testing.T) {
 		t.Errorf("metric name = %q, want %q", m.Name(), "cloud_metadata")
 	}
 
-	expectedFields := map[string]interface{}{
+	expectedFields := map[string]any{
 		"instance-id":   "i-0abc123def456",
 		"instance-type": "t3.micro",
 		"region":        "us-east-1",
@@ -81,7 +81,7 @@ func TestCloudMetadataInputGather(t *testing.T) {
 
 func TestCloudMetadataInputInitDefaults(t *testing.T) {
 	input := &MetadataInput{}
-	if err := input.Init(map[string]interface{}{}); err != nil {
+	if err := input.Init(map[string]any{}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 
@@ -98,7 +98,7 @@ func TestCloudMetadataInputInitDefaults(t *testing.T) {
 
 func TestCloudMetadataInputInitWithConfig(t *testing.T) {
 	input := &MetadataInput{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"metadata_url": "http://custom.metadata:8080/meta-data/",
 		"timeout":      10,
 	}
@@ -121,7 +121,7 @@ func TestCloudMetadataInputGatherHTTPError(t *testing.T) {
 	defer server.Close()
 
 	input := &MetadataInput{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"metadata_url": server.URL + "/",
 	}
 	if err := input.Init(cfg); err != nil {

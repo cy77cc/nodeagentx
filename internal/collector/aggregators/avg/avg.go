@@ -2,6 +2,7 @@ package avg
 
 import (
 	"fmt"
+	"maps"
 	"sync"
 	"time"
 
@@ -34,8 +35,8 @@ func New(cfg Config) *Aggregator {
 }
 
 // Init parses configuration from a map (e.g. from YAML unmarshaling).
-// Expects "fields" as a []interface{} of field name strings.
-func (a *Aggregator) Init(cfg map[string]interface{}) error {
+// Expects "fields" as a []any of field name strings.
+func (a *Aggregator) Init(cfg map[string]any) error {
 	a.sums = make(map[string]float64)
 	a.counts = make(map[string]int)
 	a.tags = make(map[string]string)
@@ -44,7 +45,7 @@ func (a *Aggregator) Init(cfg map[string]interface{}) error {
 	if !ok {
 		return nil
 	}
-	fieldList, ok := raw.([]interface{})
+	fieldList, ok := raw.([]any)
 	if !ok {
 		return fmt.Errorf("avg: \"fields\" must be a list, got %T", raw)
 	}
@@ -89,9 +90,7 @@ func (a *Aggregator) Add(in *collector.Metric) {
 			if _, ok := metricFields[fname]; ok {
 				a.name = in.Name()
 				tags := in.Tags()
-				for k, v := range tags {
-					a.tags[k] = v
-				}
+				maps.Copy(a.tags, tags)
 				break
 			}
 		}
@@ -107,7 +106,7 @@ func (a *Aggregator) Push(acc collector.Accumulator) {
 		return
 	}
 
-	fields := make(map[string]interface{})
+	fields := make(map[string]any)
 	for _, fname := range a.fields {
 		count, ok := a.counts[fname]
 		if !ok || count == 0 {

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -13,20 +14,20 @@ import (
 
 // PluginManifest represents a parsed plugin.yaml.
 type PluginManifest struct {
-	Name         string                 `yaml:"name"`
-	Version      string                 `yaml:"version"`
-	Description  string                 `yaml:"description"`
-	Author       string                 `yaml:"author"`
-	Runtime      string                 `yaml:"runtime"`
-	BinaryPath   string                 `yaml:"binary_path"`
-	Env          map[string]string      `yaml:"env"`
-	TaskTypes    []string               `yaml:"task_types"`
-	ConfigSchema map[string]interface{} `yaml:"config_schema"`
-	Config       map[string]interface{} `yaml:"config"`
-	Requirements *Requirements          `yaml:"requirements"`
-	Limits       *Limits                `yaml:"limits"`
-	HealthCheck  *HealthCheckConfig     `yaml:"health_check"`
-	Sandbox      *SandboxConfig         `yaml:"sandbox"`
+	Name         string             `yaml:"name"`
+	Version      string             `yaml:"version"`
+	Description  string             `yaml:"description"`
+	Author       string             `yaml:"author"`
+	Runtime      string             `yaml:"runtime"`
+	BinaryPath   string             `yaml:"binary_path"`
+	Env          map[string]string  `yaml:"env"`
+	TaskTypes    []string           `yaml:"task_types"`
+	ConfigSchema map[string]any     `yaml:"config_schema"`
+	Config       map[string]any     `yaml:"config"`
+	Requirements *Requirements      `yaml:"requirements"`
+	Limits       *Limits            `yaml:"limits"`
+	HealthCheck  *HealthCheckConfig `yaml:"health_check"`
+	Sandbox      *SandboxConfig     `yaml:"sandbox"`
 
 	// resolvedDir is the directory containing the manifest file.
 	resolvedDir string
@@ -125,13 +126,7 @@ func (m *PluginManifest) Validate() error {
 	}
 	if m.Requirements != nil && len(m.Requirements.OS) > 0 {
 		currentOS := runtime.GOOS
-		found := false
-		for _, osName := range m.Requirements.OS {
-			if osName == currentOS {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(m.Requirements.OS, currentOS)
 		if !found {
 			return fmt.Errorf("manifest: unsupported OS %q, plugin requires %v", currentOS, m.Requirements.OS)
 		}

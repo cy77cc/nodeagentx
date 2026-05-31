@@ -87,14 +87,15 @@ func (c *SSHClient) Execute(ctx context.Context, client *ssh.Client, command str
 	session.Stdout = &outBuf
 	session.Stderr = &errBuf
 
-	fullCmd := shellQuote(command)
+	var fullCmd strings.Builder
+	fullCmd.WriteString(shellQuote(command))
 	for _, arg := range args {
-		fullCmd += " " + shellQuote(arg)
+		fullCmd.WriteString(" " + shellQuote(arg))
 	}
 
 	done := make(chan error, 1)
 	go func() {
-		done <- session.Run(fullCmd)
+		done <- session.Run(fullCmd.String())
 	}()
 
 	select {

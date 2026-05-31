@@ -9,7 +9,7 @@ import (
 
 func TestDiskIOInputInit(t *testing.T) {
 	input := &DiskIOInput{}
-	if err := input.Init(map[string]interface{}{}); err != nil {
+	if err := input.Init(map[string]any{}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 	if len(input.devices) != 0 {
@@ -19,8 +19,8 @@ func TestDiskIOInputInit(t *testing.T) {
 
 func TestDiskIOInputInitWithDevices(t *testing.T) {
 	input := &DiskIOInput{}
-	cfg := map[string]interface{}{
-		"devices": []interface{}{"sda", "nvme0n1"},
+	cfg := map[string]any{
+		"devices": []any{"sda", "nvme0n1"},
 	}
 	if err := input.Init(cfg); err != nil {
 		t.Fatalf("Init() error: %v", err)
@@ -32,7 +32,7 @@ func TestDiskIOInputInitWithDevices(t *testing.T) {
 
 func TestDiskIOInputInitInvalidDevices(t *testing.T) {
 	input := &DiskIOInput{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"devices": "notalist",
 	}
 	if err := input.Init(cfg); err == nil {
@@ -42,8 +42,8 @@ func TestDiskIOInputInitInvalidDevices(t *testing.T) {
 
 func TestDiskIOInputInitInvalidDeviceItem(t *testing.T) {
 	input := &DiskIOInput{}
-	cfg := map[string]interface{}{
-		"devices": []interface{}{123},
+	cfg := map[string]any{
+		"devices": []any{123},
 	}
 	if err := input.Init(cfg); err == nil {
 		t.Fatal("Init() should fail with non-string device item")
@@ -60,7 +60,7 @@ func TestDiskIOInputSampleConfig(t *testing.T) {
 
 func TestDiskIOInputGather(t *testing.T) {
 	input := &DiskIOInput{}
-	if err := input.Init(map[string]interface{}{}); err != nil {
+	if err := input.Init(map[string]any{}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 
@@ -95,8 +95,8 @@ func TestDiskIOInputGather(t *testing.T) {
 
 func TestDiskIOInputGatherFilterDevice(t *testing.T) {
 	input := &DiskIOInput{}
-	cfg := map[string]interface{}{
-		"devices": []interface{}{"nonexistent_device"},
+	cfg := map[string]any{
+		"devices": []any{"nonexistent_device"},
 	}
 	if err := input.Init(cfg); err != nil {
 		t.Fatalf("Init() error: %v", err)

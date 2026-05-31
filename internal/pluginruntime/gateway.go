@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net"
 	"os"
 	"os/exec"
@@ -61,7 +62,7 @@ type GatewayConfig struct {
 	MaxRestarts         int
 	RestartBackoff      time.Duration
 	FileWatchDebounce   time.Duration
-	PluginConfigs       map[string]map[string]interface{}
+	PluginConfigs       map[string]map[string]any
 }
 
 // Gateway manages custom plugin processes.
@@ -164,9 +165,7 @@ func (g *Gateway) Stop(ctx context.Context) error {
 
 	g.mu.RLock()
 	plugins := make(map[string]*ManagedPlugin, len(g.plugins))
-	for k, v := range g.plugins {
-		plugins[k] = v
-	}
+	maps.Copy(plugins, g.plugins)
 	g.mu.RUnlock()
 
 	for name, p := range plugins {
@@ -434,12 +433,12 @@ func (g *Gateway) stopPlugin(name string, p *ManagedPlugin) {
 
 // ParseFullTaskType splits a "plugin-name/task-type" string.
 func ParseFullTaskType(fullType string) (pluginName, taskType string, err error) {
-	idx := strings.Index(fullType, "/")
-	if idx < 0 {
+	before, after, ok := strings.Cut(fullType, "/")
+	if !ok {
 		return "", "", fmt.Errorf("invalid task type format %q: expected 'plugin-name/task-type'", fullType)
 	}
-	pluginName = fullType[:idx]
-	taskType = fullType[idx+1:]
+	pluginName = before
+	taskType = after
 	if pluginName == "" || taskType == "" {
 		return "", "", fmt.Errorf("invalid task type format %q: plugin name and task type must not be empty", fullType)
 	}
@@ -473,17 +472,13 @@ func DiscoverManifests(dir string) ([]*PluginManifest, error) {
 
 // mergePluginConfig merges manifest-level and agent-level plugin configs.
 // Agent-level config overrides manifest-level config.
-func mergePluginConfig(manifestCfg, agentCfg map[string]interface{}) map[string]interface{} {
+func mergePluginConfig(manifestCfg, agentCfg map[string]any) map[string]any {
 	if len(manifestCfg) == 0 && len(agentCfg) == 0 {
 		return nil
 	}
-	merged := make(map[string]interface{})
-	for k, v := range manifestCfg {
-		merged[k] = v
-	}
-	for k, v := range agentCfg {
-		merged[k] = v
-	}
+	merged := make(map[string]any)
+	maps.Copy(merged, manifestCfg)
+	maps.Copy(merged, agentCfg)
 	return merged
 }
 
@@ -591,9 +586,7 @@ func (g *Gateway) pluginInfo(p *ManagedPlugin) PluginInfo {
 
 // startHealthCheckLoop periodically pings running plugins.
 func (g *Gateway) startHealthCheckLoop() {
-	g.wg.Add(1)
-	go func() {
-		defer g.wg.Done()
+	g.wg.Go(func() {
 		ticker := time.NewTicker(g.cfg.HealthCheckInterval)
 		defer ticker.Stop()
 
@@ -605,7 +598,7 @@ func (g *Gateway) startHealthCheckLoop() {
 				g.healthCheckAll()
 			}
 		}
-	}()
+	})
 }
 
 // shouldRestart checks if a plugin can be restarted.
@@ -617,7 +610,7 @@ func (g *Gateway) shouldRestart(p *ManagedPlugin) bool {
 // The backoff doubles with each attempt and is capped at 60 seconds.
 func (g *Gateway) restartBackoff(restartCount int) time.Duration {
 	backoff := g.cfg.RestartBackoff
-	for i := 0; i < restartCount; i++ {
+	for range restartCount {
 		backoff *= 2
 		if backoff > 60*time.Second {
 			backoff = 60 * time.Second
@@ -633,9 +626,7 @@ func (g *Gateway) restartBackoff(restartCount int) time.Duration {
 func (g *Gateway) healthCheckAll() {
 	g.mu.RLock()
 	plugins := make(map[string]*ManagedPlugin, len(g.plugins))
-	for k, v := range g.plugins {
-		plugins[k] = v
-	}
+	maps.Copy(plugins, g.plugins)
 	g.mu.RUnlock()
 
 	for name, p := range plugins {

@@ -39,7 +39,7 @@ func (b *Buffer) Add(m *Metric) {
 		case DropNewest:
 			return // drop incoming metric
 		case DropOldest:
-			b.metrics[0] = nil  // allow GC of dropped element
+			b.metrics[0] = nil // allow GC of dropped element
 			b.metrics = b.metrics[1:]
 		}
 	}
@@ -51,14 +51,11 @@ func (b *Buffer) Batch() []*Metric {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	n := b.batchSize
-	if n > len(b.metrics) {
-		n = len(b.metrics)
-	}
+	n := min(b.batchSize, len(b.metrics))
 
 	batch := make([]*Metric, n)
 	copy(batch, b.metrics[:n])
-	for i := 0; i < n; i++ {
+	for i := range n {
 		b.metrics[i] = nil // allow GC of returned elements
 	}
 	b.metrics = b.metrics[n:]

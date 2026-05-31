@@ -25,7 +25,7 @@ func (c *DirPermChecker) Category() string { return "filesystem" }
 type dirPermParams struct {
 	Path         string `json:"path"`
 	ExpectedMode string `json:"expected_mode"`
-	StickyBit    *bool  `json:"sticky_bit,omitempty"` // optional
+	StickyBit    *bool  `json:"sticky_bit,omitzero"` // optional
 }
 
 func (c *DirPermChecker) Check(_ context.Context, params json.RawMessage) (*checker.CheckResult, error) {

@@ -69,14 +69,14 @@ func TestPersistAndLoadMetrics(t *testing.T) {
 		collector.NewMetric(
 			"cpu_usage",
 			map[string]string{"host": "web-1"},
-			map[string]interface{}{"value": float64(85.3)},
+			map[string]any{"value": float64(85.3)},
 			collector.Gauge,
 			ts,
 		),
 		collector.NewMetric(
 			"request_count",
 			map[string]string{"host": "web-1", "endpoint": "/api"},
-			map[string]interface{}{"value": int64(42)},
+			map[string]any{"value": int64(42)},
 			collector.Counter,
 			ts,
 		),
@@ -161,7 +161,7 @@ func TestLoadMetrics_InvalidJSON(t *testing.T) {
 
 func TestPersistMetrics_InvalidPath(t *testing.T) {
 	metrics := []*collector.Metric{
-		collector.NewMetric("test", nil, map[string]interface{}{"v": 1.0}, collector.Gauge, time.Now()),
+		collector.NewMetric("test", nil, map[string]any{"v": 1.0}, collector.Gauge, time.Now()),
 	}
 	// Use a directory path as the file path - writing to a directory should fail
 	dir := t.TempDir()
@@ -179,7 +179,7 @@ func TestLoadMetrics_FieldsPreserved(t *testing.T) {
 		collector.NewMetric(
 			"multi_field",
 			map[string]string{"env": "prod"},
-			map[string]interface{}{
+			map[string]any{
 				"cpu":    float64(90.5),
 				"memory": int64(1024),
 			},

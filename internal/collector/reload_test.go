@@ -23,10 +23,10 @@ func TestCollectorReloader_CanReload(t *testing.T) {
 func TestToReloadConfig(t *testing.T) {
 	cc := config.CollectorConfig{
 		Inputs: []config.PluginInstanceConfig{
-			{Type: "cpu", Config: map[string]interface{}{"per_cpu": true}},
+			{Type: "cpu", Config: map[string]any{"per_cpu": true}},
 		},
 		Processors: []config.PluginInstanceConfig{
-			{Type: "tagger", Config: map[string]interface{}{"tag": "v"}},
+			{Type: "tagger", Config: map[string]any{"tag": "v"}},
 		},
 	}
 	rc := toReloadConfig(cc)
@@ -61,17 +61,17 @@ func TestToReloadConfig_Empty(t *testing.T) {
 func TestToReloadConfig_AllSections(t *testing.T) {
 	cc := config.CollectorConfig{
 		Inputs: []config.PluginInstanceConfig{
-			{Type: "cpu", Config: map[string]interface{}{"per_cpu": true}},
-			{Type: "mem", Config: map[string]interface{}{}},
+			{Type: "cpu", Config: map[string]any{"per_cpu": true}},
+			{Type: "mem", Config: map[string]any{}},
 		},
 		Processors: []config.PluginInstanceConfig{
-			{Type: "tagger", Config: map[string]interface{}{"tag": "v"}},
+			{Type: "tagger", Config: map[string]any{"tag": "v"}},
 		},
 		Aggregators: []config.PluginInstanceConfig{
-			{Type: "avg", Config: map[string]interface{}{"interval": "60s"}},
+			{Type: "avg", Config: map[string]any{"interval": "60s"}},
 		},
 		Outputs: []config.PluginInstanceConfig{
-			{Type: "stdout", Config: map[string]interface{}{}},
+			{Type: "stdout", Config: map[string]any{}},
 		},
 	}
 	rc := toReloadConfig(cc)
@@ -97,7 +97,7 @@ func TestToReloadConfig_AllSections(t *testing.T) {
 }
 
 func TestToReloadConfig_PreservesConfigMaps(t *testing.T) {
-	cfgMap := map[string]interface{}{"key": "value", "num": 42}
+	cfgMap := map[string]any{"key": "value", "num": 42}
 	cc := config.CollectorConfig{
 		Inputs: []config.PluginInstanceConfig{
 			{Type: "cpu", Config: cfgMap},
@@ -128,10 +128,10 @@ func TestCollectorReloader_Apply(t *testing.T) {
 	cfg := &config.Config{
 		Collector: config.CollectorConfig{
 			Inputs: []config.PluginInstanceConfig{
-				{Type: "test-input", Config: map[string]interface{}{}},
+				{Type: "test-input", Config: map[string]any{}},
 			},
 			Outputs: []config.PluginInstanceConfig{
-				{Type: "test-output", Config: map[string]interface{}{}},
+				{Type: "test-output", Config: map[string]any{}},
 			},
 		},
 	}
@@ -155,7 +155,7 @@ func TestCollectorReloader_Rollback(t *testing.T) {
 	oldCfg := &config.Config{
 		Collector: config.CollectorConfig{
 			Inputs: []config.PluginInstanceConfig{
-				{Type: "test-input", Config: map[string]interface{}{"key": "val"}},
+				{Type: "test-input", Config: map[string]any{"key": "val"}},
 			},
 		},
 	}
@@ -177,7 +177,7 @@ func TestCollectorReloader_Apply_UnknownInput(t *testing.T) {
 	cfg := &config.Config{
 		Collector: config.CollectorConfig{
 			Inputs: []config.PluginInstanceConfig{
-				{Type: "nonexistent", Config: map[string]interface{}{}},
+				{Type: "nonexistent", Config: map[string]any{}},
 			},
 		},
 	}
@@ -199,7 +199,7 @@ func TestCollectorReloader_Apply_UnknownProcessor(t *testing.T) {
 	cfg := &config.Config{
 		Collector: config.CollectorConfig{
 			Processors: []config.PluginInstanceConfig{
-				{Type: "nonexistent", Config: map[string]interface{}{}},
+				{Type: "nonexistent", Config: map[string]any{}},
 			},
 		},
 	}
@@ -221,7 +221,7 @@ func TestCollectorReloader_Apply_UnknownAggregator(t *testing.T) {
 	cfg := &config.Config{
 		Collector: config.CollectorConfig{
 			Aggregators: []config.PluginInstanceConfig{
-				{Type: "nonexistent", Config: map[string]interface{}{}},
+				{Type: "nonexistent", Config: map[string]any{}},
 			},
 		},
 	}
@@ -243,7 +243,7 @@ func TestCollectorReloader_Apply_UnknownOutput(t *testing.T) {
 	cfg := &config.Config{
 		Collector: config.CollectorConfig{
 			Outputs: []config.PluginInstanceConfig{
-				{Type: "nonexistent", Config: map[string]interface{}{}},
+				{Type: "nonexistent", Config: map[string]any{}},
 			},
 		},
 	}

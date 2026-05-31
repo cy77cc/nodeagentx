@@ -12,13 +12,13 @@ import (
 
 // testInput is an Input that records Gather calls and emits a fixed metric.
 type testInput struct {
-	callCount int32
+	callCount  int32
 	metricName string
 	tags       map[string]string
-	fields     map[string]interface{}
+	fields     map[string]any
 }
 
-func newTestInput(name string, tags map[string]string, fields map[string]interface{}) *testInput {
+func newTestInput(name string, tags map[string]string, fields map[string]any) *testInput {
 	return &testInput{
 		metricName: name,
 		tags:       tags,
@@ -26,7 +26,7 @@ func newTestInput(name string, tags map[string]string, fields map[string]interfa
 	}
 }
 
-func (t *testInput) Init(_ map[string]interface{}) error { return nil }
+func (t *testInput) Init(_ map[string]any) error { return nil }
 func (t *testInput) Gather(_ context.Context, acc Accumulator) error {
 	atomic.AddInt32(&t.callCount, 1)
 	acc.AddFields(t.metricName, t.tags, t.fields)
@@ -39,7 +39,7 @@ func (t *testInput) CallCount() int32 {
 }
 
 func TestSchedulerRunsInput(t *testing.T) {
-	input := newTestInput("cpu", map[string]string{"host": "s1"}, map[string]interface{}{"usage": 50.0})
+	input := newTestInput("cpu", map[string]string{"host": "s1"}, map[string]any{"usage": 50.0})
 
 	si := ScheduledInput{
 		Input:    input,
@@ -48,8 +48,7 @@ func TestSchedulerRunsInput(t *testing.T) {
 	}
 
 	sched := NewScheduler([]ScheduledInput{si}, nil, nil, nil, zerolog.Nop())
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	ch := sched.Start(ctx)
 
@@ -71,15 +70,14 @@ func TestSchedulerRunsInput(t *testing.T) {
 }
 
 func TestSchedulerMultipleInputs(t *testing.T) {
-	input1 := newTestInput("cpu", nil, map[string]interface{}{"v": 1.0})
-	input2 := newTestInput("mem", nil, map[string]interface{}{"v": 2.0})
+	input1 := newTestInput("cpu", nil, map[string]any{"v": 1.0})
+	input2 := newTestInput("mem", nil, map[string]any{"v": 2.0})
 
 	si1 := ScheduledInput{Input: input1, Interval: 50 * time.Millisecond}
 	si2 := ScheduledInput{Input: input2, Interval: 50 * time.Millisecond}
 
 	sched := NewScheduler([]ScheduledInput{si1, si2}, nil, nil, nil, zerolog.Nop())
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	ch := sched.Start(ctx)
 
@@ -101,7 +99,7 @@ func TestSchedulerMultipleInputs(t *testing.T) {
 }
 
 func TestSchedulerStop(t *testing.T) {
-	input := newTestInput("cpu", nil, map[string]interface{}{"v": 1.0})
+	input := newTestInput("cpu", nil, map[string]any{"v": 1.0})
 	si := ScheduledInput{Input: input, Interval: 50 * time.Millisecond}
 
 	sched := NewScheduler([]ScheduledInput{si}, nil, nil, nil, zerolog.Nop())
@@ -125,12 +123,11 @@ func TestSchedulerStop(t *testing.T) {
 }
 
 func TestSchedulerReload(t *testing.T) {
-	input1 := newTestInput("cpu", nil, map[string]interface{}{"v": 1.0})
+	input1 := newTestInput("cpu", nil, map[string]any{"v": 1.0})
 	si := ScheduledInput{Input: input1, Interval: 50 * time.Millisecond}
 
 	sched := NewScheduler([]ScheduledInput{si}, nil, nil, nil, zerolog.Nop())
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	ch := sched.Start(ctx)
 
@@ -158,12 +155,11 @@ func TestSchedulerReload(t *testing.T) {
 }
 
 func TestSchedulerHealthStatus_LastCollection(t *testing.T) {
-	input := newTestInput("cpu", nil, map[string]interface{}{"v": 1.0})
+	input := newTestInput("cpu", nil, map[string]any{"v": 1.0})
 	si := ScheduledInput{Input: input, Interval: 50 * time.Millisecond}
 
 	sched := NewScheduler([]ScheduledInput{si}, nil, nil, nil, zerolog.Nop())
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	// Before start, last_collection should be absent.
 	hs := sched.HealthStatus()
@@ -193,7 +189,7 @@ func TestSchedulerHealthStatus_LastCollection(t *testing.T) {
 }
 
 func TestSchedulerAppliesStaticTags(t *testing.T) {
-	input := newTestInput("cpu", map[string]string{"host": "s1"}, map[string]interface{}{"v": 1.0})
+	input := newTestInput("cpu", map[string]string{"host": "s1"}, map[string]any{"v": 1.0})
 
 	si := ScheduledInput{
 		Input:    input,
@@ -202,8 +198,7 @@ func TestSchedulerAppliesStaticTags(t *testing.T) {
 	}
 
 	sched := NewScheduler([]ScheduledInput{si}, nil, nil, nil, zerolog.Nop())
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	ch := sched.Start(ctx)
 
@@ -235,9 +230,9 @@ type errorInput struct {
 	err error
 }
 
-func (e *errorInput) Init(_ map[string]interface{}) error         { return nil }
+func (e *errorInput) Init(_ map[string]any) error                   { return nil }
 func (e *errorInput) Gather(_ context.Context, _ Accumulator) error { return e.err }
-func (e *errorInput) SampleConfig() string                         { return "" }
+func (e *errorInput) SampleConfig() string                          { return "" }
 
 func TestSchedulerGatherOnce_ErrorPath(t *testing.T) {
 	input := &errorInput{err: fmt.Errorf("gather failure")}
@@ -247,8 +242,7 @@ func TestSchedulerGatherOnce_ErrorPath(t *testing.T) {
 	}
 
 	sched := NewScheduler([]ScheduledInput{si}, nil, nil, nil, zerolog.Nop())
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	ch := sched.Start(ctx)
 
@@ -269,24 +263,23 @@ type pushAggregator struct {
 	pushCount int32
 }
 
-func (p *pushAggregator) Init(_ map[string]interface{}) error { return nil }
-func (p *pushAggregator) Add(_ *Metric)                       {}
+func (p *pushAggregator) Init(_ map[string]any) error { return nil }
+func (p *pushAggregator) Add(_ *Metric)               {}
 func (p *pushAggregator) Push(acc Accumulator) {
 	atomic.AddInt32(&p.pushCount, 1)
-	acc.AddFields("agg_metric", nil, map[string]interface{}{"v": 1.0})
+	acc.AddFields("agg_metric", nil, map[string]any{"v": 1.0})
 }
 func (p *pushAggregator) Reset()               {}
-func (p *pushAggregator) SampleConfig() string   { return "" }
+func (p *pushAggregator) SampleConfig() string { return "" }
 
 func TestSchedulerAggregatorPush(t *testing.T) {
-	input := newTestInput("cpu", nil, map[string]interface{}{"v": 1.0})
+	input := newTestInput("cpu", nil, map[string]any{"v": 1.0})
 	si := ScheduledInput{Input: input, Interval: 50 * time.Millisecond}
 
 	agg := &pushAggregator{}
 
 	sched := NewScheduler([]ScheduledInput{si}, nil, []Aggregator{agg}, nil, zerolog.Nop())
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	ch := sched.Start(ctx)
 
@@ -322,7 +315,7 @@ func TestSchedulerReload_WithAggregator(t *testing.T) {
 
 	err := sched.Reload(context.Background(), ReloadConfig{
 		Inputs: []PluginConfig{
-			{Type: "test-input", Config: map[string]interface{}{}},
+			{Type: "test-input", Config: map[string]any{}},
 		},
 	})
 	if err != nil {

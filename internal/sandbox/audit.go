@@ -15,14 +15,14 @@ type AuditEvent struct {
 	TriggeredBy string        `json:"triggered_by"`
 	Type        string        `json:"type"`
 	Command     string        `json:"command"`
-	Interpreter string        `json:"interpreter,omitempty"`
+	Interpreter string        `json:"interpreter,omitzero"`
 	ExitCode    int           `json:"exit_code"`
 	Duration    time.Duration `json:"duration"`
 	TimedOut    bool          `json:"timed_out"`
 	Truncated   bool          `json:"truncated"`
 	Killed      bool          `json:"killed"`
-	Stats       *Stats        `json:"stats,omitempty"`
-	Error       string        `json:"error,omitempty"`
+	Stats       *Stats        `json:"stats,omitzero"`
+	Error       string        `json:"error,omitzero"`
 }
 
 // AuditLogger wraps a zerolog.Logger for sandbox audit events.

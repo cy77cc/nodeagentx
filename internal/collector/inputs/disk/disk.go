@@ -3,6 +3,7 @@ package disk
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/shirou/gopsutil/v4/disk"
 
@@ -20,10 +21,10 @@ type DiskInput struct {
 	mountPoints []string
 }
 
-func (d *DiskInput) Init(cfg map[string]interface{}) error {
+func (d *DiskInput) Init(cfg map[string]any) error {
 	if v, ok := cfg["mount_points"]; ok {
 		switch mp := v.(type) {
-		case []interface{}:
+		case []any:
 			for _, item := range mp {
 				s, ok := item.(string)
 				if !ok {
@@ -49,13 +50,7 @@ func (d *DiskInput) Gather(ctx context.Context, acc collector.Accumulator) error
 	for _, p := range partitions {
 		// Filter by mount points if configured
 		if len(d.mountPoints) > 0 {
-			found := false
-			for _, mp := range d.mountPoints {
-				if mp == p.Mountpoint {
-					found = true
-					break
-				}
-			}
+			found := slices.Contains(d.mountPoints, p.Mountpoint)
 			if !found {
 				continue
 			}
@@ -71,7 +66,7 @@ func (d *DiskInput) Gather(ctx context.Context, acc collector.Accumulator) error
 			"device":     p.Device,
 			"fstype":     p.Fstype,
 		}
-		fields := map[string]interface{}{
+		fields := map[string]any{
 			"total_bytes":  int64(usage.Total),
 			"used_bytes":   int64(usage.Used),
 			"free_bytes":   int64(usage.Free),

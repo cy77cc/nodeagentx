@@ -111,8 +111,7 @@ func (e *Executor) Execute(ctx context.Context, req Request) (*Result, error) {
 		return result, nil
 	}
 
-	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) {
+	if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 		result.ExitCode = exitErr.ExitCode()
 		return result, nil
 	}

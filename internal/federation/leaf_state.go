@@ -1,5 +1,7 @@
 package federation
 
+import "maps"
+
 import "time"
 
 const (
@@ -31,11 +33,7 @@ func (ls *LeafState) IsOnline(timeout time.Duration) bool {
 // Manual labels override auto labels when keys conflict.
 func (ls *LeafState) AllLabels() map[string]string {
 	result := make(map[string]string, len(ls.AutoLabels)+len(ls.Labels))
-	for k, v := range ls.AutoLabels {
-		result[k] = v
-	}
-	for k, v := range ls.Labels {
-		result[k] = v
-	}
+	maps.Copy(result, ls.AutoLabels)
+	maps.Copy(result, ls.Labels)
 	return result
 }

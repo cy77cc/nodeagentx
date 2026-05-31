@@ -10,7 +10,7 @@ import (
 
 func TestTempInputInit(t *testing.T) {
 	input := &TempInput{}
-	if err := input.Init(map[string]interface{}{}); err != nil {
+	if err := input.Init(map[string]any{}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 }
@@ -73,12 +73,12 @@ func TestTempInputInitNilConfig(t *testing.T) {
 func TestTempInputInitConsistency(t *testing.T) {
 	input := &TempInput{}
 	// Calling Init twice should be safe and consistent.
-	if err := input.Init(map[string]interface{}{}); err != nil {
+	if err := input.Init(map[string]any{}); err != nil {
 		t.Fatalf("first Init() error: %v", err)
 	}
 	firstAvailable := input.available
 
-	if err := input.Init(map[string]interface{}{}); err != nil {
+	if err := input.Init(map[string]any{}); err != nil {
 		t.Fatalf("second Init() error: %v", err)
 	}
 	if input.available != firstAvailable {
@@ -112,7 +112,7 @@ func TestSampleConfigDeterministic(t *testing.T) {
 func TestTempInputGatherAvailable(t *testing.T) {
 	input := &TempInput{}
 	// Run Init to determine actual sensor availability.
-	if err := input.Init(map[string]interface{}{}); err != nil {
+	if err := input.Init(map[string]any{}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}
 

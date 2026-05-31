@@ -3,7 +3,7 @@ package collector
 // ExtractNumericValue returns the first numeric value found in fields.
 // It checks common field names ("value", "count", "gauge") first,
 // then falls back to the first numeric field found.
-func ExtractNumericValue(fields map[string]interface{}) float64 {
+func ExtractNumericValue(fields map[string]any) float64 {
 	for _, key := range []string{"value", "count", "gauge"} {
 		if v, ok := fields[key]; ok {
 			if f, ok := ToFloat64(v); ok {
@@ -19,8 +19,8 @@ func ExtractNumericValue(fields map[string]interface{}) float64 {
 	return 0
 }
 
-// ToFloat64 converts a numeric interface{} to float64.
-func ToFloat64(v interface{}) (float64, bool) {
+// ToFloat64 converts a numeric any to float64.
+func ToFloat64(v any) (float64, bool) {
 	switch val := v.(type) {
 	case float64:
 		return val, true

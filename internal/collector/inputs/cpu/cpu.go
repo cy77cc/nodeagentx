@@ -21,7 +21,7 @@ type CPUInput struct {
 	totalCPU bool
 }
 
-func (c *CPUInput) Init(cfg map[string]interface{}) error {
+func (c *CPUInput) Init(cfg map[string]any) error {
 	c.totalCPU = true // default
 
 	if v, ok := cfg["percpu"]; ok {
@@ -51,7 +51,7 @@ func (c *CPUInput) Gather(ctx context.Context, acc collector.Accumulator) error 
 			tags := map[string]string{
 				"cpu": fmt.Sprintf("cpu%d", i),
 			}
-			fields := map[string]interface{}{
+			fields := map[string]any{
 				"usage_percent": pct,
 			}
 			acc.AddGauge("cpu", tags, fields)
@@ -70,7 +70,7 @@ func (c *CPUInput) Gather(ctx context.Context, acc collector.Accumulator) error 
 		tags := map[string]string{
 			"cpu": "cpu-total",
 		}
-		fields := map[string]interface{}{
+		fields := map[string]any{
 			"usage_percent": total,
 		}
 		acc.AddGauge("cpu", tags, fields)

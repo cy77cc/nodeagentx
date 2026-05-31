@@ -34,7 +34,7 @@ func TestDiff_CollectorChanged(t *testing.T) {
 		Reporter: ReporterConfig{Mode: "stdout", TimeoutSeconds: 5},
 		GRPC:     GRPCConfig{ServerAddr: "x:443", HeartbeatIntervalSeconds: 15, ReconnectInitialBackoffMS: 1000, ReconnectMaxBackoffMS: 30000},
 		Collector: CollectorConfig{
-			Inputs: []PluginInstanceConfig{{Type: "cpu", Config: map[string]interface{}{"per_cpu": false}}},
+			Inputs: []PluginInstanceConfig{{Type: "cpu", Config: map[string]any{"per_cpu": false}}},
 		},
 	}
 	newCfg := &Config{
@@ -44,7 +44,7 @@ func TestDiff_CollectorChanged(t *testing.T) {
 		Reporter: ReporterConfig{Mode: "stdout", TimeoutSeconds: 5},
 		GRPC:     GRPCConfig{ServerAddr: "x:443", HeartbeatIntervalSeconds: 15, ReconnectInitialBackoffMS: 1000, ReconnectMaxBackoffMS: 30000},
 		Collector: CollectorConfig{
-			Inputs: []PluginInstanceConfig{{Type: "cpu", Config: map[string]interface{}{"per_cpu": true}}},
+			Inputs: []PluginInstanceConfig{{Type: "cpu", Config: map[string]any{"per_cpu": true}}},
 		},
 	}
 	cs, nonReloadable, err := Diff(old, newCfg)

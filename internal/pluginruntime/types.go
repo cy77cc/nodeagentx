@@ -26,22 +26,22 @@ type Chunk struct {
 // TaskStats contains runtime execution stats.
 type TaskStats struct {
 	DurationMS   int64 `json:"duration_ms"`
-	CPUMS        int64 `json:"cpu_ms,omitempty"`
-	MemPeakBytes int64 `json:"mem_peak_bytes,omitempty"`
+	CPUMS        int64 `json:"cpu_ms,omitzero"`
+	MemPeakBytes int64 `json:"mem_peak_bytes,omitzero"`
 }
 
 // TaskResponse is the runtime response payload.
 type TaskResponse struct {
 	TaskID  string         `json:"task_id"`
 	Status  string         `json:"status"`
-	Error   string         `json:"error,omitempty"`
-	Summary map[string]any `json:"summary,omitempty"`
-	Chunks  []Chunk        `json:"chunks,omitempty"`
-	Stats   TaskStats      `json:"stats,omitempty"`
+	Error   string         `json:"error,omitzero"`
+	Summary map[string]any `json:"summary,omitzero"`
+	Chunks  []Chunk        `json:"chunks,omitzero"`
+	Stats   TaskStats      `json:"stats"`
 }
 
 type rpcRequest struct {
-	ID     interface{} `json:"id"`
+	ID     any         `json:"id"`
 	Method string      `json:"method"`
 	Params TaskRequest `json:"params"`
 }
@@ -52,7 +52,7 @@ type rpcError struct {
 }
 
 type rpcResponse struct {
-	ID     interface{}   `json:"id"`
-	Result *TaskResponse `json:"result,omitempty"`
-	Error  *rpcError     `json:"error,omitempty"`
+	ID     any           `json:"id"`
+	Result *TaskResponse `json:"result,omitzero"`
+	Error  *rpcError     `json:"error,omitzero"`
 }

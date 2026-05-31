@@ -7,12 +7,12 @@ import (
 
 // Accumulator is the interface inputs use to emit metrics.
 type Accumulator interface {
-	AddFields(name string, tags map[string]string, fields map[string]interface{})
-	AddGauge(name string, tags map[string]string, fields map[string]interface{})
-	AddCounter(name string, tags map[string]string, fields map[string]interface{})
-	AddFieldsWithTimestamp(name string, tags map[string]string, fields map[string]interface{}, ts time.Time)
-	AddGaugeWithTimestamp(name string, tags map[string]string, fields map[string]interface{}, ts time.Time)
-	AddCounterWithTimestamp(name string, tags map[string]string, fields map[string]interface{}, ts time.Time)
+	AddFields(name string, tags map[string]string, fields map[string]any)
+	AddGauge(name string, tags map[string]string, fields map[string]any)
+	AddCounter(name string, tags map[string]string, fields map[string]any)
+	AddFieldsWithTimestamp(name string, tags map[string]string, fields map[string]any, ts time.Time)
+	AddGaugeWithTimestamp(name string, tags map[string]string, fields map[string]any, ts time.Time)
+	AddCounterWithTimestamp(name string, tags map[string]string, fields map[string]any, ts time.Time)
 	Collect() []*Metric
 }
 
@@ -31,31 +31,31 @@ func NewAccumulator(maxSize int) Accumulator {
 	}
 }
 
-func (a *accumulator) AddFields(name string, tags map[string]string, fields map[string]interface{}) {
+func (a *accumulator) AddFields(name string, tags map[string]string, fields map[string]any) {
 	a.add(name, tags, fields, Gauge, time.Now())
 }
 
-func (a *accumulator) AddGauge(name string, tags map[string]string, fields map[string]interface{}) {
+func (a *accumulator) AddGauge(name string, tags map[string]string, fields map[string]any) {
 	a.add(name, tags, fields, Gauge, time.Now())
 }
 
-func (a *accumulator) AddCounter(name string, tags map[string]string, fields map[string]interface{}) {
+func (a *accumulator) AddCounter(name string, tags map[string]string, fields map[string]any) {
 	a.add(name, tags, fields, Counter, time.Now())
 }
 
-func (a *accumulator) AddFieldsWithTimestamp(name string, tags map[string]string, fields map[string]interface{}, ts time.Time) {
+func (a *accumulator) AddFieldsWithTimestamp(name string, tags map[string]string, fields map[string]any, ts time.Time) {
 	a.add(name, tags, fields, Gauge, ts)
 }
 
-func (a *accumulator) AddGaugeWithTimestamp(name string, tags map[string]string, fields map[string]interface{}, ts time.Time) {
+func (a *accumulator) AddGaugeWithTimestamp(name string, tags map[string]string, fields map[string]any, ts time.Time) {
 	a.add(name, tags, fields, Gauge, ts)
 }
 
-func (a *accumulator) AddCounterWithTimestamp(name string, tags map[string]string, fields map[string]interface{}, ts time.Time) {
+func (a *accumulator) AddCounterWithTimestamp(name string, tags map[string]string, fields map[string]any, ts time.Time) {
 	a.add(name, tags, fields, Counter, ts)
 }
 
-func (a *accumulator) add(name string, tags map[string]string, fields map[string]interface{}, mt MetricType, ts time.Time) {
+func (a *accumulator) add(name string, tags map[string]string, fields map[string]any, mt MetricType, ts time.Time) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 

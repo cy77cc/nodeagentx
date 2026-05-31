@@ -6,8 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
-	"sort"
+	"slices"
 	"time"
 
 	"github.com/cy77cc/opsagent/internal/collector"
@@ -50,7 +51,7 @@ type remoteWritePayload struct {
 }
 
 // Init configures the Prometheus Remote Write output from the provided config map.
-func (p *PromRWOutput) Init(cfg map[string]interface{}) error {
+func (p *PromRWOutput) Init(cfg map[string]any) error {
 	url, ok := cfg["url"].(string)
 	if !ok || url == "" {
 		return fmt.Errorf("prometheus_remote_write: url is required")
@@ -106,11 +107,7 @@ func (p *PromRWOutput) buildPayload(metrics []collector.Metric) remoteWritePaylo
 	for i, m := range metrics {
 		// Build labels with __name__ first, then sorted tag keys.
 		tags := m.Tags()
-		tagKeys := make([]string, 0, len(tags))
-		for k := range tags {
-			tagKeys = append(tagKeys, k)
-		}
-		sort.Strings(tagKeys)
+		tagKeys := slices.Sorted(maps.Keys(tags))
 
 		labels := make([]label, 0, len(tags)+1)
 		labels = append(labels, label{Name: "__name__", Value: m.Name()})
@@ -148,4 +145,3 @@ func (p *PromRWOutput) SampleConfig() string {
     timeout = 10
 `
 }
-

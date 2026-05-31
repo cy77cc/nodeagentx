@@ -25,9 +25,9 @@ func (s *SystemdLayer) Discover(ctx context.Context) ([]Service, error) {
 	}
 
 	var services []Service
-	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	lines := strings.SplitSeq(strings.TrimSpace(string(output)), "\n")
 
-	for _, line := range lines {
+	for line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue

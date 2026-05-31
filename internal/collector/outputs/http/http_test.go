@@ -17,22 +17,22 @@ import (
 func TestHTTPOutput_Init(t *testing.T) {
 	tests := []struct {
 		name    string
-		cfg     map[string]interface{}
+		cfg     map[string]any
 		wantErr bool
 	}{
 		{
 			name:    "missing url",
-			cfg:     map[string]interface{}{},
+			cfg:     map[string]any{},
 			wantErr: true,
 		},
 		{
 			name:    "empty url",
-			cfg:     map[string]interface{}{"url": ""},
+			cfg:     map[string]any{"url": ""},
 			wantErr: true,
 		},
 		{
 			name: "valid config",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"url":               "http://localhost:8080",
 				"timeout":           5,
 				"batch_size":        100,
@@ -85,7 +85,7 @@ func TestHTTPOutput_Write(t *testing.T) {
 	defer ts.Close()
 
 	h := &HTTPOutput{}
-	if err := h.Init(map[string]interface{}{
+	if err := h.Init(map[string]any{
 		"url":        ts.URL,
 		"timeout":    5,
 		"batch_size": 10,
@@ -96,8 +96,8 @@ func TestHTTPOutput_Write(t *testing.T) {
 
 	now := time.Now()
 	metrics := []collector.Metric{
-		*collector.NewMetric("cpu.usage", map[string]string{"host": "server1"}, map[string]interface{}{"value": 75.5}, collector.Gauge, now),
-		*collector.NewMetric("requests.count", map[string]string{"endpoint": "/api"}, map[string]interface{}{"value": int64(100)}, collector.Counter, now),
+		*collector.NewMetric("cpu.usage", map[string]string{"host": "server1"}, map[string]any{"value": 75.5}, collector.Gauge, now),
+		*collector.NewMetric("requests.count", map[string]string{"endpoint": "/api"}, map[string]any{"value": int64(100)}, collector.Counter, now),
 	}
 
 	if err := h.Write(context.Background(), metrics); err != nil {
@@ -137,7 +137,7 @@ func TestHTTPOutput_RetryOn5xx(t *testing.T) {
 	defer ts.Close()
 
 	h := &HTTPOutput{}
-	if err := h.Init(map[string]interface{}{
+	if err := h.Init(map[string]any{
 		"url":               ts.URL,
 		"timeout":           5,
 		"retry_count":       3,
@@ -148,7 +148,7 @@ func TestHTTPOutput_RetryOn5xx(t *testing.T) {
 
 	now := time.Now()
 	metrics := []collector.Metric{
-		*collector.NewMetric("test", map[string]string{}, map[string]interface{}{"value": 1.0}, collector.Gauge, now),
+		*collector.NewMetric("test", map[string]string{}, map[string]any{"value": 1.0}, collector.Gauge, now),
 	}
 
 	if err := h.Write(context.Background(), metrics); err != nil {
@@ -169,7 +169,7 @@ func TestHTTPOutput_RetryExhaustion(t *testing.T) {
 	defer ts.Close()
 
 	h := &HTTPOutput{}
-	if err := h.Init(map[string]interface{}{
+	if err := h.Init(map[string]any{
 		"url":               ts.URL,
 		"timeout":           5,
 		"retry_count":       2,
@@ -180,7 +180,7 @@ func TestHTTPOutput_RetryExhaustion(t *testing.T) {
 
 	now := time.Now()
 	metrics := []collector.Metric{
-		*collector.NewMetric("test", map[string]string{}, map[string]interface{}{"value": 1.0}, collector.Gauge, now),
+		*collector.NewMetric("test", map[string]string{}, map[string]any{"value": 1.0}, collector.Gauge, now),
 	}
 
 	err := h.Write(context.Background(), metrics)
@@ -214,7 +214,7 @@ func TestHTTPOutput_Batching(t *testing.T) {
 	defer ts.Close()
 
 	h := &HTTPOutput{}
-	if err := h.Init(map[string]interface{}{
+	if err := h.Init(map[string]any{
 		"url":        ts.URL,
 		"timeout":    5,
 		"batch_size": 2,
@@ -225,7 +225,7 @@ func TestHTTPOutput_Batching(t *testing.T) {
 	now := time.Now()
 	metrics := make([]collector.Metric, 5)
 	for i := range metrics {
-		metrics[i] = *collector.NewMetric("test", map[string]string{}, map[string]interface{}{"value": float64(i)}, collector.Gauge, now)
+		metrics[i] = *collector.NewMetric("test", map[string]string{}, map[string]any{"value": float64(i)}, collector.Gauge, now)
 	}
 
 	if err := h.Write(context.Background(), metrics); err != nil {
@@ -252,7 +252,7 @@ func TestInitURLValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			h := &HTTPOutput{}
-			cfg := map[string]interface{}{"url": tt.url}
+			cfg := map[string]any{"url": tt.url}
 			err := h.Init(cfg)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Init with url %q: error = %v, wantErr %v", tt.url, err, tt.wantErr)

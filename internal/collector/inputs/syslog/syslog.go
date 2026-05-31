@@ -27,14 +27,14 @@ type SyslogInput struct {
 	Protocol       string `toml:"protocol"`
 	MaxConnections int    `toml:"max_connections"`
 
-	listener   net.Listener
-	udpConn    *net.UDPConn
-	ready      chan struct{} // closed when listener is ready; created per Gather call
-	parseErrors int64        // atomic counter for parse failures
+	listener    net.Listener
+	udpConn     *net.UDPConn
+	ready       chan struct{} // closed when listener is ready; created per Gather call
+	parseErrors int64         // atomic counter for parse failures
 }
 
 // Init parses the config map and sets defaults.
-func (s *SyslogInput) Init(cfg map[string]interface{}) error {
+func (s *SyslogInput) Init(cfg map[string]any) error {
 	s.ListenAddr = "0.0.0.0:514"
 	s.Protocol = "tcp"
 	s.MaxConnections = 100
@@ -127,9 +127,7 @@ func (s *SyslogInput) gatherTCP(ctx context.Context, acc collector.Accumulator) 
 			continue
 		}
 
-		wg.Add(1)
-		go func(c net.Conn) {
-			defer wg.Done()
+		wg.Go(func() {
 			sem <- struct{}{}        // acquire
 			defer func() { <-sem }() // release
 
@@ -137,8 +135,8 @@ func (s *SyslogInput) gatherTCP(ctx context.Context, acc collector.Accumulator) 
 			// return value.  We intentionally do not propagate them further
 			// because each connection runs in its own goroutine and a single
 			// bad connection must not abort the whole listener.
-			_ = s.handleTCPConn(c, acc)
-		}(conn)
+			_ = s.handleTCPConn(conn, acc)
+		})
 	}
 
 	wg.Wait()
@@ -213,11 +211,11 @@ func (s *SyslogInput) processMessage(data []byte, acc collector.Accumulator) {
 		"app":  msg.AppName,
 		"host": msg.Hostname,
 	}
-	fields := map[string]interface{}{
-		"message":   msg.Message,
-		"facility":  msg.Facility,
-		"severity":  msg.Severity,
-		"pid":       msg.ProcID,
+	fields := map[string]any{
+		"message":  msg.Message,
+		"facility": msg.Facility,
+		"severity": msg.Severity,
+		"pid":      msg.ProcID,
 	}
 
 	if !msg.Timestamp.IsZero() {

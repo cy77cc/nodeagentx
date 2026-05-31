@@ -34,7 +34,7 @@ func waitForMetrics(t *testing.T, acc collector.Accumulator, minCount int) []*co
 
 func TestSyslogInputInit(t *testing.T) {
 	si := &SyslogInput{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"listen_addr":     "127.0.0.1:1514",
 		"protocol":        "udp",
 		"max_connections": 50,
@@ -55,7 +55,7 @@ func TestSyslogInputInit(t *testing.T) {
 
 func TestSyslogInputInitDefaults(t *testing.T) {
 	si := &SyslogInput{}
-	cfg := map[string]interface{}{}
+	cfg := map[string]any{}
 	if err := si.Init(cfg); err != nil {
 		t.Fatalf("Init failed: %v", err)
 	}
@@ -72,7 +72,7 @@ func TestSyslogInputInitDefaults(t *testing.T) {
 
 func TestSyslogInputGatherTCP(t *testing.T) {
 	si := &SyslogInput{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"listen_addr": "127.0.0.1:0",
 		"protocol":    "tcp",
 	}
@@ -155,7 +155,7 @@ func TestSyslogInputSampleConfig(t *testing.T) {
 
 func TestSyslogInputGatherUDP(t *testing.T) {
 	si := &SyslogInput{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"listen_addr": "127.0.0.1:0",
 		"protocol":    "udp",
 	}
@@ -215,7 +215,7 @@ func TestSyslogInputGatherUDP(t *testing.T) {
 
 func TestSyslogInputMultipleTCPClients(t *testing.T) {
 	si := &SyslogInput{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"listen_addr":     "127.0.0.1:0",
 		"protocol":        "tcp",
 		"max_connections": 2,
@@ -235,7 +235,7 @@ func TestSyslogInputMultipleTCPClients(t *testing.T) {
 	<-si.ready
 
 	// Send messages from two clients
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		conn, err := net.Dial("tcp", si.listener.Addr().String())
 		if err != nil {
 			t.Fatalf("client %d: failed to dial: %v", i, err)

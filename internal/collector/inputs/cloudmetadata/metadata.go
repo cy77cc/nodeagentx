@@ -30,7 +30,7 @@ type MetadataInput struct {
 }
 
 // Init parses the configuration map and sets defaults.
-func (m *MetadataInput) Init(cfg map[string]interface{}) error {
+func (m *MetadataInput) Init(cfg map[string]any) error {
 	m.metadataURL = defaultMetadataURL
 	m.Timeout = defaultTimeout
 
@@ -52,7 +52,7 @@ func (m *MetadataInput) Init(cfg map[string]interface{}) error {
 // Gather fetches instance-id, instance-type, placement/region, and local-ipv4
 // from the cloud metadata service and emits them as fields.
 func (m *MetadataInput) Gather(ctx context.Context, acc collector.Accumulator) error {
-	fields := make(map[string]interface{})
+	fields := make(map[string]any)
 
 	metadataPaths := map[string]string{
 		"instance-id":   "instance-id",

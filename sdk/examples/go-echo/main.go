@@ -9,7 +9,7 @@ import (
 
 type EchoHandler struct{}
 
-func (h *EchoHandler) Init(cfg map[string]interface{}) error {
+func (h *EchoHandler) Init(cfg map[string]any) error {
 	log.Println("echo plugin initialized")
 	return nil
 }
@@ -23,7 +23,7 @@ func (h *EchoHandler) Execute(_ context.Context, req *plugin.TaskRequest) (*plug
 	return &plugin.TaskResponse{
 		TaskID: req.TaskID,
 		Status: "ok",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"echo": req.Params,
 			"task": req.TaskType,
 		},

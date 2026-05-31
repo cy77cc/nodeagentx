@@ -14,7 +14,7 @@ func TestHubServer_Register_AcceptsValidLeaf(t *testing.T) {
 		{Name: "prod", Match: map[string]string{"env": "prod"}},
 	})
 	cd := NewConfigDistributor(ConfigLevels{
-		Global: map[string]interface{}{"key": "value"},
+		Global: map[string]any{"key": "value"},
 	}, ge)
 
 	srv := NewHubServer(HubServerConfig{
@@ -63,7 +63,7 @@ func TestHubServer_Heartbeat_UpdatesLeaf(t *testing.T) {
 		{Name: "prod", Match: map[string]string{"env": "prod"}},
 	})
 	cd := NewConfigDistributor(ConfigLevels{
-		Global: map[string]interface{}{"key": "value"},
+		Global: map[string]any{"key": "value"},
 	}, ge)
 
 	srv := NewHubServer(HubServerConfig{

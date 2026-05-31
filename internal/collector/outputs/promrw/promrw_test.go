@@ -16,22 +16,22 @@ import (
 func TestPromRWOutput_Init(t *testing.T) {
 	tests := []struct {
 		name    string
-		cfg     map[string]interface{}
+		cfg     map[string]any
 		wantErr bool
 	}{
 		{
 			name:    "missing url",
-			cfg:     map[string]interface{}{},
+			cfg:     map[string]any{},
 			wantErr: true,
 		},
 		{
 			name:    "empty url",
-			cfg:     map[string]interface{}{"url": ""},
+			cfg:     map[string]any{"url": ""},
 			wantErr: true,
 		},
 		{
 			name: "valid config",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"url":     "http://localhost:9090/api/v1/write",
 				"timeout": 5,
 			},
@@ -84,7 +84,7 @@ func TestPromRWOutput_Write(t *testing.T) {
 	defer ts.Close()
 
 	p := &PromRWOutput{}
-	if err := p.Init(map[string]interface{}{
+	if err := p.Init(map[string]any{
 		"url":     ts.URL,
 		"timeout": 5,
 	}); err != nil {
@@ -93,8 +93,8 @@ func TestPromRWOutput_Write(t *testing.T) {
 
 	now := time.Now()
 	metrics := []collector.Metric{
-		*collector.NewMetric("cpu.usage", map[string]string{"host": "server1"}, map[string]interface{}{"value": 75.5}, collector.Gauge, now),
-		*collector.NewMetric("requests.count", map[string]string{"endpoint": "/api"}, map[string]interface{}{"value": int64(100)}, collector.Counter, now),
+		*collector.NewMetric("cpu.usage", map[string]string{"host": "server1"}, map[string]any{"value": 75.5}, collector.Gauge, now),
+		*collector.NewMetric("requests.count", map[string]string{"endpoint": "/api"}, map[string]any{"value": int64(100)}, collector.Counter, now),
 	}
 
 	if err := p.Write(context.Background(), metrics); err != nil {
@@ -152,7 +152,7 @@ func TestPromRWOutput_EmptyMetrics(t *testing.T) {
 	defer ts.Close()
 
 	p := &PromRWOutput{}
-	if err := p.Init(map[string]interface{}{
+	if err := p.Init(map[string]any{
 		"url": ts.URL,
 	}); err != nil {
 		t.Fatalf("Init() error: %v", err)
@@ -177,7 +177,7 @@ func TestPromRWOutput_LabelSorting(t *testing.T) {
 	defer ts.Close()
 
 	p := &PromRWOutput{}
-	if err := p.Init(map[string]interface{}{
+	if err := p.Init(map[string]any{
 		"url":     ts.URL,
 		"timeout": 5,
 	}); err != nil {
@@ -188,7 +188,7 @@ func TestPromRWOutput_LabelSorting(t *testing.T) {
 	m := collector.NewMetric(
 		"test",
 		map[string]string{"z_label": "z", "a_label": "a", "m_label": "m"},
-		map[string]interface{}{"value": 1.0},
+		map[string]any{"value": 1.0},
 		collector.Gauge,
 		now,
 	)
@@ -225,7 +225,7 @@ func TestPromRWOutput_ServerError(t *testing.T) {
 	defer ts.Close()
 
 	p := &PromRWOutput{}
-	if err := p.Init(map[string]interface{}{
+	if err := p.Init(map[string]any{
 		"url":     ts.URL,
 		"timeout": 5,
 	}); err != nil {
@@ -234,7 +234,7 @@ func TestPromRWOutput_ServerError(t *testing.T) {
 
 	now := time.Now()
 	metrics := []collector.Metric{
-		*collector.NewMetric("test", map[string]string{}, map[string]interface{}{"value": 1.0}, collector.Gauge, now),
+		*collector.NewMetric("test", map[string]string{}, map[string]any{"value": 1.0}, collector.Gauge, now),
 	}
 
 	err := p.Write(context.Background(), metrics)
@@ -272,7 +272,7 @@ func TestPromRWOutput_Timestamp(t *testing.T) {
 	defer ts.Close()
 
 	p := &PromRWOutput{}
-	if err := p.Init(map[string]interface{}{
+	if err := p.Init(map[string]any{
 		"url":     ts.URL,
 		"timeout": 5,
 	}); err != nil {
@@ -280,7 +280,7 @@ func TestPromRWOutput_Timestamp(t *testing.T) {
 	}
 
 	ts2 := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-	m := collector.NewMetric("test", map[string]string{}, map[string]interface{}{"value": 42.0}, collector.Gauge, ts2)
+	m := collector.NewMetric("test", map[string]string{}, map[string]any{"value": 42.0}, collector.Gauge, ts2)
 
 	if err := p.Write(context.Background(), []collector.Metric{*m}); err != nil {
 		t.Fatalf("Write() error: %v", err)

@@ -4,7 +4,7 @@ package plugin
 type TaskRequest struct {
 	TaskID   string                 `json:"task_id"`
 	TaskType string                 `json:"task_type"`
-	Params   map[string]interface{} `json:"params"`
+	Params   map[string]any `json:"params"`
 	Deadline int64                  `json:"deadline_ms"`
 }
 
@@ -12,8 +12,8 @@ type TaskRequest struct {
 type TaskResponse struct {
 	TaskID string      `json:"task_id"`
 	Status string      `json:"status"` // "ok" or "error"
-	Data   interface{} `json:"data,omitempty"`
-	Error  string      `json:"error,omitempty"`
+	Data   any `json:"data,omitzero"`
+	Error  string      `json:"error,omitzero"`
 }
 
 // Chunk represents a piece of a large output, base64-encoded.
@@ -32,7 +32,7 @@ type TaskStats struct {
 
 // rpcRequest is the internal JSON-RPC request envelope.
 type rpcRequest struct {
-	ID     interface{} `json:"id"`
+	ID     any `json:"id"`
 	Method string      `json:"method"`
 	Params TaskRequest `json:"params"`
 }
@@ -45,7 +45,7 @@ type rpcError struct {
 
 // rpcResponse is the internal JSON-RPC response envelope.
 type rpcResponse struct {
-	ID     interface{} `json:"id"`
-	Result interface{} `json:"result,omitempty"`
-	Error  *rpcError   `json:"error,omitempty"`
+	ID     any `json:"id"`
+	Result any `json:"result,omitzero"`
+	Error  *rpcError   `json:"error,omitzero"`
 }

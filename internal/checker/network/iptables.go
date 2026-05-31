@@ -85,7 +85,7 @@ func getIPTablesPolicy(ctx context.Context, chain string) (string, error) {
 
 	// Parse the first line.
 	firstLine := ""
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		trimmed := strings.TrimSpace(line)
 		if trimmed != "" {
 			firstLine = trimmed
@@ -98,10 +98,10 @@ func getIPTablesPolicy(ctx context.Context, chain string) (string, error) {
 	}
 
 	// Extract policy from "Chain INPUT (policy DROP)" format.
-	if idx := strings.Index(firstLine, "(policy "); idx != -1 {
-		rest := firstLine[idx+len("(policy "):]
-		if endIdx := strings.Index(rest, ")"); endIdx != -1 {
-			return rest[:endIdx], nil
+	if _, after, ok := strings.Cut(firstLine, "(policy "); ok {
+		rest := after
+		if before, _, ok := strings.Cut(rest, ")"); ok {
+			return before, nil
 		}
 	}
 

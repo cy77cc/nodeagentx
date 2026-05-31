@@ -70,9 +70,9 @@ func (c *BootParamChecker) Check(_ context.Context, params json.RawMessage) (*ch
 // parseBootParam extracts the value of a boot parameter from the kernel command line.
 // Handles "param=value" and bare "param" (returns "1" for bare flags).
 func parseBootParam(cmdline, param string) string {
-	for _, part := range strings.Fields(cmdline) {
-		if strings.HasPrefix(part, param+"=") {
-			return strings.TrimPrefix(part, param+"=")
+	for part := range strings.FieldsSeq(cmdline) {
+		if after, ok := strings.CutPrefix(part, param+"="); ok {
+			return after
 		}
 		if part == param {
 			return "1"

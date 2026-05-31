@@ -12,23 +12,23 @@ import (
 
 func TestHTTPInputInit(t *testing.T) {
 	tests := []struct {
-		name       string
-		cfg        map[string]interface{}
-		wantErr    bool
-		wantURLs   []string
-		wantMethod string
+		name        string
+		cfg         map[string]any
+		wantErr     bool
+		wantURLs    []string
+		wantMethod  string
 		wantTimeout int
 	}{
 		{
 			name:        "defaults",
-			cfg:         map[string]interface{}{},
+			cfg:         map[string]any{},
 			wantMethod:  "GET",
 			wantTimeout: 5,
 		},
 		{
 			name: "full config",
-			cfg: map[string]interface{}{
-				"urls":    []interface{}{"http://localhost:8080"},
+			cfg: map[string]any{
+				"urls":    []any{"http://localhost:8080"},
 				"method":  "POST",
 				"timeout": 10,
 			},
@@ -38,7 +38,7 @@ func TestHTTPInputInit(t *testing.T) {
 		},
 		{
 			name: "string slice urls",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"urls": []string{"http://a.com", "http://b.com"},
 			},
 			wantURLs:    []string{"http://a.com", "http://b.com"},
@@ -47,28 +47,28 @@ func TestHTTPInputInit(t *testing.T) {
 		},
 		{
 			name: "invalid urls type",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"urls": "not-a-list",
 			},
 			wantErr: true,
 		},
 		{
 			name: "invalid method type",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"method": 123,
 			},
 			wantErr: true,
 		},
 		{
 			name: "invalid timeout type",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"timeout": "notanumber",
 			},
 			wantErr: true,
 		},
 		{
 			name: "float64 timeout from yaml",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"timeout": float64(15),
 			},
 			wantMethod:  "GET",
@@ -154,8 +154,8 @@ func TestHTTPInputGather(t *testing.T) {
 				Method:  "GET",
 				Timeout: 5,
 			}
-			if err := input.Init(map[string]interface{}{
-				"urls": []interface{}{ts.URL},
+			if err := input.Init(map[string]any{
+				"urls": []any{ts.URL},
 			}); err != nil {
 				t.Fatalf("Init() error: %v", err)
 			}
@@ -205,8 +205,8 @@ func TestHTTPInputGatherError(t *testing.T) {
 		Method:  "GET",
 		Timeout: 5,
 	}
-	if err := input.Init(map[string]interface{}{
-		"urls": []interface{}{"http://127.0.0.1:1"},
+	if err := input.Init(map[string]any{
+		"urls": []any{"http://127.0.0.1:1"},
 	}); err != nil {
 		t.Fatalf("Init() error: %v", err)
 	}

@@ -23,7 +23,7 @@ func TestAuditLogger_Log(t *testing.T) {
 		Component: "dispatcher",
 		Action:    "exec_command",
 		Status:    "success",
-		Details:   map[string]interface{}{"task_id": "t-1"},
+		Details:   map[string]any{"task_id": "t-1"},
 	})
 
 	al.Log(AuditEvent{

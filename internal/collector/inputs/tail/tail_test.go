@@ -11,8 +11,8 @@ import (
 
 func TestTailInputInit(t *testing.T) {
 	ti := &TailInput{}
-	cfg := map[string]interface{}{
-		"files":               []interface{}{"/var/log/syslog", "/var/log/auth.log"},
+	cfg := map[string]any{
+		"files":               []any{"/var/log/syslog", "/var/log/auth.log"},
 		"watch_method":        "poll",
 		"from_beginning":      true,
 		"cursor_persist_path": "/tmp/cursor.json",
@@ -46,8 +46,8 @@ func TestTailInputInit(t *testing.T) {
 
 func TestTailInputInitDefaults(t *testing.T) {
 	ti := &TailInput{}
-	cfg := map[string]interface{}{
-		"files": []interface{}{"/tmp/test.log"},
+	cfg := map[string]any{
+		"files": []any{"/tmp/test.log"},
 	}
 	if err := ti.Init(cfg); err != nil {
 		t.Fatalf("Init failed: %v", err)
@@ -73,8 +73,8 @@ func TestTailInputGather(t *testing.T) {
 	}
 
 	ti := &TailInput{}
-	cfg := map[string]interface{}{
-		"files":          []interface{}{logFile},
+	cfg := map[string]any{
+		"files":          []any{logFile},
 		"from_beginning": true,
 	}
 	if err := ti.Init(cfg); err != nil {
@@ -118,8 +118,8 @@ func TestTailInputGatherAppend(t *testing.T) {
 	}
 
 	ti := &TailInput{}
-	cfg := map[string]interface{}{
-		"files":          []interface{}{logFile},
+	cfg := map[string]any{
+		"files":          []any{logFile},
 		"from_beginning": true,
 	}
 	if err := ti.Init(cfg); err != nil {
@@ -184,8 +184,8 @@ func TestTailInputGatherFromEnd(t *testing.T) {
 	}
 
 	ti := &TailInput{}
-	cfg := map[string]interface{}{
-		"files":          []interface{}{logFile},
+	cfg := map[string]any{
+		"files":          []any{logFile},
 		"from_beginning": false,
 	}
 	if err := ti.Init(cfg); err != nil {
@@ -233,47 +233,47 @@ func TestTailInputGatherFromEnd(t *testing.T) {
 func TestTailInputInitInvalidConfig(t *testing.T) {
 	tests := []struct {
 		name string
-		cfg  map[string]interface{}
+		cfg  map[string]any
 	}{
 		{
 			name: "files not a list",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"files": "not-a-list",
 			},
 		},
 		{
 			name: "file entry not a string",
-			cfg: map[string]interface{}{
-				"files": []interface{}{123},
+			cfg: map[string]any{
+				"files": []any{123},
 			},
 		},
 		{
 			name: "watch_method not a string",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"watch_method": 123,
 			},
 		},
 		{
 			name: "watch_method unsupported value",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"watch_method": "inotify",
 			},
 		},
 		{
 			name: "from_beginning not a bool",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"from_beginning": "yes",
 			},
 		},
 		{
 			name: "cursor_persist_path not a string",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"cursor_persist_path": 123,
 			},
 		},
 		{
 			name: "max_line_bytes not a number",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"max_line_bytes": "big",
 			},
 		},
@@ -291,7 +291,7 @@ func TestTailInputInitInvalidConfig(t *testing.T) {
 
 func TestTailInputWatchMethodValidation(t *testing.T) {
 	ti := &TailInput{}
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"watch_method": "inotify",
 	}
 	err := ti.Init(cfg)
@@ -313,8 +313,8 @@ func TestTailInputGatherMetricsAreGauges(t *testing.T) {
 	}
 
 	ti := &TailInput{}
-	cfg := map[string]interface{}{
-		"files":          []interface{}{logFile},
+	cfg := map[string]any{
+		"files":          []any{logFile},
 		"from_beginning": true,
 	}
 	if err := ti.Init(cfg); err != nil {
@@ -347,8 +347,8 @@ func TestTailInputCursorPersistence(t *testing.T) {
 	}
 
 	ti := &TailInput{}
-	cfg := map[string]interface{}{
-		"files":               []interface{}{logFile},
+	cfg := map[string]any{
+		"files":               []any{logFile},
 		"from_beginning":      true,
 		"cursor_persist_path": cursorDir,
 	}

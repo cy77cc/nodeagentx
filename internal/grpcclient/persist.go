@@ -10,11 +10,11 @@ import (
 
 // persistedMetric is a serializable representation of a metric for disk persistence.
 type persistedMetric struct {
-	Name      string                 `json:"name"`
-	Tags      map[string]string      `json:"tags"`
-	Fields    map[string]interface{} `json:"fields"`
-	Type      string                 `json:"type"`
-	Timestamp int64                  `json:"timestamp"`
+	Name      string            `json:"name"`
+	Tags      map[string]string `json:"tags"`
+	Fields    map[string]any    `json:"fields"`
+	Type      string            `json:"type"`
+	Timestamp int64             `json:"timestamp"`
 }
 
 // persistMetrics writes metrics to a JSON file at the given path.

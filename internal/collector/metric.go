@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"maps"
 	"time"
 
 	pb "github.com/cy77cc/opsagent/internal/grpcclient/proto"
@@ -19,22 +20,18 @@ const (
 type Metric struct {
 	name       string
 	tags       map[string]string
-	fields     map[string]interface{}
+	fields     map[string]any
 	timestamp  time.Time
 	metricType MetricType
 }
 
 // NewMetric creates a Metric, copying tags and fields for isolation.
-func NewMetric(name string, tags map[string]string, fields map[string]interface{}, mt MetricType, ts time.Time) *Metric {
+func NewMetric(name string, tags map[string]string, fields map[string]any, mt MetricType, ts time.Time) *Metric {
 	tagsCopy := make(map[string]string, len(tags))
-	for k, v := range tags {
-		tagsCopy[k] = v
-	}
+	maps.Copy(tagsCopy, tags)
 
-	fieldsCopy := make(map[string]interface{}, len(fields))
-	for k, v := range fields {
-		fieldsCopy[k] = v
-	}
+	fieldsCopy := make(map[string]any, len(fields))
+	maps.Copy(fieldsCopy, fields)
 
 	return &Metric{
 		name:       name,
@@ -51,18 +48,14 @@ func (m *Metric) Name() string { return m.name }
 // Tags returns a copy of the metric tags.
 func (m *Metric) Tags() map[string]string {
 	out := make(map[string]string, len(m.tags))
-	for k, v := range m.tags {
-		out[k] = v
-	}
+	maps.Copy(out, m.tags)
 	return out
 }
 
 // Fields returns a copy of the metric fields.
-func (m *Metric) Fields() map[string]interface{} {
-	out := make(map[string]interface{}, len(m.fields))
-	for k, v := range m.fields {
-		out[k] = v
-	}
+func (m *Metric) Fields() map[string]any {
+	out := make(map[string]any, len(m.fields))
+	maps.Copy(out, m.fields)
 	return out
 }
 
@@ -78,7 +71,7 @@ func (m *Metric) AddTag(key, value string) {
 }
 
 // AddField adds or updates a field on the metric.
-func (m *Metric) AddField(key string, value interface{}) {
+func (m *Metric) AddField(key string, value any) {
 	m.fields[key] = value
 }
 

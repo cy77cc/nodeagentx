@@ -10,13 +10,13 @@ import (
 func TestSNMPInputInit(t *testing.T) {
 	tests := []struct {
 		name      string
-		cfg       map[string]interface{}
+		cfg       map[string]any
 		wantErr   bool
 		wantAgent *SNMPInput
 	}{
 		{
 			name: "defaults applied with no config",
-			cfg:  map[string]interface{}{},
+			cfg:  map[string]any{},
 			wantAgent: &SNMPInput{
 				Version:   2,
 				Community: "public",
@@ -25,11 +25,11 @@ func TestSNMPInputInit(t *testing.T) {
 		},
 		{
 			name: "full config",
-			cfg: map[string]interface{}{
-				"agents":    []interface{}{"192.168.1.1:161", "192.168.1.2:161"},
+			cfg: map[string]any{
+				"agents":    []any{"192.168.1.1:161", "192.168.1.2:161"},
 				"community": "private",
 				"version":   1,
-				"oids":      []interface{}{"1.3.6.1.2.1.1.3.0", "1.3.6.1.2.1.1.1.0"},
+				"oids":      []any{"1.3.6.1.2.1.1.3.0", "1.3.6.1.2.1.1.1.0"},
 				"timeout":   10,
 			},
 			wantAgent: &SNMPInput{
@@ -42,7 +42,7 @@ func TestSNMPInputInit(t *testing.T) {
 		},
 		{
 			name: "version from float64 (JSON)",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"version": float64(2),
 			},
 			wantAgent: &SNMPInput{
@@ -53,63 +53,63 @@ func TestSNMPInputInit(t *testing.T) {
 		},
 		{
 			name: "invalid agents type",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"agents": "not a list",
 			},
 			wantErr: true,
 		},
 		{
 			name: "invalid agent element type",
-			cfg: map[string]interface{}{
-				"agents": []interface{}{123},
+			cfg: map[string]any{
+				"agents": []any{123},
 			},
 			wantErr: true,
 		},
 		{
 			name: "invalid community type",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"community": 123,
 			},
 			wantErr: true,
 		},
 		{
 			name: "invalid version type",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"version": "two",
 			},
 			wantErr: true,
 		},
 		{
 			name: "unsupported version",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"version": 4,
 			},
 			wantErr: true,
 		},
 		{
 			name: "invalid oids type",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"oids": "not a list",
 			},
 			wantErr: true,
 		},
 		{
 			name: "invalid oid element type",
-			cfg: map[string]interface{}{
-				"oids": []interface{}{123},
+			cfg: map[string]any{
+				"oids": []any{123},
 			},
 			wantErr: true,
 		},
 		{
 			name: "invalid timeout type",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"timeout": "five",
 			},
 			wantErr: true,
 		},
 		{
 			name: "version 3",
-			cfg: map[string]interface{}{
+			cfg: map[string]any{
 				"version": 3,
 			},
 			wantAgent: &SNMPInput{
@@ -178,7 +178,7 @@ func TestSnmpVersion(t *testing.T) {
 func TestToInt(t *testing.T) {
 	tests := []struct {
 		name  string
-		input interface{}
+		input any
 		want  int
 		ok    bool
 	}{
@@ -205,9 +205,9 @@ func TestParsePort(t *testing.T) {
 	}{
 		{"161", 161},
 		{"1161", 1161},
-		{"0", 161},      // default for 0
-		{"abc", 161},    // default for invalid
-		{"", 161},       // default for empty
+		{"0", 161},   // default for 0
+		{"abc", 161}, // default for invalid
+		{"", 161},    // default for empty
 	}
 
 	for _, tt := range tests {

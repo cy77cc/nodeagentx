@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net"
 	"net/http"
 	"os"
@@ -99,9 +100,7 @@ func (c *ContainerLayer) Discover(ctx context.Context) ([]Service, error) {
 		ports := extractPublicPorts(dc.Ports)
 
 		labels := make(map[string]string, len(dc.Labels)+2)
-		for k, v := range dc.Labels {
-			labels[k] = v
-		}
+		maps.Copy(labels, dc.Labels)
 		labels["image"] = dc.Image
 		labels["container_id"] = dc.ID
 

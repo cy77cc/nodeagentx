@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"maps"
 	"slices"
 	"sync"
 )
@@ -35,11 +36,7 @@ func (r *Registry) Get(typ string) (Checker, bool) {
 func (r *Registry) Types() []string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	keys := make([]string, 0, len(r.checkers))
-	for k := range r.checkers {
-		keys = append(keys, k)
-	}
-	slices.Sort(keys)
+	keys := slices.Sorted(maps.Keys(r.checkers))
 	return keys
 }
 

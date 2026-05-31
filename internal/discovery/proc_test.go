@@ -71,22 +71,3 @@ func TestReadCommMissing(t *testing.T) {
 	assert.Empty(t, name)
 }
 
-func TestContainsPort(t *testing.T) {
-	tests := []struct {
-		name   string
-		ports  []int
-		port   int
-		expect bool
-	}{
-		{"empty", []int{}, 80, false},
-		{"found", []int{80, 443}, 443, true},
-		{"not found", []int{80, 443}, 8080, false},
-		{"single match", []int{3000}, 3000, true},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			assert.Equal(t, tc.expect, containsPort(tc.ports, tc.port))
-		})
-	}
-}

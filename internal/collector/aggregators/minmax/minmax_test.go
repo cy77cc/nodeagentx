@@ -13,7 +13,7 @@ func TestSingleValueMinMax(t *testing.T) {
 
 	m := collector.NewMetric("cpu",
 		map[string]string{"host": "server-01"},
-		map[string]interface{}{"cpu_usage_percent": float64(42.5)},
+		map[string]any{"cpu_usage_percent": float64(42.5)},
 		collector.Gauge, time.Now())
 
 	a.Add(m)
@@ -51,7 +51,7 @@ func TestMultiValueMinMax(t *testing.T) {
 	for _, v := range []float64{50, 10, 90, 30, 70} {
 		m := collector.NewMetric("metric",
 			map[string]string{"k": "v"},
-			map[string]interface{}{"val": v},
+			map[string]any{"val": v},
 			collector.Gauge, time.Now())
 		a.Add(m)
 	}
@@ -88,7 +88,7 @@ func TestReset(t *testing.T) {
 
 	m := collector.NewMetric("m",
 		map[string]string{"k": "v"},
-		map[string]interface{}{"val": float64(42)},
+		map[string]any{"val": float64(42)},
 		collector.Gauge, time.Now())
 	a.Add(m)
 	a.Reset()
@@ -129,13 +129,13 @@ func TestConcurrentSafety(t *testing.T) {
 	a := New(Config{Fields: []string{"cpu_usage_percent"}})
 
 	var wg sync.WaitGroup
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		wg.Add(1)
 		go func(n int) {
 			defer wg.Done()
 			m := collector.NewMetric("cpu",
 				map[string]string{"host": "server-01"},
-				map[string]interface{}{"cpu_usage_percent": float64(n * 10)},
+				map[string]any{"cpu_usage_percent": float64(n * 10)},
 				collector.Gauge, time.Now())
 			a.Add(m)
 		}(i)
@@ -146,8 +146,8 @@ func TestConcurrentSafety(t *testing.T) {
 
 func TestInitValidConfig(t *testing.T) {
 	a := New(Config{})
-	cfg := map[string]interface{}{
-		"fields": []interface{}{"value", "latency"},
+	cfg := map[string]any{
+		"fields": []any{"value", "latency"},
 	}
 	if err := a.Init(cfg); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -162,7 +162,7 @@ func TestInitValidConfig(t *testing.T) {
 
 func TestInitMissingFieldsKey(t *testing.T) {
 	a := New(Config{Fields: []string{"old"}})
-	cfg := map[string]interface{}{}
+	cfg := map[string]any{}
 	if err := a.Init(cfg); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -170,7 +170,7 @@ func TestInitMissingFieldsKey(t *testing.T) {
 
 func TestInitFieldsNotAList(t *testing.T) {
 	a := New(Config{})
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"fields": "not a list",
 	}
 	err := a.Init(cfg)
@@ -181,8 +181,8 @@ func TestInitFieldsNotAList(t *testing.T) {
 
 func TestInitFieldEntryNotAString(t *testing.T) {
 	a := New(Config{})
-	cfg := map[string]interface{}{
-		"fields": []interface{}{123},
+	cfg := map[string]any{
+		"fields": []any{123},
 	}
 	err := a.Init(cfg)
 	if err == nil {
@@ -203,11 +203,11 @@ func TestAddInt64Values(t *testing.T) {
 
 	m1 := collector.NewMetric("requests",
 		map[string]string{"host": "server"},
-		map[string]interface{}{"count": int64(100)},
+		map[string]any{"count": int64(100)},
 		collector.Counter, time.Now())
 	m2 := collector.NewMetric("requests",
 		map[string]string{"host": "server"},
-		map[string]interface{}{"count": int64(300)},
+		map[string]any{"count": int64(300)},
 		collector.Counter, time.Now())
 
 	a.Add(m1)
@@ -242,15 +242,15 @@ func TestAddNonNumericFieldValues(t *testing.T) {
 
 	m1 := collector.NewMetric("cpu",
 		map[string]string{"host": "server"},
-		map[string]interface{}{"value": "string_value"},
+		map[string]any{"value": "string_value"},
 		collector.Gauge, time.Now())
 	m2 := collector.NewMetric("cpu",
 		map[string]string{"host": "server"},
-		map[string]interface{}{"value": true},
+		map[string]any{"value": true},
 		collector.Gauge, time.Now())
 	m3 := collector.NewMetric("cpu",
 		map[string]string{"host": "server"},
-		map[string]interface{}{"value": float64(42)},
+		map[string]any{"value": float64(42)},
 		collector.Gauge, time.Now())
 
 	a.Add(m1)
