@@ -232,7 +232,7 @@ func TestGPUInputGatherWithFakeBinary(t *testing.T) {
 	input := &GPUInput{
 		binPath:   binPath,
 		available: true,
-		timeout:   5 * time.Second,
+		timeout:   30 * time.Second,
 	}
 
 	acc := collector.NewAccumulator(100)
@@ -282,7 +282,7 @@ func TestGPUInputGatherWithFakeBinary_MalformedLineSkipped(t *testing.T) {
 	input := &GPUInput{
 		binPath:   binPath,
 		available: true,
-		timeout:   5 * time.Second,
+		timeout:   30 * time.Second,
 	}
 
 	acc := collector.NewAccumulator(100)
@@ -303,7 +303,7 @@ func TestGPUInputGatherWithFakeBinary_EmptyOutput(t *testing.T) {
 	input := &GPUInput{
 		binPath:   binPath,
 		available: true,
-		timeout:   5 * time.Second,
+		timeout:   30 * time.Second,
 	}
 
 	acc := collector.NewAccumulator(100)

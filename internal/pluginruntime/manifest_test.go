@@ -125,6 +125,7 @@ task_types:
 }
 
 func TestValidateManifest_OS(t *testing.T) {
+	// Use an OS that never matches the current runtime.
 	yaml := `
 name: test-plugin
 version: "1.0.0"
@@ -133,7 +134,7 @@ task_types:
   - audit
 requirements:
   os:
-    - darwin
+    - unsupported-os-xyz
 `
 	_, err := ParseManifest([]byte(yaml))
 	if err == nil {

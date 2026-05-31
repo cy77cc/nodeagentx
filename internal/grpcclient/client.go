@@ -306,6 +306,9 @@ func (c *Client) connect(ctx context.Context) error {
 
 // messageLoop runs heartbeat + recv until the context is cancelled or stream errors.
 func (c *Client) messageLoop(ctx context.Context) {
+	// Derive a context so we can stop the heartbeat goroutine when the loop exits.
+	loopCtx, loopCancel := context.WithCancel(ctx)
+
 	// Start heartbeat in a separate goroutine.
 	heartbeatDone := make(chan struct{})
 	go func() {
@@ -314,7 +317,7 @@ func (c *Client) messageLoop(ctx context.Context) {
 		defer ticker.Stop()
 		for {
 			select {
-			case <-ctx.Done():
+			case <-loopCtx.Done():
 				return
 			case <-ticker.C:
 				c.sendHeartbeat()
@@ -323,6 +326,7 @@ func (c *Client) messageLoop(ctx context.Context) {
 	}()
 
 	defer func() {
+		loopCancel()
 		<-heartbeatDone // wait for heartbeat goroutine to exit
 	}()
 

@@ -57,6 +57,9 @@ func (c *ConnectionsInput) Gather(ctx context.Context, acc collector.Accumulator
 	counts := make(map[string]map[string]int)
 	for _, conn := range conns {
 		state := conn.Status
+		if state == "" {
+			state = "NONE"
+		}
 		protocol := "tcp"
 		if conn.Type == 2 { // SOCK_DGRAM
 			protocol = "udp"
