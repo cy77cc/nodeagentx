@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -44,6 +45,10 @@ func TestServiceCheckCheckerEmptyExpectedStatus(t *testing.T) {
 }
 
 func TestServiceCheckCheckerNonexistentService(t *testing.T) {
+	if _, err := exec.LookPath("systemctl"); err != nil {
+		t.Skip("systemctl not available")
+	}
+
 	c := &ServiceCheckChecker{}
 	params := json.RawMessage(`{"name": "nonexistent_service_xyz_12345", "expected_status": "active"}`)
 	result, err := c.Check(context.Background(), params)

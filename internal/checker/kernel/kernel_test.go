@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/cy77cc/opsagent/internal/checker"
@@ -21,9 +20,9 @@ func TestSysctlCheckerTypeAndCategory(t *testing.T) {
 }
 
 func TestSysctlCheckerPassesWhenMatch(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "some_setting")
-	require.NoError(t, os.WriteFile(path, []byte("0\n"), 0o644))
+	if _, err := os.Stat("/proc/sys/kernel/hostname"); err != nil {
+		t.Skip("no /proc/sys/kernel/hostname available")
+	}
 
 	// Temporarily override the path by using a real /proc/sys/ path.
 	// For unit tests, we test path validation and error cases instead.
@@ -134,6 +133,10 @@ func TestKernelModuleCheckerInvalidJSON(t *testing.T) {
 }
 
 func TestKernelModuleCheckerNotLoaded(t *testing.T) {
+	if _, err := os.Stat("/proc/modules"); err != nil {
+		t.Skip("no /proc/modules available")
+	}
+
 	c := &KernelModuleChecker{}
 	params := json.RawMessage(`{"module": "nonexistent_module_xyz", "expected": "not_loaded"}`)
 	result, err := c.Check(context.Background(), params)
@@ -143,6 +146,10 @@ func TestKernelModuleCheckerNotLoaded(t *testing.T) {
 }
 
 func TestKernelModuleCheckerLoadedMismatch(t *testing.T) {
+	if _, err := os.Stat("/proc/modules"); err != nil {
+		t.Skip("no /proc/modules available")
+	}
+
 	c := &KernelModuleChecker{}
 	params := json.RawMessage(`{"module": "nonexistent_module_xyz", "expected": "loaded"}`)
 	result, err := c.Check(context.Background(), params)
